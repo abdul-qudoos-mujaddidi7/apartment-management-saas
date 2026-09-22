@@ -25,25 +25,31 @@ async function recalculateInvoice(client, invoiceId) {
       amount: true,
       paymentAllocations: {
         where: { payment: { status: 'POSTED' } },
-        select: { amount: true, voidedAt: true },
+        select: { amount: true, appliedAmount: true, baseAppliedAmount: true, voidedAt: true },
       },
     },
   });
 
-  // Compute total paid across all items
-  const paidAmount = items.reduce((total, item) => {
-    const itemPaid = item.paymentAllocations.reduce((sum, alloc) => {
-      if (alloc.voidedAt) return sum;
-      return sum.plus(new Decimal(alloc.amount));
-    }, new Decimal(0));
-    return total.plus(itemPaid);
-  }, new Decimal(0)).toDecimalPlaces(2);
+  // Total paid across all items, in the invoice's currency and in base.
+  // `appliedAmount` is the invoice-currency figure frozen when each allocation
+  // was made; `amount` is only its fallback for pre-existing rows.
+  let paidAmount = new Decimal(0);
+  let basePaidAmount = new Decimal(0);
+  for (const item of items) {
+    for (const alloc of item.paymentAllocations) {
+      if (alloc.voidedAt) continue;
+      paidAmount = paidAmount.plus(new Decimal(alloc.appliedAmount ?? alloc.amount));
+      basePaidAmount = basePaidAmount.plus(new Decimal(alloc.baseAppliedAmount ?? alloc.amount));
+    }
+  }
+  paidAmount = paidAmount.toDecimalPlaces(2);
+  basePaidAmount = basePaidAmount.toDecimalPlaces(2);
 
   const status = deriveStatus(invoice, paidAmount);
 
   return client.invoice.update({
     where: { id: invoiceId },
-    data: { paidAmount, status },
+    data: { paidAmount, basePaidAmount, status },
   });
 }
 

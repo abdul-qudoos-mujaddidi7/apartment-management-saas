@@ -11,6 +11,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import { locale } from '../i18n';
+  import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
@@ -57,7 +58,10 @@
   let detailsOpen = false;
 
   let formOpen = false;
-  let form = { id: null, transactionDate: today(), description: '', lines: [] };
+  let form = { id: null, transactionDate: today(), currency: '', description: '', lines: [] };
+  // A journal is written in one currency: every line is in `form.currency`, and
+  // the server freezes the rate for the entry's date when it posts.
+  $: entryCurrency = form.currency || $baseCurrency;
   let formError = '';
   let saving = false;
 
@@ -112,7 +116,7 @@
   /* --- Entry form ------------------------------------------------------ */
 
   function openCreate() {
-    form = { id: null, transactionDate: today(), description: '', lines: [emptyLine(), emptyLine()] };
+    form = { id: null, transactionDate: today(), currency: $baseCurrency, description: '', lines: [emptyLine(), emptyLine()] };
     formError = '';
     formOpen = true;
   }
@@ -121,6 +125,7 @@
     form = {
       id: entry.id,
       transactionDate: String(entry.transactionDate).slice(0, 10),
+      currency: entry.currency || $baseCurrency,
       description: entry.description || '',
       lines: entry.lines.length
         ? entry.lines.map((line) => ({
@@ -176,6 +181,9 @@
   $: creditTotal = form.lines.reduce((total, line) => total + toAmount(line.credit), 0);
   $: difference = Math.round((debitTotal - creditTotal) * 100) / 100;
   $: balanced = debitTotal > 0 && difference === 0;
+  // What the entry will add to the ledger, in the reporting currency, at the
+  // rate in force today — the authoritative rate is frozen when it posts.
+  $: entryBaseTotal = convertAmount(debitTotal, entryCurrency, $baseCurrency, $activeCurrencies, $baseCurrency);
   /* A tenant choice is only postable when the receivable account it resolves to
      is in the chart, so an unresolved key is not accepted either. */
   $: linesComplete = form.lines.length >= 2 && form.lines.every((line) => (
@@ -194,6 +202,7 @@
 
     const payload = {
       transactionDate: form.transactionDate,
+      currency: entryCurrency,
       description: form.description.trim() || null,
       lines: form.lines.map((line) => ({
         ...resolveAccountKey(line.accountKey),
@@ -389,8 +398,8 @@
             <td class="date-cell">{String(entry.transactionDate).slice(0, 10)}</td>
             <td><StatusBadge label={sourceLabel(entry)} tone={sourceTone(entry)} /></td>
             <td class="description-cell">{entry.description || '—'}</td>
-            <td class="amount-cell">{formatMoney(entry.debitTotal)}</td>
-            <td class="amount-cell">{formatMoney(entry.creditTotal)}</td>
+            <td class="amount-cell">{formatMoney(entry.debitTotal, entry.currency)}</td>
+            <td class="amount-cell">{formatMoney(entry.creditTotal, entry.currency)}</td>
             <td><StatusBadge label={statusLabel(entry.status)} tone={statusTone(entry.status)} /></td>
             <td class="actions-cell">
               <button class="icon-button" type="button" on:click={() => openDetails(entry)} aria-label={$locale.journals.view}><i class="bi bi-eye" aria-hidden="true"></i></button>
@@ -439,16 +448,16 @@
             <tr>
               <td>{accountLabel(line)}</td>
               <td>{line.description || '—'}</td>
-              <td class="amount-cell text-end">{line.debit ? formatMoney(line.debit) : '—'}</td>
-              <td class="amount-cell text-end">{line.credit ? formatMoney(line.credit) : '—'}</td>
+              <td class="amount-cell text-end">{line.debit ? formatMoney(line.debit, detailsEntry.currency) : '—'}</td>
+              <td class="amount-cell text-end">{line.credit ? formatMoney(line.credit, detailsEntry.currency) : '—'}</td>
             </tr>
           {/each}
         </tbody>
         <tfoot>
           <tr>
             <th colspan="2">{$locale.journals.totals}</th>
-            <td class="amount-cell text-end">{formatMoney(detailsEntry.debitTotal)}</td>
-            <td class="amount-cell text-end">{formatMoney(detailsEntry.creditTotal)}</td>
+            <td class="amount-cell text-end">{formatMoney(detailsEntry.debitTotal, detailsEntry.currency)}</td>
+            <td class="amount-cell text-end">{formatMoney(detailsEntry.creditTotal, detailsEntry.currency)}</td>
           </tr>
         </tfoot>
       </table>
@@ -468,6 +477,14 @@
       <div class="journal-meta-field">
         <label class="form-label" for="journal-entry-date">{$locale.journals.date}</label>
         <input id="journal-entry-date" class="form-control" type="date" bind:value={form.transactionDate} required />
+      </div>
+      <div class="journal-meta-field">
+        <label class="form-label" for="journal-entry-currency">{$locale.currencies.currency}</label>
+        <select id="journal-entry-currency" class="form-select" bind:value={form.currency}>
+          {#each $activeCurrencies as currency (currency.id)}
+            <option value={currency.code}>{currency.code} — {currency.name}</option>
+          {/each}
+        </select>
       </div>
       <div class="journal-meta-field">
         <label class="form-label" for="journal-entry-description">{$locale.journals.description}</label>
@@ -524,8 +541,8 @@
         <tfoot>
           <tr>
             <th colspan="2">{$locale.journals.totals}</th>
-            <td class="amount-cell text-end">{formatMoney(debitTotal)}</td>
-            <td class="amount-cell text-end">{formatMoney(creditTotal)}</td>
+            <td class="amount-cell text-end">{formatMoney(debitTotal, entryCurrency)}</td>
+            <td class="amount-cell text-end">{formatMoney(creditTotal, entryCurrency)}</td>
             <td></td>
           </tr>
         </tfoot>
@@ -539,7 +556,10 @@
       </button>
       <span class="journal-balance" class:is-balanced={balanced}>
         <i class="bi {balanced ? 'bi-check-circle' : 'bi-exclamation-circle'}" aria-hidden="true"></i>
-        {balanced ? $locale.journals.balanced : $locale.journals.outOfBalance.replace('{amount}', formatMoney(Math.abs(difference)))}
+        {balanced ? $locale.journals.balanced : $locale.journals.outOfBalance.replace('{amount}', formatMoney(Math.abs(difference), entryCurrency))}
+        {#if entryCurrency !== $baseCurrency}
+          · {$locale.currencies.baseRate}: {formatMoney(entryBaseTotal, $baseCurrency)}
+        {/if}
       </span>
     </div>
   </form>

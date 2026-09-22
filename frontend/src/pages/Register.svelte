@@ -4,10 +4,17 @@
   import { resetAuth } from '../stores/auth';
   import LanguageSwitcher from '../components/LanguageSwitcher.svelte';
   import { locale, translate } from '../i18n';
+  /*
+   * The workspace's reporting currency, chosen at signup because every later
+   * report is stated in it and because it cannot be changed once the
+   * organization has posted its first invoice or payment. The options are
+   * shared with the marketing page's signup form.
+   */
+  import { currencyOptions, CUSTOM_CURRENCY, isCurrencyCode, resolveCurrencyCode } from '../utils/currencies';
 
   const points = ['pointOne', 'pointTwo', 'pointThree'];
 
-  let form = { organization: '', fullName: '', email: '', phone: '', password: '', confirmPassword: '' };
+  let form = { organization: '', fullName: '', email: '', phone: '', password: '', confirmPassword: '', currency: 'AFN', customCurrency: '' };
   let fieldErrors = {};
   let errorMessage = '';
   let submitting = false;
@@ -37,10 +44,16 @@
     else if (form.password.length < 8) errors.password = translate('register.minPassword');
     if (!form.confirmPassword) errors.confirmPassword = required('confirmPassword');
     else if (form.password !== form.confirmPassword) errors.confirmPassword = translate('register.mismatch');
+    if (form.currency === CUSTOM_CURRENCY && !isCurrencyCode(form.customCurrency)) {
+      errors.customCurrency = translate('register.invalidCurrency');
+    }
 
     fieldErrors = errors;
     return Object.keys(errors).length === 0;
   }
+
+  // The three-letter code the API receives, whether it was picked or typed.
+  $: selectedCurrency = resolveCurrencyCode(form.currency, form.customCurrency);
 
   function messageFor(error) {
     const keyByCode = {
@@ -67,6 +80,7 @@
         email: form.email.trim(),
         phone: form.phone.trim(),
         password: form.password,
+        currency: selectedCurrency,
       });
       resetAuth();
       created = { firstName, organization: form.organization.trim(), email: form.email.trim() };
@@ -167,6 +181,44 @@
             {#if fieldErrors.organization}
               <p class="au-error" id="organization-error">
                 <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.organization}
+              </p>
+            {/if}
+          </div>
+
+          <div class="au-field">
+            <label class="au-label" for="register-currency">
+              {$locale.register.fields.currency}
+              <span class="au-hint">{$locale.register.currencyHint}</span>
+            </label>
+            <select
+              class="au-input"
+              id="register-currency"
+              value={form.currency}
+              on:change={(event) => update('currency', event.currentTarget.value)}
+              aria-invalid={Boolean(fieldErrors.customCurrency)}
+              aria-describedby={fieldErrors.customCurrency ? 'register-currency-error' : undefined}
+            >
+              {#each currencyOptions as option (option.code)}
+                <option value={option.code}>{option.code} — {option.name}</option>
+              {/each}
+              <option value={CUSTOM_CURRENCY}>{$locale.register.currencyOther}</option>
+            </select>
+            {#if form.currency === CUSTOM_CURRENCY}
+              <input
+                class="au-input"
+                style="margin-block-start: .5rem;"
+                id="register-custom-currency"
+                type="text"
+                maxlength="3"
+                placeholder="USD"
+                value={form.customCurrency}
+                on:input={(event) => update('customCurrency', event.currentTarget.value)}
+                aria-invalid={Boolean(fieldErrors.customCurrency)}
+              />
+            {/if}
+            {#if fieldErrors.customCurrency}
+              <p class="au-error" id="register-currency-error">
+                <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.customCurrency}
               </p>
             {/if}
           </div>

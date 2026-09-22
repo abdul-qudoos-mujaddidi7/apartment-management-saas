@@ -30,14 +30,24 @@ function round(value, places = 2) {
   return Number(Number(value).toFixed(places));
 }
 
+/**
+ * What an invoice still owes, in the base currency.
+ *
+ * Invoices are written in whatever currency the tenant was billed in, so the
+ * portfolio-wide figures use the base — `baseTotal`/`basePaidAmount` are the
+ * amounts frozen onto the invoice when it posted, not a conversion done now.
+ */
 function balanceOf(invoice) {
-  return Math.max(toNumber(invoice.total) - toNumber(invoice.paidAmount), 0);
+  return Math.max(toNumber(invoice.baseTotal) - toNumber(invoice.basePaidAmount), 0);
 }
 
 /**
  * Everything the dashboard needs, in one round trip, scoped to the caller's
  * organization. Aggregates are computed in SQL where Prisma can express them and
- * summed in JS where it cannot (invoice balances are `total - paidAmount`).
+ * summed in JS where it cannot (invoice balances are `baseTotal - basePaidAmount`).
+ *
+ * Every money figure here is in the organization's base currency, so nothing is
+ * ever summed across currencies.
  */
 async function getDashboard(organizationId) {
   const now = new Date();
@@ -52,6 +62,7 @@ async function getDashboard(organizationId) {
   const paymentScope = { organizationId };
 
   const [
+    organization,
     buildings,
     floors,
     apartments,
@@ -64,6 +75,7 @@ async function getDashboard(organizationId) {
     recentPayments,
     expiringLeases,
   ] = await prisma.$transaction([
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { baseCurrency: true } }),
     prisma.building.count({ where: orgScope }),
     // Floors carry no organizationId: ownership resolves through the building.
     prisma.floor.count({ where: { deletedAt: null, building: { organizationId, deletedAt: null } } }),
@@ -74,12 +86,12 @@ async function getDashboard(organizationId) {
     // Billed side of the trend, and this month's billable total.
     prisma.invoice.findMany({
       where: { ...orgScope, status: { not: 'CANCELLED' }, invoiceDate: { gte: trendStart } },
-      select: { invoiceDate: true, total: true },
+      select: { invoiceDate: true, baseTotal: true },
     }),
     // Collected side of the trend; voided receipts never count as income.
     prisma.payment.findMany({
       where: { ...paymentScope, status: 'POSTED', voidedAt: null, paymentDate: { gte: trendStart } },
-      select: { paymentDate: true, amount: true },
+      select: { paymentDate: true, baseAmount: true },
     }),
     // Receivables: everything still owing, cancelled invoices excluded.
     prisma.invoice.findMany({
@@ -90,8 +102,12 @@ async function getDashboard(organizationId) {
         invoiceDate: true,
         dueDate: true,
         status: true,
+        currency: true,
+        exchangeRate: true,
         total: true,
         paidAmount: true,
+        baseTotal: true,
+        basePaidAmount: true,
         lease: {
           select: {
             contractNumber: true,
@@ -115,7 +131,9 @@ async function getDashboard(organizationId) {
         id: true,
         paymentNumber: true,
         paymentDate: true,
+        currency: true,
         amount: true,
+        baseAmount: true,
         paymentMethod: true,
         tenant: { select: { id: true, firstName: true, lastName: true } },
         lease: { select: { contractNumber: true } },
@@ -130,6 +148,7 @@ async function getDashboard(organizationId) {
         contractNumber: true,
         endDate: true,
         monthlyRent: true,
+        currency: true,
         tenant: { select: { id: true, firstName: true, lastName: true, phone: true } },
         apartment: {
           select: {
@@ -157,11 +176,11 @@ async function getDashboard(organizationId) {
 
   for (const invoice of billedInvoices) {
     const bucket = trendByMonth.get(monthKey(new Date(invoice.invoiceDate)));
-    if (bucket) bucket.billed += toNumber(invoice.total);
+    if (bucket) bucket.billed += toNumber(invoice.baseTotal);
   }
   for (const payment of postedPayments) {
     const bucket = trendByMonth.get(monthKey(new Date(payment.paymentDate)));
-    if (bucket) bucket.collected += toNumber(payment.amount);
+    if (bucket) bucket.collected += toNumber(payment.baseAmount);
   }
 
   const thisMonth = trendByMonth.get(monthKey(monthStart));
@@ -206,7 +225,8 @@ async function getDashboard(organizationId) {
       overdueCount: overdue.length,
       // Share of this month's billings already collected.
       collectionRate: billedThisMonth > 0 ? round(collectedThisMonth / billedThisMonth, 4) : 0,
-      currency: 'AFN',
+      // The reporting currency every figure in `money` and `trend` is stated in.
+      currency: organization?.baseCurrency || 'AFN',
     },
     trend: trend.map((entry) => ({
       month: entry.month,
@@ -218,7 +238,11 @@ async function getDashboard(organizationId) {
       id: payment.id,
       paymentNumber: payment.paymentNumber,
       paymentDate: payment.paymentDate,
+      // `amount` is what the tenant handed over; `baseAmount` is what it is
+      // worth in the reporting currency, which is what the lists total to.
+      currency: payment.currency || organization?.baseCurrency || 'AFN',
       amount: toNumber(payment.amount),
+      baseAmount: toNumber(payment.baseAmount),
       paymentMethod: payment.paymentMethod,
       contractNumber: payment.lease?.contractNumber || null,
       tenant: payment.tenant,
@@ -229,9 +253,14 @@ async function getDashboard(organizationId) {
       invoiceDate: invoice.invoiceDate,
       dueDate: invoice.dueDate,
       status: invoice.status,
+      currency: invoice.currency || organization?.baseCurrency || 'AFN',
+      // The document's own figures, and the base balance that shares a unit
+      // with the `outstanding` total above it.
       balance: round(balance),
+      baseBalance: round(balance),
       total: toNumber(invoice.total),
       paidAmount: toNumber(invoice.paidAmount),
+      baseTotal: toNumber(invoice.baseTotal),
       contractNumber: invoice.lease?.contractNumber || null,
       tenant: invoice.lease?.tenant || null,
       apartment: invoice.lease?.apartment || null,
@@ -241,6 +270,7 @@ async function getDashboard(organizationId) {
       contractNumber: lease.contractNumber,
       endDate: lease.endDate,
       monthlyRent: toNumber(lease.monthlyRent),
+      currency: lease.currency,
       daysLeft: Math.max(Math.ceil((new Date(lease.endDate) - now) / 86_400_000), 0),
       tenant: lease.tenant,
       apartment: lease.apartment,

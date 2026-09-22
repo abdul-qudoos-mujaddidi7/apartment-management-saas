@@ -44,10 +44,18 @@ const datesAreValid = (schema) => schema.refine(
   { path: ['dueDate'], message: 'Due date cannot be before invoice date.' },
 );
 
+// Optional currency: omitted means the organization's base currency, which is
+// what every pre-existing client sends.
+const optionalCurrencyCode = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z.string().trim().length(3).regex(/^[A-Za-z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
+);
+
 const createInvoiceSchema = datesAreValid(z.object({
   leaseId: z.string().trim().min(1),
   invoiceDate: requiredDate,
   dueDate: optionalDate,
+  currency: optionalCurrencyCode,
   notes: optionalText,
   items: z.array(invoiceItemSchema).min(1),
 }));
@@ -55,6 +63,7 @@ const createInvoiceSchema = datesAreValid(z.object({
 const updateInvoiceSchema = datesAreValid(z.object({
   invoiceDate: requiredDate.optional(),
   dueDate: optionalDate.optional(),
+  currency: optionalCurrencyCode,
   notes: optionalText,
   items: z.array(invoiceItemSchema).min(1).optional(),
 }).refine((data) => Object.keys(data).length > 0, {
@@ -76,6 +85,7 @@ const listInvoicesSchema = z.object({
   tenantId: optionalFilter(z.string().trim().min(1)),
   leaseId: optionalFilter(z.string().trim().min(1)),
   status: optionalFilter(z.enum(invoiceStatuses)),
+  currency: optionalFilter(z.string().trim().length(3).regex(/^[A-Za-z]{3}$/)),
   dateFrom: optionalFilter(requiredDate),
   dateTo: optionalFilter(requiredDate),
 });

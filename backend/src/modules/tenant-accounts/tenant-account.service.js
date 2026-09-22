@@ -1,11 +1,8 @@
 const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
+const { asMoney } = require('../../lib/money');
 const Decimal = Prisma.Decimal;
-
-function asMoney(value) {
-  return new Decimal(value || 0).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-}
 
 function tenantAccountError(code, message) {
   return Object.assign(new Error(message), { code });
@@ -35,6 +32,15 @@ async function recalculateBalance(client, accountId) {
   return client.tenantAccount.update({ where: { id: account.id }, data: { balance } });
 }
 
+/**
+ * Post to a tenant's sub-ledger.
+ *
+ * The entry's `debit`/`credit` are always *base-currency* amounts: the
+ * sub-ledger is one running balance per tenant, and it has to reconcile against
+ * the base-currency 1100 receivable control account. `currency` and
+ * `exchangeRate` record which document produced the entry when that document
+ * was issued in another currency, so the sub-ledger can still explain itself.
+ */
 async function postTenantLedgerEntry(client, organizationId, data) {
   const existing = await client.tenantLedgerEntry.findUnique({
     where: {
@@ -67,6 +73,8 @@ async function postTenantLedgerEntry(client, organizationId, data) {
       tenantAccountId: account.id,
       type: data.type,
       transactionDate: data.transactionDate,
+      currency: (data.currency || 'AFN').toUpperCase(),
+      exchangeRate: new Decimal(data.exchangeRate ?? 1),
       referenceType: data.referenceType,
       referenceId: data.referenceId,
       description: data.description || null,
@@ -79,6 +87,8 @@ async function postTenantLedgerEntry(client, organizationId, data) {
   return entry;
 }
 
+// `data.amount` is a base-currency figure: the caller supplies the invoice's
+// stored base total rather than re-converting a currency amount here.
 async function replaceInvoiceLedgerEntry(client, organizationId, data) {
   const account = await getOrCreateTenantAccount(client, organizationId, data.tenantId);
   const existing = await client.tenantLedgerEntry.findUnique({
@@ -87,10 +97,18 @@ async function replaceInvoiceLedgerEntry(client, organizationId, data) {
   if (!existing) return postTenantLedgerEntry(client, organizationId, {
     tenantId: data.tenantId, type: 'INVOICE', transactionDate: data.transactionDate,
     referenceType: 'INVOICE', referenceId: data.invoiceId, description: data.description, debit: data.amount, credit: 0,
+    currency: data.currency, exchangeRate: data.exchangeRate,
   });
   await client.tenantLedgerEntry.update({
     where: { id: existing.id },
-    data: { transactionDate: data.transactionDate, description: data.description, debit: asMoney(data.amount), credit: 0 },
+    data: {
+      transactionDate: data.transactionDate,
+      description: data.description,
+      debit: asMoney(data.amount),
+      credit: 0,
+      currency: (data.currency || existing.currency).toUpperCase(),
+      exchangeRate: new Decimal(data.exchangeRate ?? existing.exchangeRate),
+    },
   });
   await recalculateBalance(client, account.id);
   return client.tenantLedgerEntry.findUnique({ where: { id: existing.id } });
@@ -109,8 +127,12 @@ async function reverseTenantLedgerEntry(client, organizationId, referenceType, r
     referenceType: `${referenceType}_VOID`,
     referenceId,
     description: description || `Reversal of ${referenceType}`,
+    // The original is already in base currency, so swapping its sides reverses
+    // it exactly, at the same recorded rate.
     debit: original.credit,
     credit: original.debit,
+    currency: original.currency,
+    exchangeRate: original.exchangeRate,
   });
 }
 
@@ -151,7 +173,7 @@ async function getTenantLedger(organizationId, tenantId, query) {
     prisma.tenantLedgerEntry.findMany({ where: { organizationId, tenantAccountId: account.id }, orderBy: [{ transactionDate: 'asc' }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
     prisma.tenantLedgerEntry.count({ where: { organizationId, tenantAccountId: account.id } }),
   ]);
-  return { items: items.map((entry) => ({ ...entry, debit: Number(entry.debit), credit: Number(entry.credit), balanceAfter: Number(entry.balanceAfter) })), pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) } };
+  return { items: items.map((entry) => ({ ...entry, exchangeRate: Number(entry.exchangeRate), debit: Number(entry.debit), credit: Number(entry.credit), balanceAfter: Number(entry.balanceAfter) })), pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) } };
 }
 
 async function reconcileReceivables(client, organizationId) {

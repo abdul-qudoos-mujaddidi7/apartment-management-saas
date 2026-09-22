@@ -14,6 +14,7 @@
   import { listFloors } from '../services/floors';
   import { listApartments } from '../services/apartments';
   import { listLeases, createLease, updateLease, deleteLease } from '../services/leases';
+  import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
   import { locale } from '../i18n';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
@@ -22,6 +23,9 @@
     tenantId: '', buildingId: '', floorId: '', apartmentId: '',
     contractNumber: '', startDate: '', endDate: '',
     monthlyRent: '', securityDeposit: '0', paymentDueDay: '1',
+    /* The currency the rent is stated in. Empty means the reporting currency,
+       which is what every lease agreed before this field existed is in. */
+    currency: '',
     status: 'DRAFT', notes: ''
   });
 
@@ -46,7 +50,12 @@
   onMount(async () => {
     try { await Promise.all([loadLeases(1), loadOptions()]); }
     catch (error) { errorMessage = error?.message || 'Unable to load leases.'; }
+    // The currency list is supporting data: the page works without it.
+    loadCurrencies().catch(() => {});
   });
+
+  // The code the rent is read in, for the amount fields and the list.
+  $: formCurrency = form.currency || $baseCurrency;
 
   async function loadLeases(page = pagination.page) {
     loading = true;
@@ -105,7 +114,8 @@
 
   function openNew() {
     editing = null;
-    form = blankForm();
+    // A new lease starts in the reporting currency, which is the common case.
+    form = { ...blankForm(), currency: $baseCurrency };
     floors = [];
     apartments = [];
     modalError = '';
@@ -131,6 +141,7 @@
       endDate: lease.endDate.slice(0, 10),
       monthlyRent: lease.monthlyRent,
       securityDeposit: lease.securityDeposit,
+      currency: lease.currency || '',
       paymentDueDay: String(lease.paymentDueDay),
       status: lease.status,
       notes: lease.notes || ''
@@ -181,6 +192,7 @@
       endDate: form.endDate,
       monthlyRent: Number(form.monthlyRent),
       securityDeposit: Number(form.securityDeposit),
+      currency: formCurrency,
       paymentDueDay: Number(form.paymentDueDay),
       status: form.status,
       notes: form.notes.trim() || null
@@ -306,7 +318,7 @@
             <td>{lease.apartment.floor.name}</td>
             <td class="data-cell">{lease.apartment.apartmentNumber}</td>
             <td class="date-cell">{lease.startDate.slice(0, 10)} – {lease.endDate.slice(0, 10)}</td>
-            <td class="money-cell">{formatMoney(lease.monthlyRent)}</td>
+            <td class="money-cell">{formatMoney(lease.monthlyRent, lease.currency)}</td>
             <td><StatusBadge label={statusLabel(lease.status)} tone={statusTone(lease.status)} /></td>
             <td class="actions-cell">
               <button class="icon-button" type="button" on:click={() => (detail = lease)} aria-label={$locale.leases.details} title={$locale.leases.details}>
@@ -415,13 +427,22 @@
         <label class="form-label" for="lease-end-date">{$locale.leases.endDate}</label>
         <input class="form-control" id="lease-end-date" type="date" bind:value={form.endDate} required />
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <label class="form-label" for="lease-monthly-rent">{$locale.leases.monthlyRent}</label>
         <input class="form-control" id="lease-monthly-rent" type="number" min="0.01" step="0.01" bind:value={form.monthlyRent} required />
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <label class="form-label" for="lease-security-deposit">{$locale.leases.securityDeposit}</label>
         <input class="form-control" id="lease-security-deposit" type="number" min="0" step="0.01" bind:value={form.securityDeposit} required />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="lease-currency">{$locale.currencies.currency}</label>
+        <select class="form-select" id="lease-currency" bind:value={form.currency}>
+          {#each $activeCurrencies as currency (currency.id)}
+            <option value={currency.code}>{currency.code} — {currency.name}</option>
+          {/each}
+        </select>
+        <div class="form-text">{$locale.leases.currencyHint}</div>
       </div>
       <div class="col-md-6">
         <label class="form-label" for="lease-payment-due-day">{$locale.leases.paymentDueDay}</label>
@@ -461,8 +482,9 @@
       <div class="detail-item"><span>{$locale.leases.status}</span><StatusBadge label={statusLabel(detail.status)} tone={statusTone(detail.status)} /></div>
       <div class="detail-item"><span>{$locale.leases.startDate}</span><strong>{detail.startDate.slice(0, 10)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.endDate}</span><strong>{detail.endDate.slice(0, 10)}</strong></div>
-      <div class="detail-item"><span>{$locale.leases.monthlyRent}</span><strong>{formatMoney(detail.monthlyRent)}</strong></div>
-      <div class="detail-item"><span>{$locale.leases.securityDeposit}</span><strong>{formatMoney(detail.securityDeposit)}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.currency}</span><strong>{detail.currency}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.monthlyRent}</span><strong>{formatMoney(detail.monthlyRent, detail.currency)}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.securityDeposit}</span><strong>{formatMoney(detail.securityDeposit, detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.paymentDueDay}</span><strong>{detail.paymentDueDay}</strong></div>
     </div>
     <div class="detail-notes"><span>{$locale.leases.notes}</span><p>{detail.notes || '—'}</p></div>

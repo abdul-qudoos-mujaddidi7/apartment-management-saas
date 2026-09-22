@@ -66,22 +66,36 @@ function accountBalance(account, debit, credit) {
   return ['ASSET', 'EXPENSE'].includes(account.type) ? debits.minus(credits) : credits.minus(debits);
 }
 
-async function listAccountsWithBalances(organizationId) {
+/**
+ * Account balances are summed from the base-currency mirrors (`baseDebit` /
+ * `baseCredit`), never from the document-currency columns: different journals
+ * may be written in different currencies, and adding those together would be
+ * meaningless. Each line contributes exactly what it was worth in the
+ * organization's base currency on the day it posted.
+ */
+async function listAccountsWithBalances(organizationId, options = {}) {
   const prisma = require('../../lib/prisma');
   await ensureDefaultAccounts(prisma, organizationId);
   const accounts = await prisma.financialAccount.findMany({ where: { organizationId, deletedAt: null }, orderBy: { code: 'asc' } });
   const grouped = await prisma.journalLine.groupBy({
     by: ['accountId'],
     where: { account: { organizationId }, journal: { organizationId, status: 'POSTED' } },
-    _sum: { debit: true, credit: true },
+    _sum: { debit: true, credit: true, baseDebit: true, baseCredit: true },
   });
   const totals = Object.fromEntries(grouped.map((row) => [row.accountId, row._sum]));
-  return accounts.map((account) => ({
-    ...account,
-    debit: Number(totals[account.id]?.debit || 0),
-    credit: Number(totals[account.id]?.credit || 0),
-    balance: Number(accountBalance(account, totals[account.id]?.debit, totals[account.id]?.credit)),
-  }));
+  return accounts.map((account) => {
+    const row = totals[account.id] || {};
+    return {
+      ...account,
+      // Document-currency movement, kept so the register can explain a mixed-currency ledger.
+      debit: Number(row.debit || 0),
+      credit: Number(row.credit || 0),
+      baseDebit: Number(row.baseDebit || 0),
+      baseCredit: Number(row.baseCredit || 0),
+      baseCurrency: options.baseCurrency || null,
+      balance: Number(accountBalance(account, row.baseDebit, row.baseCredit)),
+    };
+  });
 }
 
 async function getAccount(organizationId, id) {
@@ -96,10 +110,19 @@ async function getAccountLedger(organizationId, id, query) {
   await getAccount(organizationId, id);
   const where = { accountId: id, journal: { organizationId } };
   const [items, total] = await prisma.$transaction([
-    prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true, lastName: true } } }, orderBy: [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+    prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, currency: true, exchangeRate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true, lastName: true } } }, orderBy: [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
     prisma.journalLine.count({ where }),
   ]);
-  return { items: items.map((line) => ({ ...line, debit: Number(line.debit), credit: Number(line.credit) })), pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) } };
+  return {
+    items: items.map((line) => ({
+      ...line,
+      debit: Number(line.debit),
+      credit: Number(line.credit),
+      baseDebit: Number(line.baseDebit),
+      baseCredit: Number(line.baseCredit),
+    })),
+    pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) },
+  };
 }
 
 module.exports = {

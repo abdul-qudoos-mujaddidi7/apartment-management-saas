@@ -2,6 +2,8 @@ const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
 const Decimal = Prisma.Decimal;
+const { convert, toBase } = require('../../lib/money');
+const { priceDocument } = require('../currency/currency.service');
 const { ensureDefaultAccounts } = require('../financials/financial-account.service');
 const { asMoney, postJournal, voidJournalWithReversal } = require('../financials/journal.service');
 const { recalculateInvoices } = require('./payment-allocation.service');
@@ -18,7 +20,10 @@ const paymentSelect = {
   leaseId: true,
   paymentNumber: true,
   paymentDate: true,
+  currency: true,
+  exchangeRate: true,
   amount: true,
+  baseAmount: true,
   paymentMethod: true,
   reference: true,
   notes: true,
@@ -46,6 +51,8 @@ const paymentSelect = {
     select: {
       id: true,
       amount: true,
+      appliedAmount: true,
+      baseAppliedAmount: true,
       voidedAt: true,
       invoiceItem: {
         select: {
@@ -53,7 +60,17 @@ const paymentSelect = {
           type: true,
           description: true,
           amount: true,
-          invoice: { select: { id: true, invoiceNumber: true, total: true, paidAmount: true, status: true } },
+          invoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              currency: true,
+              exchangeRate: true,
+              total: true,
+              paidAmount: true,
+              status: true,
+            },
+          },
         },
       },
     },
@@ -61,25 +78,40 @@ const paymentSelect = {
 };
 
 function formatPayment(payment) {
-  const allocated = payment.status === 'POSTED'
-    ? payment.allocations.reduce((total, allocation) => (
-      allocation.voidedAt ? total : total.plus(allocation.amount)
-    ), new Decimal(0))
-    : new Decimal(0);
+  const activeAllocations = payment.status === 'POSTED'
+    ? payment.allocations.filter((allocation) => !allocation.voidedAt)
+    : [];
+  // `amount` is in the payment's currency, so allocations still sum to it.
+  const allocated = activeAllocations.reduce(
+    (total, allocation) => total.plus(allocation.amount),
+    new Decimal(0),
+  );
+  const allocatedBase = activeAllocations.reduce(
+    (total, allocation) => total.plus(new Decimal(allocation.baseAppliedAmount ?? allocation.amount)),
+    new Decimal(0),
+  );
   return {
     ...payment,
+    currency: payment.currency || 'AFN',
+    exchangeRate: Number(payment.exchangeRate ?? 1),
     amount: Number(payment.amount),
+    baseAmount: Number(payment.baseAmount ?? payment.amount),
     allocatedAmount: Number(allocated),
     unallocatedAmount: Number(new Decimal(payment.amount).minus(allocated)),
+    allocatedBaseAmount: Number(allocatedBase),
     allocations: payment.allocations.map((allocation) => ({
       id: allocation.id,
       amount: Number(allocation.amount),
+      appliedAmount: Number(allocation.appliedAmount ?? allocation.amount),
+      baseAppliedAmount: Number(allocation.baseAppliedAmount ?? allocation.amount),
       voidedAt: allocation.voidedAt,
       invoiceItem: {
         ...allocation.invoiceItem,
         amount: Number(allocation.invoiceItem.amount),
         invoice: {
           ...allocation.invoiceItem.invoice,
+          currency: allocation.invoiceItem.invoice.currency || 'AFN',
+          exchangeRate: Number(allocation.invoiceItem.invoice.exchangeRate ?? 1),
           total: Number(allocation.invoiceItem.invoice.total),
           paidAmount: Number(allocation.invoiceItem.invoice.paidAmount),
         },
@@ -134,6 +166,8 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
       invoiceNumber: true,
       invoiceDate: true,
       dueDate: true,
+      currency: true,
+      exchangeRate: true,
       total: true,
       items: {
         select: {
@@ -143,7 +177,7 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
           amount: true,
           paymentAllocations: {
             where: { payment: { status: 'POSTED' } },
-            select: { amount: true, voidedAt: true },
+            select: { amount: true, appliedAmount: true, voidedAt: true },
           },
         },
         orderBy: { createdAt: 'asc' },
@@ -156,9 +190,10 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
   for (const invoice of invoices) {
     const outstandingItems = [];
     for (const item of invoice.items) {
+      // Paid against an item is always counted in the invoice's own currency.
       const paid = item.paymentAllocations.reduce((sum, alloc) => {
         if (alloc.voidedAt) return sum;
-        return sum.plus(new Decimal(alloc.amount));
+        return sum.plus(new Decimal(alloc.appliedAmount ?? alloc.amount));
       }, new Decimal(0)).toDecimalPlaces(2);
       const balance = new Decimal(item.amount).minus(paid).toDecimalPlaces(2);
       if (balance.greaterThan(0)) {
@@ -178,6 +213,8 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
         invoiceNumber: invoice.invoiceNumber,
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
+        currency: invoice.currency || 'AFN',
+        exchangeRate: Number(invoice.exchangeRate ?? 1),
         total: Number(invoice.total),
         items: outstandingItems,
       });
@@ -195,16 +232,23 @@ async function outstanding(organizationId, tenantId, leaseId) {
 /**
  * Validate allocations at the InvoiceItem level.
  *
+ * The payment's allocations are stated in the payment's own currency — that is
+ * what the tenant handed over and what the receipt must add up to. Each one is
+ * converted into the invoice's currency to check it against that item's
+ * outstanding balance, and the converted figure is kept so the invoice, the
+ * sub-ledger and the ledger all agree afterwards.
+ *
  * Rules:
  * - Each invoiceItemId must be unique within the payment
  * - Allocation amount must be > 0
- * - Allocation amount must be <= item outstanding balance
+ * - The converted amount must be <= the item's outstanding balance
  * - Total allocations must be <= payment amount
  * - Item must belong to the tenant's invoices
  */
-async function validateAllocations(client, organizationId, tenantId, leaseId, allocations, paymentAmount) {
+async function validateAllocations(client, organizationId, tenantId, leaseId, allocations, paymentAmount, paymentRate) {
   const seen = new Set();
   let allocated = new Decimal(0);
+  let appliedBase = new Decimal(0);
   const verified = [];
 
   for (const allocation of allocations) {
@@ -232,38 +276,54 @@ async function validateAllocations(client, organizationId, tenantId, leaseId, al
       select: {
         id: true,
         amount: true,
-        invoice: { select: { id: true } },
+        invoice: { select: { id: true, currency: true, exchangeRate: true } },
       },
     });
     if (!invoiceItem) {
       throw fail('INVOICE_ITEM_NOT_FOUND', 'Invoice item not found for this payment.');
     }
 
-    // Compute current paid amount for this item
+    // Compute current paid amount for this item, in the invoice's currency
     const aggregate = await client.paymentAllocation.aggregate({
       where: {
         invoiceItemId: invoiceItem.id,
         voidedAt: null,
         payment: { status: 'POSTED' },
       },
-      _sum: { amount: true },
+      _sum: { appliedAmount: true, amount: true },
     });
-    const currentPaid = new Decimal(aggregate._sum.amount || 0).toDecimalPlaces(2);
+    // `amount` is the fallback for rows written before allocations carried an
+    // applied figure; both are the same number when no conversion happened.
+    const paidSum = aggregate._sum.appliedAmount ?? aggregate._sum.amount;
+    const currentPaid = new Decimal(paidSum || 0).toDecimalPlaces(2);
     const balance = new Decimal(invoiceItem.amount).minus(currentPaid).toDecimalPlaces(2);
 
-    if (amount.greaterThan(balance)) {
-      throw fail('ALLOCATION_EXCEEDS_BALANCE', 'Allocation exceeds the item outstanding balance.');
+    const invoiceRate = new Decimal(invoiceItem.invoice.exchangeRate ?? 1);
+    const appliedAmount = convert(amount, paymentRate, invoiceRate);
+    if (appliedAmount.greaterThan(balance)) {
+      throw fail(
+        'ALLOCATION_EXCEEDS_BALANCE',
+        invoiceRate.equals(paymentRate)
+          ? 'Allocation exceeds the item outstanding balance.'
+          : `Allocation converts to ${appliedAmount.toFixed(2)} ${invoiceItem.invoice.currency || ''}, which exceeds the item outstanding balance.`.trim(),
+      );
     }
 
     allocated = allocated.plus(amount);
-    verified.push({ invoiceItemId: invoiceItem.id, amount });
+    appliedBase = appliedBase.plus(toBase(appliedAmount, invoiceRate));
+    verified.push({
+      invoiceItemId: invoiceItem.id,
+      amount,
+      appliedAmount,
+      baseAppliedAmount: toBase(appliedAmount, invoiceRate),
+    });
   }
 
   if (allocated.greaterThan(paymentAmount)) {
     throw fail('ALLOCATION_EXCEEDS_PAYMENT', 'Total allocations cannot exceed the payment amount.');
   }
 
-  return { allocations: verified, allocated };
+  return { allocations: verified, allocated, appliedBase: asMoney(appliedBase) };
 }
 
 async function createPayment(organizationId, data) {
@@ -278,10 +338,24 @@ async function createPayment(organizationId, data) {
     if (!receiveAccount) throw fail('RECEIVE_ACCOUNT_NOT_FOUND', 'Receive account not found.');
 
     const amount = asMoney(data.amount);
+    // The receipt's own currency and the rate frozen for it on the payment date.
+    const pricing = await priceDocument(tx, organizationId, {
+      currency: data.currency,
+      date: data.paymentDate,
+    });
+    const baseAmount = toBase(amount, pricing.exchangeRate);
+
     const allocationResult = await validateAllocations(
-      tx, organizationId, data.tenantId, data.leaseId, data.allocations, amount,
+      tx, organizationId, data.tenantId, data.leaseId, data.allocations, amount, pricing.exchangeRate,
     );
     const remaining = amount.minus(allocationResult.allocated);
+    // Base value of what is still unallocated: the receipt's base value minus
+    // the base value actually applied to invoices. Derived this way the ledger
+    // balances to the cent even when the invoice and payment rates differ, and
+    // clamping keeps a cent of rounding in the applied figures from ever making
+    // the unallocated side negative.
+    const appliedBase = Decimal.min(allocationResult.appliedBase, baseAmount);
+    const baseRemaining = baseAmount.minus(appliedBase);
     const paymentNumber = await nextPaymentNumber(tx, organizationId);
 
     const payment = await tx.payment.create({
@@ -291,7 +365,10 @@ async function createPayment(organizationId, data) {
         leaseId: data.leaseId || null,
         paymentNumber,
         paymentDate: data.paymentDate,
+        currency: pricing.currency,
+        exchangeRate: pricing.exchangeRate,
         amount,
+        baseAmount,
         receiveAccountId: receiveAccount.id,
         paymentMethod: data.paymentMethod,
         reference: data.reference || null,
@@ -301,20 +378,38 @@ async function createPayment(organizationId, data) {
       select: { id: true },
     });
 
-    // Accounting: Dr Cash, Cr Accounts Receivable (allocated), Cr Tenant Advances (unallocated)
+    // Accounting: Dr Cash, Cr Accounts Receivable (allocated), Cr Tenant Advances (unallocated).
+    // The receivable credit carries the base value that was applied to each
+    // invoice, so the control account and the tenant sub-ledger move together.
     await postJournal(tx, organizationId, {
       transactionDate: data.paymentDate,
       referenceType: 'PAYMENT',
       referenceId: payment.id,
       description: `Payment ${paymentNumber}`,
+      currency: pricing.currency,
+      exchangeRate: pricing.exchangeRate,
       lines: [
         { accountId: receiveAccount.id, tenantId: data.tenantId, debit: amount, credit: 0, description: `Receipt ${paymentNumber}` },
-        ...(allocationResult.allocated.greaterThan(0) ? [{ accountId: accounts['1100'].id, tenantId: data.tenantId, debit: 0, credit: allocationResult.allocated, description: `Accounts receivable settlement ${paymentNumber}` }] : []),
-        ...(remaining.greaterThan(0) ? [{ accountId: accounts['4000'].id, tenantId: data.tenantId, debit: 0, credit: remaining, description: `Unallocated payment ${paymentNumber}` }] : []),
+        ...(allocationResult.allocated.greaterThan(0) ? [{
+          accountId: accounts['1100'].id,
+          tenantId: data.tenantId,
+          debit: 0,
+          credit: allocationResult.allocated,
+          baseCredit: appliedBase,
+          description: `Accounts receivable settlement ${paymentNumber}`,
+        }] : []),
+        ...(baseRemaining.greaterThan(0) ? [{
+          accountId: accounts['4000'].id,
+          tenantId: data.tenantId,
+          debit: 0,
+          credit: remaining,
+          baseCredit: baseRemaining,
+          description: `Unallocated payment ${paymentNumber}`,
+        }] : []),
       ],
     });
 
-    // Tenant ledger: credit receivable for the allocated portion
+    // Tenant ledger: credit receivable for the allocated portion, in base currency
     if (allocationResult.allocated.greaterThan(0)) {
       await postTenantLedgerEntry(tx, organizationId, {
         tenantId: data.tenantId,
@@ -324,7 +419,9 @@ async function createPayment(organizationId, data) {
         referenceId: payment.id,
         description: `Payment ${paymentNumber}`,
         debit: 0,
-        credit: allocationResult.allocated,
+        credit: appliedBase,
+        currency: pricing.currency,
+        exchangeRate: pricing.exchangeRate,
       });
     }
 
@@ -362,6 +459,7 @@ async function listPayments(organizationId, query) {
     ...(query.tenantId ? { tenantId: query.tenantId } : {}),
     ...(query.leaseId ? { leaseId: query.leaseId } : {}),
     ...(query.status ? { status: query.status } : {}),
+    ...(query.currency ? { currency: String(query.currency).toUpperCase() } : {}),
     ...(query.dateFrom || query.dateTo ? { paymentDate: { ...(query.dateFrom ? { gte: query.dateFrom } : {}), ...(query.dateTo ? { lte: query.dateTo } : {}) } } : {}),
     ...(query.search ? { OR: [
       { paymentNumber: { contains: query.search } },

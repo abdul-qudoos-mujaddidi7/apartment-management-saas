@@ -7,6 +7,23 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+/**
+ * The reporting currency the new workspace is set up in.
+ *
+ * It is chosen here because it is the currency every later report is stated in,
+ * and because it cannot be changed once the organization has posted money. It
+ * stays optional so a client that does not send one still registers into AFN.
+ */
+const registrationCurrency = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined
+    ? undefined
+    : String(value).trim().toUpperCase()),
+  z
+    .string()
+    .regex(/^[A-Z]{3}$/, 'Use a three-letter currency code such as USD.')
+    .optional(),
+);
+
 const registrationSchema = z.object({
   organizationName: z.string().trim().min(1),
   firstName: z.string().trim().min(1),
@@ -14,6 +31,7 @@ const registrationSchema = z.object({
   email: z.string().trim().email(),
   phone: z.string().trim().min(1),
   password: z.string().min(8),
+  currency: registrationCurrency,
 });
 
 const cookieOptions = {
@@ -41,6 +59,16 @@ async function register(req, res, next) {
 
     return res.status(201).json({ success: true, user });
   } catch (error) {
+    // A currency the catalogue rejects (bad code) is a field error, not a 500.
+    if (error.code === 'INVALID_CURRENCY_CODE') {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_REGISTRATION_DATA',
+        message: 'Invalid registration data.',
+        errors: { currency: [error.message] },
+      });
+    }
+
     if (error.code === 'EMAIL_ALREADY_EXISTS' || error.code === 'SLUG_ALREADY_EXISTS') {
       return res.status(409).json({
         success: false,

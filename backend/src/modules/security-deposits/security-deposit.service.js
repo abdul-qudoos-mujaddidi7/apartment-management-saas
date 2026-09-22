@@ -2,6 +2,8 @@ const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
 const Decimal = Prisma.Decimal;
+const { toBase } = require('../../lib/money');
+const { priceDocument } = require('../currency/currency.service');
 
 function fail(code, message) {
   return Object.assign(new Error(message), { code });
@@ -51,7 +53,10 @@ const leaseSelect = {
 const transactionSelect = {
   id: true,
   type: true,
+  currency: true,
+  exchangeRate: true,
   amount: true,
+  baseAmount: true,
   transactionDate: true,
   reference: true,
   notes: true,
@@ -108,6 +113,14 @@ async function getLease(organizationId, leaseId, client = prisma) {
   return lease;
 }
 
+/**
+ * Deposit status is judged in the organization's base currency.
+ *
+ * The required deposit lives on the lease as a base-currency figure, so the
+ * transactions have to be compared against it in the same currency; a deposit
+ * taken in USD, a deduction made in EUR and the remaining balance are then all
+ * one meaningful number rather than three that cannot be added up.
+ */
 async function getSummary(organizationId, lease, client = prisma) {
   const grouped = await client.securityDepositTransaction.groupBy({
     by: ['type'],
@@ -117,12 +130,13 @@ async function getSummary(organizationId, lease, client = prisma) {
       status: 'POSTED',
     },
     _sum: {
+      baseAmount: true,
       amount: true,
     },
   });
 
   const amounts = Object.fromEntries(
-    grouped.map((row) => [row.type, row._sum.amount || new Decimal(0)]),
+    grouped.map((row) => [row.type, row._sum.baseAmount ?? row._sum.amount ?? new Decimal(0)]),
   );
 
   const requiredDeposit = new Decimal(lease.securityDeposit);
@@ -286,7 +300,9 @@ async function details(organizationId, leaseId) {
     summary: formatSummary(summary),
     transactions: transactions.map((transaction) => ({
       ...transaction,
+      exchangeRate: Number(transaction.exchangeRate ?? 1),
       amount: serializeDecimal(transaction.amount),
+      baseAmount: serializeDecimal(transaction.baseAmount ?? transaction.amount),
     })),
   };
 }
@@ -297,10 +313,18 @@ async function create(organizationId, leaseId, data) {
       const lease = await getLease(organizationId, leaseId, transaction);
       const summary = await getSummary(organizationId, lease, transaction);
       const amount = new Decimal(data.amount);
+      // The amount is what the tenant actually handed over or was charged back,
+      // in its own currency; `baseAmount` is what the deposit balances move by.
+      const pricing = await priceDocument(transaction, organizationId, {
+        currency: data.currency,
+        date: data.transactionDate,
+      });
+      const baseAmount = toBase(amount, pricing.exchangeRate);
 
+      // Compare in base currency, which is what the summary is stated in.
       if (
         data.type === 'RECEIVED' &&
-        summary.received.plus(amount).gt(summary.requiredDeposit)
+        summary.received.plus(baseAmount).gt(summary.requiredDeposit)
       ) {
         throw fail(
           'DEPOSIT_OVERPAYMENT',
@@ -308,14 +332,14 @@ async function create(organizationId, leaseId, data) {
         );
       }
 
-      if (data.type === 'DEDUCTION' && amount.gt(summary.balance)) {
+      if (data.type === 'DEDUCTION' && baseAmount.gt(summary.balance)) {
         throw fail(
           'DEDUCTION_EXCEEDS_BALANCE',
           'Deduction amount cannot exceed the current security deposit balance.',
         );
       }
 
-      if (data.type === 'REFUND' && amount.gt(summary.balance)) {
+      if (data.type === 'REFUND' && baseAmount.gt(summary.balance)) {
         throw fail(
           'REFUND_EXCEEDS_BALANCE',
           'Refund amount cannot exceed the current security deposit balance.',
@@ -325,7 +349,10 @@ async function create(organizationId, leaseId, data) {
       const created = await transaction.securityDepositTransaction.create({
         data: {
           type: data.type,
+          currency: pricing.currency,
+          exchangeRate: pricing.exchangeRate,
           amount,
+          baseAmount,
           transactionDate: data.transactionDate,
           reference: data.reference,
           notes: data.notes,
@@ -337,7 +364,9 @@ async function create(organizationId, leaseId, data) {
 
       return {
         ...created,
+        exchangeRate: Number(created.exchangeRate ?? 1),
         amount: serializeDecimal(created.amount),
+        baseAmount: serializeDecimal(created.baseAmount),
       };
     },
     {
@@ -386,7 +415,9 @@ async function voidTransaction(organizationId, transactionId, reason) {
 
       return {
         ...updated,
+        exchangeRate: Number(updated.exchangeRate ?? 1),
         amount: serializeDecimal(updated.amount),
+        baseAmount: serializeDecimal(updated.baseAmount),
       };
     },
     {

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Router, { replace } from 'svelte-spa-router';
   import { user, authReady, loadSession, resetAuth } from '../stores/auth';
+  import { loadCurrencies, resetCurrencies } from '../stores/currency';
   import { locale } from '../i18n';
   import AppShell from '../components/layout/AppShell.svelte';
   import Dashboard from '../pages/Dashboard.svelte';
@@ -21,6 +22,7 @@
   import Accounts from '../pages/Accounts.svelte';
   import Journals from '../pages/Journals.svelte';
   import TenantAccounts from '../pages/TenantAccounts.svelte';
+  import Currencies from '../pages/Currencies.svelte';
   import NotFound from '../pages/NotFound.svelte';
 
   // Both routers observe the same hash. This router matches full application
@@ -44,6 +46,7 @@
     '/accounts': Accounts,
     '/journals': Journals,
     '/tenant-accounts': TenantAccounts,
+    '/settings/currencies': Currencies,
     '*': NotFound,
   };
 
@@ -54,6 +57,9 @@
     sessionError = '';
     try {
       await loadSession();
+      // The currency catalogue belongs to the session's organization, so it is
+      // fetched once the session is known and shared by every money page.
+      await loadCurrencies();
     } catch (error) {
       if (mounted) sessionError = error.message;
     }
@@ -61,6 +67,7 @@
 
   function handleSessionExpired() {
     resetAuth();
+    resetCurrencies();
     void replace('/login');
   }
 

@@ -61,6 +61,7 @@
       collectionRate: 0,
       currency: 'AFN'
     },
+    // Replaced by the server's reporting currency as soon as the summary loads.
     trend: [],
     apartmentStatus: {},
     recentPayments: [],
@@ -686,7 +687,7 @@
               </div>
 
               <div class="row-side">
-                <p class="row-amount">{money$(invoice.balance, money.currency)}</p>
+                <p class="row-amount">{money$(invoice.baseBalance ?? invoice.balance, money.currency)}</p>
                 <StatusBadge label={overdueLabel(invoice.dueDate)} tone="danger" />
               </div>
             </li>
@@ -762,7 +763,7 @@
               </div>
 
               <div class="row-side">
-                <p class="row-amount tone-in">{money$(payment.amount, money.currency)}</p>
+                <p class="row-amount tone-in">{money$(payment.baseAmount ?? payment.amount, money.currency)}</p>
                 <p class="row-when">{formatDate(payment.paymentDate)}</p>
               </div>
             </li>
@@ -830,7 +831,7 @@
               {/if}
             </td>
             <td class="contract-number">{lease.contractNumber}</td>
-            <td class="amount-cell">{money$(lease.monthlyRent)}</td>
+            <td class="amount-cell">{money$(lease.monthlyRent, lease.currency)}</td>
             <td>
               <StatusBadge
                 label={$locale.leases.active}
@@ -915,8 +916,12 @@
             <dd>{selectedLease.contractNumber}</dd>
           </div>
           <div>
+            <dt>{$locale.leases.currency}</dt>
+            <dd>{selectedLease.currency}</dd>
+          </div>
+          <div>
             <dt>{$locale.invoices.monthlyRent}</dt>
-            <dd class="amount-cell">{money$(selectedLease.monthlyRent)}</dd>
+            <dd class="amount-cell">{money$(selectedLease.monthlyRent, selectedLease.currency)}</dd>
           </div>
         </dl>
       </fieldset>

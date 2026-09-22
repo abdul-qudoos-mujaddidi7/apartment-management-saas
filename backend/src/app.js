@@ -13,6 +13,7 @@ const assetCategoryRoutes = require('./modules/asset-categories/asset-category.r
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const buildingRoutes = require('./modules/building/building.routes');
+const currencyRoutes = require('./modules/currency/currency.routes');
 const floorRoutes = require('./modules/floors/floor.routes');
 const tenantRoutes = require('./modules/tenants/tenant.routes');
 const leaseRoutes = require('./modules/leases/lease.routes');
@@ -77,6 +78,7 @@ app.use('/api/apartment-assets', apartmentAssetRecordRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/asset-categories', assetCategoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/currencies', currencyRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/leases', leaseRoutes);
 app.use('/api/security-deposits', securityDepositRoutes);

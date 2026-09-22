@@ -15,7 +15,8 @@ export const navigationItems = [
   { key: 'meters', icon: 'bi-speedometer2', href: '/meters' },
   { key: 'invoices', icon: 'bi-receipt', href: '/invoices' },
   { key: 'accounts', icon: 'bi-bank', href: '/accounts' },
-  { key: 'journals', icon: 'bi-journal-text', href: '/journals' }
+  { key: 'journals', icon: 'bi-journal-text', href: '/journals' },
+  { key: 'currencies', icon: 'bi-cash-coin', href: '/settings/currencies' }
 ];
 
 /**

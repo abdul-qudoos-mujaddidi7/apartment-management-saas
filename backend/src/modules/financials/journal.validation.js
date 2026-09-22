@@ -35,8 +35,20 @@ const journalLineSchema = z.object({
   { message: 'A journal line needs a debit or a credit, but not both.' },
 );
 
+/**
+ * The currency the whole entry is written in. Omitted means the organization's
+ * base currency, which is what every caller sent before multi-currency existed;
+ * the service resolves the rate for `transactionDate` and freezes it on the
+ * entry when it posts.
+ */
+const optionalCurrencyCode = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z.string().trim().length(3).regex(/^[A-Za-z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
+);
+
 const journalBodySchema = z.object({
   transactionDate: requiredDate,
+  currency: optionalCurrencyCode,
   description: optionalText(5000),
   lines: z.array(journalLineSchema).min(2).max(200),
 });
@@ -55,6 +67,7 @@ const listJournalsSchema = z.object({
   search: z.string().trim().max(100).default(''),
   status: optionalFilter(z.enum(journalStatuses)),
   referenceType: optionalFilter(z.string().trim().max(50)),
+  currency: optionalFilter(z.string().trim().length(3).regex(/^[A-Za-z]{3}$/)),
   accountId: optionalFilter(z.string().trim().min(1)),
   dateFrom: optionalFilter(requiredDate),
   dateTo: optionalFilter(requiredDate),

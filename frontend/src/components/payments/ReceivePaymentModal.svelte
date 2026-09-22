@@ -3,7 +3,9 @@
 
   import { listFinancialAccounts } from '../../services/financialAccounts';
   import { createPayment, getOutstandingItems } from '../../services/payments';
+  import { activeCurrencies, baseCurrency, convertAmount } from '../../stores/currency';
   import { locale, translate } from '../../i18n';
+  import { formatMoney } from '../../utils/formatters';
 
   export let open = false;
   export let lease = null;
@@ -12,7 +14,9 @@
   const dispatch = createEventDispatcher();
   const paymentMethods = ['CASH', 'BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'OTHER'];
   const today = () => new Date().toISOString().slice(0, 10);
-  const money = (value) => `${new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))} AFN`;
+  // Amounts are printed in the currency they are stated in: each invoice keeps
+  // its own, and the allocation column is always in the receipt's currency.
+  const money = (value, code = $baseCurrency) => formatMoney(value, code);
   const tenantName = (record) => `${record?.tenant?.firstName || ''} ${record?.tenant?.lastName || ''}`.trim() || '—';
   const itemTypeLabel = (type) => $locale.invoices[type.toLowerCase()] || type;
 
@@ -29,9 +33,25 @@
 
   function emptyForm() {
     return {
-      paymentDate: today(), receiveAccountId: '', paymentMethod: 'CASH',
+      paymentDate: today(), currency: $baseCurrency, receiveAccountId: '', paymentMethod: 'CASH',
       amount: '', reference: '', notes: '',
     };
+  }
+
+  /**
+   * An item's outstanding balance expressed in the receipt's currency.
+   *
+   * Allocation inputs are always entered in the currency being handed over —
+   * that is what the tenant physically paid — so the limit shown against each
+   * charge is that charge's balance converted into the same units. The server
+   * converts back when it applies the amount to the invoice.
+   */
+  function balanceInPaymentCurrency(item, group) {
+    return convertAmount(item.balance, group.currency || $baseCurrency, form.currency, $activeCurrencies, $baseCurrency);
+  }
+
+  function crossCurrency(group) {
+    return (group.currency || $baseCurrency) !== form.currency;
   }
 
   function contextLease() {
@@ -62,6 +82,10 @@
       const cashAccount = accounts.find((account) => account.code === '1000');
       form = { ...form, receiveAccountId: cashAccount?.id || accounts[0]?.id || '' };
       invoiceGroups = itemsResponse.items || [];
+      // Open on the invoice's currency when the receipt relates to one invoice,
+      // which is the common case and needs no conversion at all.
+      const soleCurrency = invoiceGroups.length === 1 ? invoiceGroups[0].currency : null;
+      if (soleCurrency) form = { ...form, currency: soleCurrency };
 
       // Initialize allocations to empty
       for (const group of invoiceGroups) {
@@ -106,12 +130,14 @@
 
   function autoAllocate() {
     let remaining = Number(form.amount) || 0;
-    // Iterate in order: oldest invoice first, stable item order within
+    // Iterate in order: oldest invoice first, stable item order within.
+    // Every limit is expressed in the receipt's currency.
     const newAllocations = {};
     for (const group of invoiceGroups) {
       for (const item of group.items) {
-        const allocation = Math.min(remaining, item.balance);
-        newAllocations[item.id] = allocation || '';
+        const limit = balanceInPaymentCurrency(item, group);
+        const allocation = Math.min(remaining, limit);
+        newAllocations[item.id] = Number(allocation.toFixed(2)) || '';
         remaining -= allocation;
       }
     }
@@ -125,12 +151,11 @@
     if (Number(form.amount) <= 0) errors.amount = $locale.payments.positiveAmount;
     if (totalAllocated > Number(form.amount)) errors.allocations = $locale.payments.allocationsExceedPayment;
 
-    // Validate each allocation
+    // Validate each allocation against the balance in the same currency.
     for (const group of invoiceGroups) {
-      for (let i = 0; i < group.items.length; i++) {
-        const item = group.items[i];
+      for (const item of group.items) {
         const alloc = Number(allocations[item.id] || 0);
-        if (alloc < 0 || alloc > item.balance) {
+        if (alloc < 0 || alloc > balanceInPaymentCurrency(item, group) + 0.005) {
           errors[`allocation-${item.id}`] = $locale.payments.allocationExceedsBalance;
         }
       }
@@ -159,6 +184,7 @@
         tenantId: activeLease.tenant.id,
         leaseId: activeLease.id,
         paymentDate: form.paymentDate,
+        currency: form.currency,
         receiveAccountId: form.receiveAccountId,
         paymentMethod: form.paymentMethod,
         amount: Number(form.amount),
@@ -201,12 +227,20 @@
                 <div><dt>{$locale.payments.floor}</dt><dd>{contextLease().apartment.floor.name || contextLease().apartment.floor.floorNumber}</dd></div>
                 <div><dt>{$locale.payments.apartment}</dt><dd>{contextLease().apartment.apartmentNumber}</dd></div>
                 <div><dt>{$locale.payments.contract}</dt><dd>{contextLease().contractNumber}</dd></div>
-                <div><dt>{$locale.payments.outstandingBalance}</dt><dd class="amount-cell">{money(outstandingBalance)}</dd></div>
+                <div>
+                  <dt>{$locale.payments.outstandingBalance}</dt>
+                  <dd class="amount-cell">
+                    {#if invoiceGroups.length > 0}
+                      {money(outstandingBalance, invoiceGroups[0].currency)}
+                    {:else}—{/if}
+                  </dd>
+                </div>
               </dl>
             </fieldset>
             <fieldset><legend class="section-label">{$locale.payments.paymentDetails}</legend>
               <div class="row g-3">
                 <div class="col-md-4"><label class="form-label" for="payment-date">{$locale.payments.paymentDate}</label><input id="payment-date" class:is-invalid={formErrors.paymentDate} class="form-control" type="date" bind:value={form.paymentDate}/>{#if formErrors.paymentDate}<div class="invalid-feedback">{formErrors.paymentDate}</div>{/if}</div>
+                <div class="col-md-4"><label class="form-label" for="payment-currency">{$locale.currencies.currency}</label><select id="payment-currency" class="form-select" bind:value={form.currency}>{#each $activeCurrencies as item (item.id)}<option value={item.code}>{item.code} — {item.name}</option>{/each}</select>{#if form.currency !== $baseCurrency}<div class="form-text">1 {form.currency} = {money(convertAmount(1, form.currency, $baseCurrency, $activeCurrencies, $baseCurrency))}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="receive-account">{$locale.payments.receiveInto}</label><select id="receive-account" class:is-invalid={formErrors.receiveAccountId} class="form-select" bind:value={form.receiveAccountId}><option value="">{$locale.payments.selectAccount}</option>{#each accounts as account (account.id)}<option value={account.id}>{account.code} — {account.name}</option>{/each}</select>{#if formErrors.receiveAccountId}<div class="invalid-feedback">{formErrors.receiveAccountId}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="payment-method">{$locale.payments.method}</label><select id="payment-method" class="form-select" bind:value={form.paymentMethod}>{#each paymentMethods as method (method)}<option value={method}>{$locale.paymentMethods[method]}</option>{/each}</select></div>
                 <div class="col-md-4"><label class="form-label" for="payment-amount">{$locale.payments.amount}</label><input id="payment-amount" class:is-invalid={formErrors.amount} class="form-control" type="number" min="0.01" step="0.01" bind:value={form.amount}/>{#if formErrors.amount}<div class="invalid-feedback">{formErrors.amount}</div>{/if}</div>
@@ -230,12 +264,20 @@
                     {#each group.items as item, idx (item.id)}
                       <tr>
                         <td>{#if idx === 0}<strong>{group.invoiceNumber}</strong>{:else}<span class="text-muted">—</span>{/if}</td>
-                        <td>{item.description || itemTypeLabel(item.type)}</td>
-                        <td class="amount-cell text-end">{money(item.amount)}</td>
-                        <td class="amount-cell text-end">{money(item.paidAmount)}</td>
-                        <td class="amount-cell text-end">{money(item.balance)}</td>
+                        <td>
+                          {item.description || itemTypeLabel(item.type)}
+                          {#if idx === 0 && crossCurrency(group)}
+                            <small class="row-hint">
+                              {$locale.payments.invoiceCurrency.replace('{code}', group.currency)} ·
+                              {$locale.payments.allocateIn.replace('{code}', form.currency)}
+                            </small>
+                          {/if}
+                        </td>
+                        <td class="amount-cell text-end">{money(item.amount, group.currency)}</td>
+                        <td class="amount-cell text-end">{money(item.paidAmount, group.currency)}</td>
+                        <td class="amount-cell text-end">{money(balanceInPaymentCurrency(item, group), form.currency)}</td>
                         <td class="text-end">
-                          <input class:is-invalid={formErrors[`allocation-${item.id}`]} class="form-control amount-input" type="number" min="0" max={item.balance} step="0.01" value={allocations[item.id] || ''} on:input={(event) => updateAllocation(item.id, event.currentTarget.value)}/>
+                          <input class:is-invalid={formErrors[`allocation-${item.id}`]} class="form-control amount-input" type="number" min="0" max={balanceInPaymentCurrency(item, group)} step="0.01" value={allocations[item.id] || ''} on:input={(event) => updateAllocation(item.id, event.currentTarget.value)}/>
                           {#if formErrors[`allocation-${item.id}`]}<div class="invalid-feedback">{formErrors[`allocation-${item.id}`]}</div>{/if}
                         </td>
                       </tr>
@@ -244,10 +286,16 @@
                 </tbody>
               </table></div>
               <div class="payment-summary">
-                <span>{$locale.payments.amount}</span><strong>{money(form.amount)}</strong>
-                <span>{$locale.payments.allocated}</span><strong>{money(totalAllocated)}</strong>
-                <span>{$locale.payments.unallocated}</span><strong>{money(unallocated)}</strong>
+                <span>{$locale.payments.amount}</span><strong>{money(form.amount, form.currency)}</strong>
+                <span>{$locale.payments.allocated}</span><strong>{money(totalAllocated, form.currency)}</strong>
+                <span>{$locale.payments.unallocated}</span><strong>{money(unallocated, form.currency)}</strong>
               </div>
+              {#if form.currency !== $baseCurrency}
+                <p class="base-hint">
+                  {$locale.payments.baseEquivalent.replace('{base}', $baseCurrency)}:
+                  <strong>{money(convertAmount(Number(form.amount) || 0, form.currency, $baseCurrency, $activeCurrencies, $baseCurrency))}</strong>
+                </p>
+              {/if}
             </fieldset>
           {/if}
         </div>
@@ -267,6 +315,8 @@
   .payment-items-table { min-inline-size: 48rem; }
   .amount-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
   .amount-input { max-inline-size: 8rem; margin-inline-start: auto; text-align: end; }
+  .row-hint { display: block; color: var(--text-muted); font-size: var(--text-xs); }
+  .base-hint { margin: .6rem 0 0; color: var(--text-secondary); font-size: var(--text-sm); text-align: end; }
   .payment-summary { display: grid; grid-template-columns: repeat(6, auto); justify-content: end; gap: .35rem .8rem; margin-top: .9rem; font-variant-numeric: tabular-nums; }
   @media (max-width: 767px) { .tenancy-context { grid-template-columns: repeat(2, minmax(0, 1fr)); } .payment-summary { grid-template-columns: repeat(2, auto); justify-content: start; } }
   @media (max-width: 480px) { .tenancy-context { grid-template-columns: 1fr; } }

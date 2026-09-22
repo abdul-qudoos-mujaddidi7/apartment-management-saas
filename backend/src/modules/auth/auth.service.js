@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const prisma = require('../../lib/prisma');
+const currencyService = require('../currency/currency.service');
 
 function createSlug(value) {
   const slug = value
@@ -41,6 +42,9 @@ function formatUser(user) {
         id: user.organization.id,
         name: user.organization.name,
         slug: user.organization.slug,
+        // The currency this workspace reports in, so the UI can state amounts
+        // without waiting for the currency list to load.
+        baseCurrency: user.organization.baseCurrency,
         role: { id: user.role.id, name: user.role.name },
       },
     ],
@@ -78,9 +82,13 @@ async function registerOrganizationAdmin({
   lastName,
   email,
   password,
+  currency,
 }) {
   const normalizedEmail = email.trim().toLowerCase();
   const slug = createSlug(organizationName);
+  // The workspace reports in this currency from its very first invoice; it
+  // defaults to AFN for clients that do not choose one.
+  const baseCurrency = (currency || 'AFN').trim().toUpperCase();
 
   const [existingUser, existingOrganization] = await Promise.all([
     prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true } }),
@@ -108,8 +116,14 @@ async function registerOrganizationAdmin({
       data: {
         name: organizationName.trim(),
         slug,
+        baseCurrency,
       },
     });
+
+    // Seed the catalogue with the chosen currency straight away, so Settings ›
+    // Currencies opens with the workspace's own currency already in place and
+    // every later rate has something to be quoted against.
+    await currencyService.ensureBaseCurrency(transaction, organization.id);
 
     return transaction.user.create({
       data: {
@@ -130,6 +144,7 @@ async function registerOrganizationAdmin({
             id: true,
             name: true,
             slug: true,
+            baseCurrency: true,
           },
         },
         role: {

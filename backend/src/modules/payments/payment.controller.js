@@ -16,10 +16,10 @@ function handleServiceError(error, res, next) {
   if (['PAYMENT_NOT_FOUND', 'TENANT_NOT_FOUND', 'LEASE_NOT_FOUND', 'INVOICE_NOT_FOUND', 'RECEIVE_ACCOUNT_NOT_FOUND'].includes(error.code)) {
     return res.status(404).json({ success: false, code: error.code, message: error.message });
   }
-  if (['PAYMENT_ALREADY_VOIDED', 'ALLOCATION_EXCEEDS_BALANCE', 'ALLOCATION_EXCEEDS_PAYMENT', 'DUPLICATE_ALLOCATION'].includes(error.code)) {
+  if (['PAYMENT_ALREADY_VOIDED', 'ALLOCATION_EXCEEDS_BALANCE', 'ALLOCATION_EXCEEDS_PAYMENT', 'DUPLICATE_ALLOCATION', 'EXCHANGE_RATE_MISSING'].includes(error.code)) {
     return res.status(409).json({ success: false, code: error.code, message: error.message });
   }
-  if (['INVALID_ALLOCATION', 'INVALID_JOURNAL', 'INVALID_JOURNAL_LINE', 'UNBALANCED_JOURNAL'].includes(error.code)) {
+  if (['INVALID_ALLOCATION', 'INVALID_JOURNAL', 'INVALID_JOURNAL_LINE', 'UNBALANCED_JOURNAL', 'CURRENCY_NOT_SUPPORTED'].includes(error.code)) {
     return res.status(400).json({ success: false, code: error.code, message: error.message });
   }
   return next(error);

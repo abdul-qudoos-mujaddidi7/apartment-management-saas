@@ -9,8 +9,15 @@ const optionalText = (max) =>
     z.string().trim().max(max).nullable().optional(),
   );
 
+// Omitted currency means the organization's base currency.
+const optionalCurrencyCode = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z.string().trim().length(3).regex(/^[A-Za-z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
+);
+
 const createTransactionSchema = z.object({
   type: z.enum(['RECEIVED', 'DEDUCTION', 'REFUND']),
+  currency: optionalCurrencyCode,
   amount: z.coerce.number().positive(),
   transactionDate: z.coerce.date(),
   reference: optionalText(191),

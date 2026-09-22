@@ -8,6 +8,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import { locale } from '../i18n';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
+  import { baseCurrency } from '../stores/currency';
   import { formatMoney } from '../utils/formatters';
 
   let loading = true;
@@ -83,9 +84,9 @@
             <td class="data-cell">{account.code}</td>
             <td><strong>{account.name}</strong></td>
             <td>{account.type}</td>
-            <td class="amount-cell">{formatMoney(account.debit)}</td>
-            <td class="amount-cell">{formatMoney(account.credit)}</td>
-            <td class="amount-cell">{formatMoney(account.balance)}</td>
+            <td class="amount-cell">{formatMoney(account.baseDebit != null ? account.baseDebit : account.debit, $baseCurrency)}</td>
+            <td class="amount-cell">{formatMoney(account.baseCredit != null ? account.baseCredit : account.credit, $baseCurrency)}</td>
+            <td class="amount-cell">{formatMoney(account.balance, account.baseCurrency || $baseCurrency)}</td>
             <td><button class="btn btn-outline-primary btn-sm" type="button" on:click={() => openLedger(account)}>{$locale.accounts.viewLedger}</button></td>
           </tr>
         {/each}
@@ -117,7 +118,7 @@
   <div class="table-responsive">
     <table class="table">
       <thead><tr><th>{$locale.accounts.date}</th><th>{$locale.accounts.journal}</th><th>{$locale.accounts.descriptionColumn}</th><th class="amount-cell">{$locale.accounts.debit}</th><th class="amount-cell">{$locale.accounts.credit}</th></tr></thead>
-      <tbody>{#each ledger as entry (entry.id)}<tr><td class="date-cell">{entry.journal.transactionDate.slice(0, 10)}</td><td>{entry.journal.journalNumber}</td><td>{entry.description || entry.journal.description || '—'}</td><td class="amount-cell">{formatMoney(entry.debit)}</td><td class="amount-cell">{formatMoney(entry.credit)}</td></tr>{/each}</tbody>
+      <tbody>{#each ledger as entry (entry.id)}<tr><td class="date-cell">{entry.journal.transactionDate.slice(0, 10)}</td><td>{entry.journal.journalNumber}</td><td>{entry.description || entry.journal.description || '—'}{#if entry.journal.currency && entry.journal.currency !== $baseCurrency}<small class="cell-sub">{formatMoney(entry.debit, entry.journal.currency)} @ {entry.journal.exchangeRate}</small>{/if}</td><td class="amount-cell">{formatMoney(entry.baseDebit, $baseCurrency)}</td><td class="amount-cell">{formatMoney(entry.baseCredit, $baseCurrency)}</td></tr>{/each}</tbody>
     </table>
   </div>
   <div slot="footer">

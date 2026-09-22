@@ -25,11 +25,11 @@ function handleServiceError(error, res, next) {
     return res.status(404).json({ success: false, code: error.code, message: error.message });
   }
 
-  if (['INVOICE_CANCELLED', 'INVOICE_HAS_PAYMENTS', 'INVOICE_HAS_METER_READINGS', 'METER_READING_NOT_AVAILABLE', 'METER_READING_PRICE_REQUIRED'].includes(error.code)) {
+  if (['INVOICE_CANCELLED', 'INVOICE_HAS_PAYMENTS', 'INVOICE_HAS_METER_READINGS', 'METER_READING_NOT_AVAILABLE', 'METER_READING_PRICE_REQUIRED', 'EXCHANGE_RATE_MISSING'].includes(error.code)) {
     return res.status(409).json({ success: false, code: error.code, message: error.message });
   }
 
-  if (['INVALID_INVOICE_DATES', 'METER_READING_TYPE_MISMATCH'].includes(error.code)) {
+  if (['INVALID_INVOICE_DATES', 'METER_READING_TYPE_MISMATCH', 'CURRENCY_NOT_SUPPORTED'].includes(error.code)) {
     return res.status(400).json({ success: false, code: error.code, message: error.message });
   }
 

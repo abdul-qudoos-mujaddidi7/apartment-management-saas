@@ -15,11 +15,12 @@
     voidSecurityDepositTransaction,
   } from '../services/securityDeposits';
   import { locale } from '../i18n';
+  import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
 
   const blankTransaction = () => ({
-    type: 'RECEIVED', amount: '',
+    type: 'RECEIVED', currency: '', amount: '',
     transactionDate: new Date().toISOString().slice(0, 10),
     reference: '', notes: '',
   });
@@ -59,7 +60,10 @@
     transactionError = '';
     try {
       detail = await getSecurityDeposit(leaseId);
-      transaction = blankTransaction();
+      // Deposits are collected in whatever the tenant pays in; the summary above
+      // is stated in the reporting currency, so the base currency is the
+      // default here and anything else is converted on save.
+      transaction = { ...blankTransaction(), currency: $baseCurrency };
       voidReasons = {};
     } catch (error) { errorMessage = error.message; detailOpen = false; }
     finally { detailLoading = false; }
@@ -82,6 +86,7 @@
     try {
       await createSecurityDepositTransaction(detail.lease.id, {
         ...transaction,
+        currency: transaction.currency || $baseCurrency,
         amount: Number(transaction.amount),
         reference: transaction.reference.trim() || null,
         notes: transaction.notes.trim() || null,
@@ -213,7 +218,7 @@
 
     <section class="summary-grid" aria-label={$locale.securityDeposits.status}>
       {#each [['required', detail.summary.requiredDeposit], ['received', detail.summary.received], ['deductions', detail.summary.deductions], ['refunded', detail.summary.refunded], ['balance', detail.summary.balance], ['remaining', detail.summary.remainingToCollect]] as item}
-        <article><span>{$locale.securityDeposits[item[0]]}</span><strong>{formatMoney(item[1])}</strong></article>
+        <article><span>{$locale.securityDeposits[item[0]]}</span><strong>{formatMoney(item[1], $baseCurrency)}</strong></article>
       {/each}
     </section>
 
@@ -227,6 +232,14 @@
               <option value="RECEIVED">{$locale.securityDeposits.received}</option>
               <option value="DEDUCTION">{$locale.securityDeposits.deduction}</option>
               <option value="REFUND">{$locale.securityDeposits.refund}</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="transaction-currency">{$locale.currencies.currency}</label>
+            <select class="form-select" id="transaction-currency" bind:value={transaction.currency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code} — {currency.name}</option>
+              {/each}
             </select>
           </div>
           <div class="col-md-3">
@@ -244,7 +257,13 @@
           <div class="col-12">
             <label class="form-label" for="transaction-notes">{$locale.securityDeposits.notes}</label>
             <textarea class="form-control" id="transaction-notes" rows="2" bind:value={transaction.notes}></textarea>
-            {#if transaction.type !== 'RECEIVED'}<p class="form-text">{$locale.securityDeposits.available}: {formatMoney(detail.summary.balance)}</p>{/if}
+            {#if transaction.type !== 'RECEIVED'}<p class="form-text">{$locale.securityDeposits.available}: {formatMoney(detail.summary.balance, $baseCurrency)}</p>{/if}
+            {#if (transaction.currency || $baseCurrency) !== $baseCurrency && Number(transaction.amount) > 0}
+              <p class="form-text">
+                {formatMoney(transaction.amount, transaction.currency)}
+                = {formatMoney(convertAmount(transaction.amount, transaction.currency, $baseCurrency, $activeCurrencies, $baseCurrency), $baseCurrency)}
+              </p>
+            {/if}
           </div>
           <div class="col-12">
             <button class="btn btn-primary" type="submit" disabled={savingTransaction}>
@@ -278,7 +297,12 @@
                 <tr>
                   <td>{item.transactionDate.slice(0, 10)}</td>
                   <td>{statusLabel(item.type)}</td>
-                  <td class="money-cell">{formatMoney(item.amount)}</td>
+                  <td class="money-cell">
+                    {formatMoney(item.amount, item.currency)}
+                    {#if item.currency !== $baseCurrency}
+                      <small class="cell-sub">{formatMoney(item.baseAmount, $baseCurrency)}</small>
+                    {/if}
+                  </td>
                   <td>{item.reference || '—'}</td>
                   <td>{item.notes || '—'}</td>
                   <td><StatusBadge label={statusLabel(item.status)} tone={item.status === 'VOIDED' ? 'neutral' : 'success'} /></td>

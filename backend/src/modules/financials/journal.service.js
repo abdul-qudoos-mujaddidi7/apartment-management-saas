@@ -1,6 +1,8 @@
 const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
+const { asMoney, asRate, toBase } = require('../../lib/money');
+const { priceDocument } = require('../currency/currency.service');
 
 const Decimal = Prisma.Decimal;
 
@@ -10,10 +12,6 @@ const MANUAL_REFERENCE = 'MANUAL';
 
 function financialError(code, message) {
   return Object.assign(new Error(message), { code });
-}
-
-function asMoney(value) {
-  return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 }
 
 async function nextJournalNumber(client, organizationId) {
@@ -78,6 +76,51 @@ async function assertTenantsInOrganization(client, organizationId, lines) {
   }
 }
 
+/**
+ * A line's base-currency mirror.
+ *
+ * Normally this is just the line amount at the entry's frozen rate. A caller
+ * may override it — a cross-currency receipt credits the receivable with the
+ * base value that was actually applied to each invoice, which can sit a cent
+ * away from `amount × rate` once both currencies have been rounded. Overrides
+ * keep the ledger and the tenant sub-ledger agreeing to the cent.
+ */
+function lineBase(line, exchangeRate) {
+  return {
+    baseDebit: line.baseDebit !== undefined && line.baseDebit !== null
+      ? asMoney(line.baseDebit)
+      : toBase(line.debit, exchangeRate),
+    baseCredit: line.baseCredit !== undefined && line.baseCredit !== null
+      ? asMoney(line.baseCredit)
+      : toBase(line.credit, exchangeRate),
+  };
+}
+
+/**
+ * The currency and rate an entry posts with.
+ *
+ * A caller that already owns a frozen snapshot (a reversal, or a document being
+ * re-posted from its stored fields) passes `exchangeRate` and it is honoured
+ * verbatim: re-resolving the rate would let a rate edited today rewrite an
+ * entry that was posted months ago.
+ */
+async function journalPricing(client, organizationId, data) {
+  if (data.exchangeRate !== undefined && data.exchangeRate !== null) {
+    const rate = asRate(data.exchangeRate);
+    if (rate.lessThanOrEqualTo(0)) {
+      throw financialError('INVALID_EXCHANGE_RATE', 'An exchange rate must be greater than zero.');
+    }
+    if (!data.currency) {
+      // A frozen rate without the currency it belongs to would silently post the
+      // entry as base currency at someone else's rate.
+      throw financialError('INVALID_EXCHANGE_RATE', 'A frozen exchange rate must name the currency it belongs to.');
+    }
+    return { currency: String(data.currency).toUpperCase(), exchangeRate: rate };
+  }
+
+  return priceDocument(client, organizationId, { currency: data.currency, date: data.transactionDate });
+}
+
 async function postJournal(client, organizationId, data) {
   const existing = await client.journal.findUnique({
     where: {
@@ -91,6 +134,7 @@ async function postJournal(client, organizationId, data) {
   if (existing) return existing;
 
   const lines = validateLines(data.lines);
+  const { currency, exchangeRate } = await journalPricing(client, organizationId, data);
   const journalNumber = await nextJournalNumber(client, organizationId);
 
   return client.journal.create({
@@ -98,6 +142,8 @@ async function postJournal(client, organizationId, data) {
       organizationId,
       journalNumber,
       transactionDate: data.transactionDate,
+      currency,
+      exchangeRate,
       referenceType: data.referenceType,
       referenceId: data.referenceId,
       description: data.description || null,
@@ -108,6 +154,8 @@ async function postJournal(client, organizationId, data) {
           tenantId: line.tenantId || null,
           debit: line.debit,
           credit: line.credit,
+          // Frozen mirror: account balances and reports never read the rate again.
+          ...lineBase(line, exchangeRate),
           description: line.description || null,
         })),
       },
@@ -135,11 +183,19 @@ async function voidJournalWithReversal(client, organizationId, referenceType, re
     referenceType: `${referenceType}_VOID`,
     referenceId,
     description: description || `Reversal of ${original.journalNumber}`,
+    // The reversal mirrors the original in the original's own currency and at
+    // the original's frozen rate, so the two entries cancel exactly.
+    currency: original.currency,
+    exchangeRate: original.exchangeRate,
     lines: original.lines.map((line) => ({
       accountId: line.accountId,
       tenantId: line.tenantId,
       debit: line.credit,
       credit: line.debit,
+      // The original's base figures, swapped — not recomputed from the rate, so
+      // an overridden line reverses to exactly the cent it was posted at.
+      baseDebit: line.baseCredit,
+      baseCredit: line.baseDebit,
       description: description || `Reversal of ${original.journalNumber}`,
     })),
   });
@@ -177,12 +233,16 @@ function formatJournal(journal) {
     description: line.description || null,
     debit: Number(line.debit),
     credit: Number(line.credit),
+    baseDebit: Number(line.baseDebit ?? line.debit),
+    baseCredit: Number(line.baseCredit ?? line.credit),
   }));
 
   return {
     id: journal.id,
     journalNumber: journal.journalNumber,
     transactionDate: journal.transactionDate,
+    currency: journal.currency || 'AFN',
+    exchangeRate: Number(journal.exchangeRate ?? 1),
     referenceType: journal.referenceType,
     referenceId: journal.referenceId,
     description: journal.description || null,
@@ -195,15 +255,18 @@ function formatJournal(journal) {
     lines,
     debitTotal: lines.reduce((total, line) => total + line.debit, 0),
     creditTotal: lines.reduce((total, line) => total + line.credit, 0),
+    baseDebitTotal: lines.reduce((total, line) => total + line.baseDebit, 0),
+    baseCreditTotal: lines.reduce((total, line) => total + line.baseCredit, 0),
   };
 }
 
-function buildLineData(lines, fallbackDescription = null) {
+function buildLineData(lines, exchangeRate, fallbackDescription = null) {
   return lines.map((line) => ({
     accountId: line.accountId,
     tenantId: line.tenantId || null,
     debit: line.debit,
     credit: line.credit,
+    ...lineBase(line, exchangeRate),
     description: line.description || fallbackDescription,
   }));
 }
@@ -213,6 +276,7 @@ async function listJournals(organizationId, query) {
     organizationId,
     ...(query.status ? { status: query.status } : {}),
     ...(query.referenceType ? { referenceType: query.referenceType } : {}),
+    ...(query.currency ? { currency: query.currency } : {}),
     ...(query.accountId ? { lines: { some: { accountId: query.accountId } } } : {}),
     ...(query.dateFrom || query.dateTo ? {
       transactionDate: {
@@ -262,6 +326,7 @@ async function createManualJournal(organizationId, data) {
   return prisma.$transaction(async (tx) => {
     const lines = validateLines(data.lines);
     await assertTenantsInOrganization(tx, organizationId, lines);
+    const { currency, exchangeRate } = await journalPricing(tx, organizationId, data);
     const journalNumber = await nextJournalNumber(tx, organizationId);
 
     const journal = await tx.journal.create({
@@ -269,11 +334,13 @@ async function createManualJournal(organizationId, data) {
         organizationId,
         journalNumber,
         transactionDate: data.transactionDate,
+        currency,
+        exchangeRate,
         referenceType: MANUAL_REFERENCE,
         referenceId: journalNumber,
         description: data.description || null,
         status: 'POSTED',
-        lines: { create: buildLineData(lines, data.description || null) },
+        lines: { create: buildLineData(lines, exchangeRate, data.description || null) },
       },
       include: journalInclude,
     });
@@ -286,7 +353,7 @@ async function createManualJournal(organizationId, data) {
 async function editableJournal(client, organizationId, id) {
   const journal = await client.journal.findFirst({
     where: { id, organizationId },
-    select: { id: true, journalNumber: true, referenceType: true, status: true },
+    select: { id: true, journalNumber: true, referenceType: true, status: true, currency: true, exchangeRate: true },
   });
   if (!journal) throw financialError('JOURNAL_NOT_FOUND', 'Journal entry not found.');
   if (journal.referenceType !== MANUAL_REFERENCE) {
@@ -300,9 +367,17 @@ async function editableJournal(client, organizationId, id) {
 
 async function updateManualJournal(organizationId, id, data) {
   return prisma.$transaction(async (tx) => {
-    await editableJournal(tx, organizationId, id);
+    const existing = await editableJournal(tx, organizationId, id);
     const lines = validateLines(data.lines);
     await assertTenantsInOrganization(tx, organizationId, lines);
+
+    // A currency left off the request keeps the entry's own currency, but the
+    // rate is always re-resolved against the (possibly new) transaction date, so
+    // an entry is never quietly re-priced with a stale rate.
+    const { currency, exchangeRate } = await journalPricing(tx, organizationId, {
+      ...data,
+      currency: data.currency || existing.currency,
+    });
 
     // Lines are replaced wholesale: a corrected entry is one document, not a
     // pile of edits, and the number stays with the entry.
@@ -312,8 +387,10 @@ async function updateManualJournal(organizationId, id, data) {
       where: { id },
       data: {
         transactionDate: data.transactionDate,
+        currency,
+        exchangeRate,
         description: data.description || null,
-        lines: { create: buildLineData(lines, data.description || null) },
+        lines: { create: buildLineData(lines, exchangeRate, data.description || null) },
       },
       include: journalInclude,
     });
@@ -354,6 +431,7 @@ module.exports = {
   financialError,
   formatJournal,
   getJournalEntry,
+  journalPricing,
   listJournals,
   postJournal,
   updateManualJournal,

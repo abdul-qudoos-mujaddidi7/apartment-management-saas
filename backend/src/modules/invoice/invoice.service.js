@@ -2,6 +2,8 @@ const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
 const Decimal = Prisma.Decimal;
+const { toBase } = require('../../lib/money');
+const { priceDocument } = require('../currency/currency.service');
 const { ensureDefaultAccounts } = require('../financials/financial-account.service');
 const { postJournal, voidJournalWithReversal } = require('../financials/journal.service');
 const { postTenantLedgerEntry, replaceInvoiceLedgerEntry, reverseTenantLedgerEntry } = require('../tenant-accounts/tenant-account.service');
@@ -35,9 +37,14 @@ function invoiceSelect(includeItems = false) {
     invoiceNumber: true,
     invoiceDate: true,
     dueDate: true,
+    currency: true,
+    exchangeRate: true,
     subtotal: true,
     total: true,
     paidAmount: true,
+    baseSubtotal: true,
+    baseTotal: true,
+    basePaidAmount: true,
     status: true,
     notes: true,
     createdAt: true,
@@ -54,7 +61,7 @@ function invoiceSelect(includeItems = false) {
           amount: true,
           paymentAllocations: {
             where: { payment: { status: 'POSTED' } },
-            select: { amount: true, voidedAt: true },
+            select: { amount: true, appliedAmount: true, baseAppliedAmount: true, voidedAt: true },
           },
         },
         orderBy: { createdAt: 'asc' },
@@ -104,10 +111,25 @@ function displayStatus(invoice) {
   return invoice.status;
 }
 
+/**
+ * What an allocation actually paid off this invoice item.
+ *
+ * `appliedAmount` is the item's own currency, frozen when the payment was made:
+ * a USD receipt settling an AFN charge converts once, at that moment, instead of
+ * being re-converted — and re-stated — every time this invoice is read.
+ */
 function sumItemAllocations(allocations) {
   return (allocations || []).reduce((total, alloc) => {
     if (alloc.voidedAt) return total;
-    return total.plus(new Decimal(alloc.amount));
+    return total.plus(new Decimal(alloc.appliedAmount ?? alloc.amount));
+  }, new Decimal(0)).toDecimalPlaces(2);
+}
+
+/** The same allocations, in the organization's base currency. */
+function sumItemBaseAllocations(allocations) {
+  return (allocations || []).reduce((total, alloc) => {
+    if (alloc.voidedAt) return total;
+    return total.plus(new Decimal(alloc.baseAppliedAmount ?? alloc.amount));
   }, new Decimal(0)).toDecimalPlaces(2);
 }
 
@@ -120,14 +142,19 @@ function deriveItemStatus(amount, paidAmount) {
 function formatInvoice(invoice) {
   if (!invoice) return invoice;
 
+  const exchangeRate = new Decimal(invoice.exchangeRate ?? 1);
+
   // Derive paidAmount from items
   let derivedPaidAmount = new Decimal(0);
+  let derivedBasePaidAmount = new Decimal(0);
   let itemsFormatted = [];
 
   if (invoice.items) {
     itemsFormatted = invoice.items.map((item) => {
       const itemPaid = sumItemAllocations(item.paymentAllocations);
+      const itemBasePaid = sumItemBaseAllocations(item.paymentAllocations);
       derivedPaidAmount = derivedPaidAmount.plus(itemPaid);
+      derivedBasePaidAmount = derivedBasePaidAmount.plus(itemBasePaid);
       const itemBalance = new Decimal(item.amount).minus(itemPaid).toDecimalPlaces(2);
       return {
         id: item.id,
@@ -139,12 +166,15 @@ function formatInvoice(invoice) {
         amount: Number(item.amount),
         paidAmount: Number(itemPaid),
         balance: Number(itemBalance),
+        basePaidAmount: Number(itemBasePaid),
         paymentStatus: deriveItemStatus(new Decimal(item.amount), itemPaid),
       };
     });
     derivedPaidAmount = derivedPaidAmount.toDecimalPlaces(2);
+    derivedBasePaidAmount = derivedBasePaidAmount.toDecimalPlaces(2);
   } else {
     derivedPaidAmount = new Decimal(invoice.paidAmount);
+    derivedBasePaidAmount = new Decimal(invoice.basePaidAmount ?? invoice.paidAmount);
   }
 
   const derivedStatus = {
@@ -155,9 +185,19 @@ function formatInvoice(invoice) {
 
   return {
     ...invoice,
+    currency: invoice.currency || 'AFN',
+    exchangeRate: Number(exchangeRate),
     subtotal: Number(invoice.subtotal),
     total: Number(invoice.total),
     paidAmount: Number(derivedPaidAmount),
+    baseSubtotal: Number(invoice.baseSubtotal ?? invoice.subtotal),
+    baseTotal: Number(invoice.baseTotal ?? invoice.total),
+    basePaidAmount: Number(derivedBasePaidAmount),
+    // What is still owed, expressed in the base currency, for portfolio-wide totals.
+    baseBalance: Math.max(
+      Number(invoice.baseTotal ?? invoice.total) - Number(derivedBasePaidAmount),
+      0,
+    ),
     status: displayStatus(derivedStatus),
     lease: {
       ...invoice.lease,
@@ -266,7 +306,7 @@ function calculateTotals(items) {
 async function assertLeaseInOrganization(client, organizationId, leaseId) {
   const lease = await client.lease.findFirst({
     where: { id: leaseId, ...leaseScope(organizationId) },
-    select: { id: true, tenantId: true, apartmentId: true },
+    select: { id: true, tenantId: true, apartmentId: true, currency: true },
   });
   if (!lease) throw serviceError('LEASE_NOT_FOUND', 'Lease not found.');
   return lease;
@@ -309,6 +349,10 @@ async function postInvoiceJournal(client, organizationId, invoice, tenantId, ite
     referenceType: 'INVOICE',
     referenceId: invoice.id,
     description: `Invoice ${invoice.invoiceNumber}`,
+    // The invoice's own currency, at the rate frozen onto it, so the ledger
+    // mirrors the document and the base totals are exactly what was billed.
+    currency: invoice.currency,
+    exchangeRate: invoice.exchangeRate,
     lines,
   });
 }
@@ -344,10 +388,28 @@ async function refreshInvoiceJournal(client, organizationId, invoice, tenantId, 
     where: { id: current.id },
     data: {
       transactionDate: invoice.invoiceDate,
+      currency: invoice.currency,
+      exchangeRate: invoice.exchangeRate,
       description: `Invoice ${invoice.invoiceNumber}`,
-      lines: { create: lines },
+      lines: {
+        create: lines.map((line) => ({
+          ...line,
+          baseDebit: toBase(line.debit, invoice.exchangeRate),
+          baseCredit: toBase(line.credit, invoice.exchangeRate),
+        })),
+      },
     },
   });
+}
+
+/** Re-read an invoice's lines in the shape the journal builder expects. */
+async function currentInvoiceItems(client, invoiceId) {
+  const items = await client.invoiceItem.findMany({
+    where: { invoiceId },
+    select: { type: true, amount: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  return items.map((item) => ({ type: item.type, amount: new Decimal(item.amount) }));
 }
 
 async function nextInvoiceNumber(client, organizationId) {
@@ -366,7 +428,7 @@ async function nextInvoiceNumber(client, organizationId) {
 async function listInvoices(organizationId, filters) {
   const {
     page, pageSize, search, buildingId, floorId, apartmentId,
-    tenantId, leaseId, status, dateFrom, dateTo,
+    tenantId, leaseId, status, currency, dateFrom, dateTo,
   } = filters;
 
   const lease = {
@@ -390,6 +452,7 @@ async function listInvoices(organizationId, filters) {
     organizationId,
     deletedAt: null,
     lease,
+    ...(filters.currency ? { currency: String(filters.currency).toUpperCase() } : {}),
     ...overdueWhere,
     ...(dateFrom || dateTo ? {
       invoiceDate: {
@@ -442,12 +505,29 @@ async function getInvoiceFromTransaction(client, id) {
   return formatInvoice(invoice);
 }
 
+/** Base-currency mirror of a set of invoice totals at one frozen rate. */
+function baseTotals(totals, exchangeRate) {
+  return {
+    baseSubtotal: toBase(totals.subtotal, exchangeRate),
+    baseTotal: toBase(totals.total, exchangeRate),
+  };
+}
+
 async function createInvoice(organizationId, data) {
   try {
     return await prisma.$transaction(async (tx) => {
       const lease = await assertLeaseInOrganization(tx, organizationId, data.leaseId);
       const items = await prepareInvoiceItems(tx, organizationId, lease, data.items);
       const totals = calculateTotals(items);
+      // The rate is resolved for the invoice date and frozen onto the invoice,
+      // so a later rate change leaves this document and its ledger untouched.
+      // An invoice raised from a lease is written in the lease's currency unless
+      // the caller overrides it, because that is the currency the rent is stated
+      // in; the rate is still this invoice's own, taken for its own date.
+      const pricing = await priceDocument(tx, organizationId, {
+        currency: data.currency || lease.currency,
+        date: data.invoiceDate,
+      });
       const invoiceNumber = await nextInvoiceNumber(tx, organizationId);
       const invoice = await tx.invoice.create({
         data: {
@@ -457,9 +537,12 @@ async function createInvoice(organizationId, data) {
           invoiceDate: data.invoiceDate,
           dueDate: data.dueDate,
           notes: data.notes ?? null,
+          currency: pricing.currency,
+          exchangeRate: pricing.exchangeRate,
           paidAmount: 0,
           status: 'UNPAID',
           ...totals,
+          ...baseTotals(totals, pricing.exchangeRate),
         },
         select: { id: true },
       });
@@ -467,6 +550,7 @@ async function createInvoice(organizationId, data) {
         data: items.map((item) => ({ ...item, invoiceId: invoice.id })),
       });
       const created = await getInvoiceFromTransaction(tx, invoice.id);
+      // The sub-ledger is base currency, so it takes the stored base total.
       await postTenantLedgerEntry(tx, organizationId, {
         tenantId: lease.tenantId,
         type: 'INVOICE',
@@ -474,8 +558,10 @@ async function createInvoice(organizationId, data) {
         referenceType: 'INVOICE',
         referenceId: created.id,
         description: `Invoice ${created.invoiceNumber}`,
-        debit: created.total,
+        debit: created.baseTotal,
         credit: 0,
+        currency: created.currency,
+        exchangeRate: created.exchangeRate,
       });
       await postInvoiceJournal(tx, organizationId, created, lease.tenantId, items);
       return created;
@@ -498,6 +584,8 @@ async function updateInvoice(organizationId, id, data) {
         dueDate: true,
         notes: true,
         status: true,
+        currency: true,
+        exchangeRate: true,
         paidAmount: true,
         items: { where: { meterReadingId: { not: null } }, select: { id: true } },
       },
@@ -513,10 +601,21 @@ async function updateInvoice(organizationId, id, data) {
       throw serviceError('INVALID_INVOICE_DATES', 'Due date cannot be before invoice date.');
     }
 
+    // Correcting a wrong currency is allowed while nothing has been paid against
+    // the invoice; the rate is then re-resolved for the invoice's own date.
+    const currencyRequested = data.currency
+      ? String(data.currency).toUpperCase() !== current.currency
+      : false;
+    const pricing = (currencyRequested || !current.exchangeRate)
+      ? await priceDocument(tx, organizationId, { currency: data.currency || current.currency, date: invoiceDate })
+      : { currency: current.currency, exchangeRate: current.exchangeRate };
+
     const updateData = {
       invoiceDate,
       dueDate,
       notes: data.notes === undefined ? current.notes : data.notes,
+      currency: pricing.currency,
+      exchangeRate: pricing.exchangeRate,
     };
     if (data.items) {
       const items = preparedItems(data.items);
@@ -524,20 +623,24 @@ async function updateInvoice(organizationId, id, data) {
       updateData.subtotal = totals.subtotal;
       updateData.total = totals.total;
       updateData.items = { deleteMany: {}, create: items };
+      Object.assign(updateData, baseTotals(totals, pricing.exchangeRate));
     }
 
     await tx.invoice.update({ where: { id }, data: updateData });
-    if (data.items) {
+    if (data.items || currencyRequested) {
       const refreshed = await getInvoiceFromTransaction(tx, id);
       const lease = await assertLeaseInOrganization(tx, organizationId, refreshed.leaseId);
+      const items = data.items ? preparedItems(data.items) : await currentInvoiceItems(tx, id);
       await replaceInvoiceLedgerEntry(tx, organizationId, {
         tenantId: lease.tenantId,
         invoiceId: refreshed.id,
         transactionDate: refreshed.invoiceDate,
         description: `Invoice ${refreshed.invoiceNumber}`,
-        amount: refreshed.total,
+        amount: refreshed.baseTotal,
+        currency: refreshed.currency,
+        exchangeRate: refreshed.exchangeRate,
       });
-      await refreshInvoiceJournal(tx, organizationId, refreshed, lease.tenantId, preparedItems(data.items));
+      await refreshInvoiceJournal(tx, organizationId, refreshed, lease.tenantId, items);
     }
     return getInvoiceFromTransaction(tx, id);
   });

@@ -39,6 +39,7 @@ function handle(error, res, next) {
       'REFUND_EXCEEDS_BALANCE',
       'DEDUCTION_EXCEEDS_BALANCE',
       'TRANSACTION_ALREADY_VOIDED',
+      'EXCHANGE_RATE_MISSING',
     ].includes(error.code)
   ) {
     return res.status(409).json({
