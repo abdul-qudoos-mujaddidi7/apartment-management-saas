@@ -11,7 +11,10 @@
     "backfill:meter-reading-amounts": "node scripts/backfill-meter-reading-amounts.js --apply",
     "check:currency": "node scripts/check-currency-backfill.js",
     "repair:settlement": "node scripts/repair-settlement-rounding.js --apply",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:dump": "node scripts/dump-database.js",
+    "db:restore": "node scripts/restore-database.js",
+    "db:rebuild": "npm run db:dump && prisma migrate reset --force --skip-seed && node scripts/restore-database.js --apply",
+    "test": "node --test src/modules/apartments/apartment.validation.test.js",
     "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],

@@ -182,16 +182,24 @@ async function checkPayments() {
         `${label}: allocation applied to invoice ${allocation.invoiceItem.invoice.invoiceNumber} exceeds that item's amount`,
       );
 
-      // Normally the base value is the applied value at the invoice's rate; a
-      // closing allocation may also absorb the sub-cent residue of that
-      // conversion, which is bounded by half a minor unit of the invoice currency.
+      /*
+       * The base figure is the money that actually moved; the applied figure is a
+       * rounded conversion of it, so the two can differ by up to half a minor unit
+       * of the invoice currency — in either direction, because the rounding can fall
+       * either way. Anything larger means the base mirror was never written.
+       *
+       * This is only a coarse net. What pins the arithmetic down is checked above:
+       * a settled item leaves no base outstanding, no item is credited more base
+       * than it is worth, and a receipt's baseAmount has to equal the base its
+       * allocations applied.
+       */
       const invoiceRate = new Decimal(allocation.invoiceItem.invoice.exchangeRate ?? 1);
       const expected = toBase(allocation.appliedAmount, invoiceRate);
       const absorbed = new Decimal(allocation.baseAppliedAmount ?? allocation.amount).minus(expected);
+      const roundingResidue = invoiceRate.times('0.005').plus(TOLERANCE);
       check(
-        absorbed.abs().lessThanOrEqualTo(TOLERANCE)
-        || (absorbed.greaterThan(0) && absorbed.lessThanOrEqualTo(invoiceRate.times('0.005').plus(TOLERANCE))),
-        `${label}: allocation base value does not match its applied value at the invoice's rate`,
+        absorbed.abs().lessThanOrEqualTo(roundingResidue),
+        `${label}: allocation base value is off its applied value at the invoice's rate by ${absorbed} (up to ${roundingResidue} is a rounding residue)`,
       );
     }
   }

@@ -11,6 +11,7 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import ApartmentSpacesEditor from '../components/apartments/ApartmentSpacesEditor.svelte';
 
   import { getFloor } from '../services/floors';
   import {
@@ -55,6 +56,8 @@
 
   let modalOpen = false;
   let modalError = '';
+  let detailsOpen = false;
+  let detailsApartment = null;
 
   let editingId = null;
   let lastSavedApartmentNumber = null;
@@ -68,8 +71,7 @@
       name: '',
       type: '',
       area: '',
-      bedrooms: 0,
-      bathrooms: 0,
+      spaces: [],
       monthlyRent: 0,
       status: 'AVAILABLE'
     };
@@ -160,8 +162,18 @@
     if (!form.name.trim()) formErrors.name = translate('apartments.required', { field: $locale.apartments.name });
     if (!form.type) formErrors.type = translate('apartments.required', { field: $locale.apartments.type });
     if (form.area !== '' && (!Number.isFinite(Number(form.area)) || Number(form.area) < 0)) formErrors.area = translate('apartments.numberRequired', { field: $locale.apartments.area });
-    if (!Number.isInteger(Number(form.bedrooms)) || Number(form.bedrooms) < 0) formErrors.bedrooms = translate('apartments.wholeNumber', { field: $locale.apartments.bedrooms });
-    if (!Number.isInteger(Number(form.bathrooms)) || Number(form.bathrooms) < 0) formErrors.bathrooms = translate('apartments.wholeNumber', { field: $locale.apartments.bathrooms });
+    const spaceErrors = {};
+    const seenNames = new Set();
+    form.spaces.forEach((space, index) => {
+      const errors = {};
+      const normalizedName = space.name.trim().toLocaleLowerCase('en-US');
+      if (!normalizedName) errors.name = $locale.apartments.spaces.nameRequired;
+      else if (seenNames.has(normalizedName)) errors.name = $locale.apartments.spaces.duplicate;
+      else seenNames.add(normalizedName);
+      if (!Number.isInteger(Number(space.quantity)) || Number(space.quantity) < 1) errors.quantity = $locale.apartments.spaces.quantityMinimum;
+      if (Object.keys(errors).length) spaceErrors[index] = errors;
+    });
+    if (Object.keys(spaceErrors).length) formErrors.spaces = spaceErrors;
     if (!Number.isFinite(Number(form.monthlyRent)) || Number(form.monthlyRent) < 0) formErrors.monthlyRent = translate('apartments.numberRequired', { field: $locale.apartments.monthlyRent });
     return Object.keys(formErrors).length === 0;
   }
@@ -186,8 +198,7 @@
       name: apartment.name,
       type: apartment.type,
       area: apartment.area === null || apartment.area === undefined ? '' : apartment.area,
-      bedrooms: apartment.bedrooms,
-      bathrooms: apartment.bathrooms,
+      spaces: (apartment.spaces || []).map((space) => ({ name: space.name, quantity: space.quantity })),
       monthlyRent: apartment.monthlyRent,
       status: apartment.status
     };
@@ -203,14 +214,38 @@
     formErrors = {};
   }
 
+  function openDetails(apartment) { detailsApartment = apartment; detailsOpen = true; }
+  function closeDetails() { detailsOpen = false; detailsApartment = null; }
+
+  function spaceLabel(name) {
+    const keyByName = {
+      bedroom: 'bedroom', bathroom: 'bathroom', kitchen: 'kitchen', salon: 'salon',
+      'living room': 'livingRoom', balcony: 'balcony', 'dining room': 'diningRoom',
+      'storage room': 'storageRoom', storage: 'storageRoom', 'guest room': 'guestRoom',
+      office: 'office', 'laundry room': 'laundryRoom', terrace: 'terrace', parking: 'parking',
+      garden: 'garden', 'servant room': 'servantRoom'
+    };
+    const key = keyByName[name.trim().toLocaleLowerCase('en-US')];
+    return key ? $locale.apartments.spaces.names[key] : name;
+  }
+
+  function spaceIcon(name) {
+    const normalized = name.trim().toLocaleLowerCase('en-US');
+    if (normalized === 'bedroom') return 'bi-door-closed';
+    if (normalized === 'bathroom') return 'bi-droplet';
+    if (normalized === 'kitchen') return 'bi-cup-hot';
+    if (normalized === 'parking') return 'bi-car-front';
+    if (normalized === 'balcony' || normalized === 'terrace' || normalized === 'garden') return 'bi-tree';
+    return 'bi-grid-3x3-gap';
+  }
+
   function buildApartmentPayload() {
     return {
       apartmentNumber: form.apartmentNumber.trim(),
       name: form.name.trim(),
       type: form.type,
       area: form.area === '' ? null : Number(form.area),
-      bedrooms: Number(form.bedrooms),
-      bathrooms: Number(form.bathrooms),
+      spaces: form.spaces.map((space) => ({ name: space.name.trim(), quantity: Number(space.quantity) })),
       monthlyRent: Number(form.monthlyRent),
       status: form.status
     };
@@ -404,6 +439,9 @@
                 <StatusBadge label={statusLabel(apartment.status)} tone={statusTone(apartment.status)} />
               </td>
               <td class="actions-cell">
+                <button class="icon-button" type="button" on:click={() => openDetails(apartment)} aria-label={$locale.apartments.spaces.title}>
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
                 <button class="icon-button" type="button" on:click={() => openEditApartment(apartment)} aria-label={$locale.apartments.edit}>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
                 </button>
@@ -475,17 +513,7 @@
         <input class:is-invalid={formErrors.area} class="form-control" id="apartment-area" type="number" min="0" step="0.01" bind:value={form.area} />
         {#if formErrors.area}<div class="invalid-feedback">{formErrors.area}</div>{/if}
       </div>
-      <div class="col-sm-4">
-        <label class="form-label" for="apartment-bedrooms">{$locale.apartments.bedrooms}</label>
-        <input class:is-invalid={formErrors.bedrooms} class="form-control" id="apartment-bedrooms" type="number" min="0" step="1" bind:value={form.bedrooms} />
-        {#if formErrors.bedrooms}<div class="invalid-feedback">{formErrors.bedrooms}</div>{/if}
-      </div>
-      <div class="col-sm-4">
-        <label class="form-label" for="apartment-bathrooms">{$locale.apartments.bathrooms}</label>
-        <input class:is-invalid={formErrors.bathrooms} class="form-control" id="apartment-bathrooms" type="number" min="0" step="1" bind:value={form.bathrooms} />
-        {#if formErrors.bathrooms}<div class="invalid-feedback">{formErrors.bathrooms}</div>{/if}
-      </div>
-      <div class="col-sm-4">
+      <div class="col-sm-6">
         <label class="form-label" for="apartment-rent">{$locale.apartments.monthlyRent}</label>
         <input class:is-invalid={formErrors.monthlyRent} class="form-control" id="apartment-rent" type="number" min="0" step="0.01" bind:value={form.monthlyRent} />
         {#if formErrors.monthlyRent}<div class="invalid-feedback">{formErrors.monthlyRent}</div>{/if}
@@ -498,6 +526,7 @@
           {/each}
         </select>
       </div>
+      <ApartmentSpacesEditor bind:spaces={form.spaces} errors={formErrors.spaces || {}} />
     </div>
   </form>
 
@@ -515,6 +544,27 @@
       {saving ? $locale.apartments.loading : editingId ? $locale.apartments.update : lastSavedApartmentNumber !== null ? $locale.apartments.another : $locale.apartments.save}
     </button>
   </div>
+</Modal>
+
+<Modal bind:open={detailsOpen} title={detailsApartment ? `${detailsApartment.apartmentNumber} · ${detailsApartment.name}` : ''} closeLabel={$locale.common.close} on:close={closeDetails}>
+  {#if detailsApartment}
+    <section aria-labelledby="apartment-spaces-details">
+      <h3 class="details-heading" id="apartment-spaces-details">{$locale.apartments.spaces.title}</h3>
+      {#if detailsApartment.spaces?.length}
+        <div class="details-spaces">
+          {#each detailsApartment.spaces as space (space.id)}
+            <div class="details-space">
+              <span class="space-name"><i class={`bi ${spaceIcon(space.name)}`} aria-hidden="true"></i>{spaceLabel(space.name)}</span>
+              <strong>{space.quantity}</strong>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="details-empty">{$locale.apartments.spaces.empty}</p>
+      {/if}
+    </section>
+  {/if}
+  <div slot="footer"><button class="btn btn-light" type="button" on:click={closeDetails}>{$locale.common.close}</button></div>
 </Modal>
 
 <style>
@@ -539,4 +589,11 @@
     gap: 0.4rem;
   }
   :global([dir='rtl']) .save-continue i { transform: rotate(180deg); }
+  .details-heading { margin: 0 0 .75rem; font-size: .95rem; font-weight: 700; }
+  .details-spaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .details-space { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface-subtle); }
+  .space-name { display: inline-flex; align-items: center; gap: .5rem; min-width: 0; }
+  .space-name i { color: var(--accent); }
+  .details-empty { margin: 0; color: var(--text-muted); }
+  @media (max-width: 575px) { .details-spaces { grid-template-columns: 1fr; } }
 </style>

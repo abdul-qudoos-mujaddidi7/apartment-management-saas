@@ -14,6 +14,27 @@ const apartmentTypes = [
 
 const apartmentStatuses = ['AVAILABLE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE', 'INACTIVE'];
 
+const apartmentSpaceSchema = z.object({
+  name: z.string().trim().min(1, 'Space name is required.').max(100),
+  quantity: z.coerce.number().int().min(1, 'Quantity must be at least 1.').max(1000),
+});
+
+const spacesSchema = z.array(apartmentSpaceSchema).max(50).superRefine((spaces, context) => {
+  const names = new Map();
+  spaces.forEach((space, index) => {
+    const normalizedName = space.name.trim().toLocaleLowerCase('en-US');
+    if (names.has(normalizedName)) {
+      context.addIssue({
+        code: 'custom',
+        path: [index, 'name'],
+        message: 'This space already exists.',
+      });
+    } else {
+      names.set(normalizedName, index);
+    }
+  });
+});
+
 // Treats '' / null / undefined as "no value" instead of coercing them to 0.
 const optionalNumber = (schema) =>
   z.preprocess((value) => {
@@ -32,6 +53,7 @@ const apartmentFields = {
   area: optionalNumber(z.number().min(0).max(1000000)),
   bedrooms: z.coerce.number().int().min(0).max(100).default(0),
   bathrooms: z.coerce.number().int().min(0).max(100).default(0),
+  spaces: spacesSchema.optional(),
   monthlyRent: z.coerce.number().min(0).max(1000000000).default(0),
   status: z.enum(apartmentStatuses).default('AVAILABLE'),
 };

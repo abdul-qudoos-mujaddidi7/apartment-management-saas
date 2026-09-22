@@ -160,7 +160,6 @@ model Organization {
  *   * `exchangeRate`  — base-currency units per 1 unit of `currency`, frozen
  *                       when the document is posted, never re-read later
  *   * `base*` columns — the same amounts converted at that frozen rate
- *
  * Reports and account balances are summed from the `base*` columns only, so a
  * single number is correct at every point in history: editing a rate today
  * cannot rewrite what last year's ledger meant. The document itself still
@@ -292,6 +291,7 @@ model Apartment {
   leases          Lease[]
   meters          Meter[]
   apartmentAssets ApartmentAsset[]
+  spaces          ApartmentSpace[]
 
   @@unique([floorId, apartmentNumber])
   @@index([organizationId])
@@ -300,6 +300,25 @@ model Apartment {
   @@index([organizationId, deletedAt])
   @@index([floorId, deletedAt])
   @@index([organizationId, assetSetupCompletedAt])
+}
+
+// Dynamic rooms and spaces belonging to an apartment. Organization ownership is
+// always resolved through Apartment.organizationId.
+model ApartmentSpace {
+  id          String    @id @default(cuid())
+  apartmentId String
+  name        String    @db.VarChar(100)
+  quantity    Int       @default(1)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@index([apartmentId])
+  @@index([deletedAt])
+  @@index([apartmentId, deletedAt])
 }
 
 // Meters hang off an apartment and carry no organizationId: ownership is always
