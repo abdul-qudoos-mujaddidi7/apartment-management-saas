@@ -37,6 +37,16 @@ function handleServiceError(error, res, next) {
     });
   }
 
+  // A rent currency the workspace does not trade in is a bad field, not a crash.
+  if (['INVALID_CURRENCY_CODE', 'CURRENCY_NOT_SUPPORTED'].includes(error.code)) {
+    return res.status(400).json({
+      success: false,
+      code: error.code,
+      message: error.message,
+      errors: { rentCurrency: [error.message] },
+    });
+  }
+
   return next(error);
 }
 

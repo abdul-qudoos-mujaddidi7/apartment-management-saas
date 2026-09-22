@@ -46,14 +46,37 @@ const apartmentFields = {
   name: z.string().trim().min(1).max(191),
   type: z.enum(apartmentTypes),
   area: optionalNumber(z.number().min(0).max(1000000)),
-  bedrooms: z.coerce.number().int().min(0).max(100).default(0),
-  bathrooms: z.coerce.number().int().min(0).max(100).default(0),
+  bedrooms: z.coerce.number().int().min(0).max(100),
+  bathrooms: z.coerce.number().int().min(0).max(100),
   spaces: spacesSchema.optional(),
-  monthlyRent: z.coerce.number().min(0).max(1000000000).default(0),
-  status: z.enum(apartmentStatuses).default('AVAILABLE'),
+  monthlyRent: z.coerce.number().min(0).max(1000000000),
+  /*
+   * The currency the rent is stated in. Empty or absent means the organization's
+   * reporting currency, so a client that does not send one keeps working; the
+   * service rejects a code the organization does not trade in.
+   */
+  rentCurrency: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined
+      ? undefined
+      : String(value).trim().toUpperCase()),
+    z.string().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
+  ),
+  status: z.enum(apartmentStatuses),
 };
 
-const createApartmentSchema = z.object(apartmentFields);
+/*
+ * The defaults belong to a *new* apartment. They are applied here and not in
+ * `apartmentFields`, because Zod fills a default in even when the field is
+ * absent after `.partial()` — so a partial update would reset every defaulted
+ * field, and renaming an apartment zeroed its rent, bedrooms and bathrooms.
+ */
+const createApartmentSchema = z.object({
+  ...apartmentFields,
+  bedrooms: apartmentFields.bedrooms.default(0),
+  bathrooms: apartmentFields.bathrooms.default(0),
+  monthlyRent: apartmentFields.monthlyRent.default(0),
+  status: apartmentFields.status.default('AVAILABLE'),
+});
 
 const updateApartmentSchema = z
   .object(apartmentFields)

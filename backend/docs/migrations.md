@@ -15,7 +15,9 @@ foreign keys in one statement.
 Tables are ordered so that each one's parents already exist, which is why the
 foreign keys can be written inline instead of being bolted on with
 `ALTER TABLE ... ADD CONSTRAINT` at the end. No table is ever completed later:
-a table appears once, finished.
+a table appears once, finished. `Apartment.rentCurrency`, for instance, is a
+column of `CREATE TABLE Apartment` like any other — not a column a later
+migration added to it.
 
 This replaces the twenty incremental migrations that came before it, where the
 schema was built up by adding a column here, dropping one there — and where the
@@ -35,6 +37,11 @@ On a brand-new database it is just `npx prisma migrate deploy`.
 
 `--skip-seed` matters on a reset you intend to restore into: seeding first would
 occupy the tables the restore is about to fill.
+
+Add `--skip-generate` when the API is running: on Windows the server holds
+`query_engine-windows.dll.node` open and regenerating the client behind a live
+server fails with `EPERM`. The client only needs regenerating when
+`schema.prisma` changed, not when the database is rebuilt.
 
 ## Rebuilding a dev database without losing the rows
 
@@ -61,34 +68,71 @@ insert order and only rows that will really exist count as parents.
 
 ## Verifying the baseline is still faithful
 
-Two checks, both read-only:
+The check that matters after any edit to `0_init`: build a throwaway database
+from it and compare the result with the schema. `--from-empty` alone only prints
+the SQL a fresh database *would* get; it does not compare it with anything.
 
 ```bash
-# 1. The baseline must reproduce schema.prisma exactly (empty = identical).
-#    Regenerate it and compare; useful after a squash.
-npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
-
-# 2. The live database must match the schema (empty = no drift).
-npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script
+npx prisma db execute --url "mysql://root@localhost:3306/apartment_sass" \
+  --file <(printf 'DROP DATABASE IF EXISTS apartment_sass_scratch; CREATE DATABASE apartment_sass_scratch;')
+npx prisma db execute --url "mysql://root@localhost:3306/apartment_sass_scratch" \
+  --file prisma/migrations/0_init/migration.sql
+npx prisma migrate diff \
+  --from-url "mysql://root@localhost:3306/apartment_sass_scratch" \
+  --to-schema-datamodel prisma/schema.prisma
 ```
 
-The second one is worth running whenever something feels wrong: it detects the
-exact condition that made the old history unusable, a database that has been
-advanced outside the migration records.
+`No difference detected.` means the baseline produces exactly `schema.prisma` —
+every column, index and foreign key. Drop the scratch database afterwards.
+
+The same command against the live database reports drift instead:
+
+```bash
+npx prisma migrate diff --from-schema-datasource prisma/schema.prisma \
+  --to-schema-datamodel prisma/schema.prisma
+```
+
+That one is worth running whenever something feels wrong: it detects the exact
+condition that made the old history unusable, a database that has been advanced
+outside the migration records.
 
 ## Changing the schema from now on
 
-1. Edit `prisma/schema.prisma`.
-2. `npx prisma migrate dev --name describe_the_change`.
+The single migration describes the schema as it **is**, not the history of how it
+got there. So a schema change is an edit to `0_init`, not a new migration: the
+column goes inside the `CREATE TABLE` that owns it, in the position
+`schema.prisma` declares it.
 
-That writes a normal incremental migration describing the *delta* — `ALTER TABLE`
-and friends — which is correct for a change. `0_init` stays as it is: it is the
-starting point, not a place to edit. If the history is ever squashed again,
-regenerate `0_init` from the schema rather than editing it by hand:
+```sql
+CREATE TABLE `Apartment` (
+    -- ...
+    `monthlyRent` DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    `rentCurrency` VARCHAR(3) NOT NULL DEFAULT 'AFN',
+    `status` ENUM('AVAILABLE', 'OCCUPIED', ...) NOT NULL DEFAULT 'AVAILABLE',
+```
+
+`prisma migrate dev --name ...` would do the opposite: write a second folder
+whose SQL is `ALTER TABLE Apartment ADD COLUMN rentCurrency ...`. That is what
+this project does not want — no table is ever completed after the fact — so the
+edit goes into the baseline and the database is rebuilt from it:
 
 ```bash
-npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/0_init/migration.sql
+npm run db:rebuild        # dump, reset, restore — the rows are preserved
 ```
+
+**Rebuilding is not optional after editing the baseline.** Prisma stores a
+checksum of each applied migration file, so a database built from the previous
+content of `0_init` no longer matches the file on disk: `prisma migrate status`
+reports it as modified after being applied even though the shape is identical.
+A rebuild rewrites that record from the new file and, just as usefully, proves
+the baseline still produces the schema you expect.
+
+This is a deliberate trade, and it has one limit worth being explicit about: a
+database that has already been deployed elsewhere cannot be brought forward this
+way, because the baseline changes underneath it. There is a single environment
+here — this development database — which is what makes one editable baseline
+workable. If a second environment ever appears, freeze the baseline at that point
+and let changes become ordinary incremental migrations from then on.
 
 ## The old migrations
 

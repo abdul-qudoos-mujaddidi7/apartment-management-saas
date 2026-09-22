@@ -273,6 +273,10 @@ model Apartment {
   bedrooms        Int             @default(0)
   bathrooms       Int             @default(0)
   monthlyRent     Decimal         @default(0) @db.Decimal(12, 2)
+  // The currency the rent above is stated in. A rent without one is not a fact
+  // — 1,200 could be AFN or USD — and a lease raised for this apartment adopts
+  // it, so the rent agreed with the tenant is the one the apartment was let at.
+  rentCurrency    String          @default("AFN") @db.VarChar(3)
   status          ApartmentStatus @default(AVAILABLE)
   // NULL means the apartment's asset/furniture registration is still pending;
   // a timestamp means the user finished registering its assets.

@@ -114,6 +114,17 @@
     catch (error) { modalError = error?.message || 'Unable to load apartments.'; }
   }
 
+  /*
+   * Picking the apartment is what the rent is being agreed for, so the lease
+   * adopts the currency that apartment's rent is stated in — the apartment was
+   * let at 1,200 USD, so its lease is in USD. The currency stays a normal select
+   * afterwards: a lease can be agreed in any currency the workspace trades in.
+   */
+  function apartmentChanged() {
+    const apartment = apartments.find((entry) => entry.id === form.apartmentId);
+    if (apartment?.rentCurrency) form = { ...form, currency: apartment.rentCurrency };
+  }
+
   function openNew() {
     editing = null;
     // A new lease starts in the reporting currency, which is the common case.
@@ -408,7 +419,7 @@
       </div>
       <div class="col-md-6">
         <label class="form-label" for="lease-apartment">{$locale.leases.apartment}</label>
-        <select class="form-select" id="lease-apartment" bind:value={form.apartmentId} disabled={!form.floorId} required>
+        <select class="form-select" id="lease-apartment" bind:value={form.apartmentId} on:change={apartmentChanged} disabled={!form.floorId} required>
           <option value="">{$locale.leases.select}</option>
           {#each apartments as apartment (apartment.id)}
             <option value={apartment.id} disabled={apartment.status !== 'AVAILABLE' && apartment.id !== editing?.apartment?.id}>

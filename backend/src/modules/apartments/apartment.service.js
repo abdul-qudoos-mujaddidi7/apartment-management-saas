@@ -18,6 +18,7 @@ function apartmentSelect() {
     bedrooms: true,
     bathrooms: true,
     monthlyRent: true,
+    rentCurrency: true,
     status: true,
     createdAt: true,
     updatedAt: true,
@@ -43,6 +44,7 @@ function formatApartment(apartment) {
     ...apartment,
     area: apartment.area === null || apartment.area === undefined ? null : Number(apartment.area),
     monthlyRent: Number(apartment.monthlyRent),
+    rentCurrency: apartment.rentCurrency || 'AFN',
   };
 }
 
@@ -96,6 +98,39 @@ function splitApartmentData(data, fallbackSpaces) {
     apartmentData: spaces ? { ...apartmentData, ...legacyCounts(spaces) } : apartmentData,
     spaces,
   };
+}
+
+/**
+ * The currency an apartment's rent is stated in: one of the currencies the
+ * organization trades in, or its reporting currency.
+ *
+ * A code it does not trade in is refused rather than stored, because a rent in a
+ * currency the workspace keeps no rate for could not be billed: the lease raised
+ * for this apartment could not be priced in it.
+ */
+async function resolveRentCurrency(organizationId, requested, client = prisma) {
+  const organization = await client.organization.findFirst({
+    where: { id: organizationId, deletedAt: null },
+    select: { baseCurrency: true },
+  });
+  const base = String(organization?.baseCurrency || 'AFN').trim().toUpperCase();
+
+  if (requested === undefined || requested === null || requested === '') return base;
+
+  const code = String(requested).trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(code)) {
+    throw createApartmentError('INVALID_CURRENCY_CODE', 'Use a three-letter currency code such as USD.');
+  }
+  if (code === base) return code;
+
+  const currency = await client.currency.findFirst({
+    where: { organizationId, code, deletedAt: null, isActive: true },
+    select: { id: true },
+  });
+  if (!currency) {
+    throw createApartmentError('CURRENCY_NOT_SUPPORTED', `${code} is not an active currency for this organization.`);
+  }
+  return code;
 }
 
 async function assertFloorInOrganization(organizationId, floorId, client = prisma) {
@@ -155,6 +190,7 @@ async function getApartment(organizationId, apartmentId) {
 async function createApartment(organizationId, data) {
   await assertFloorInOrganization(organizationId, data.floorId);
   const { apartmentData, spaces } = splitApartmentData(data);
+  apartmentData.rentCurrency = await resolveRentCurrency(organizationId, apartmentData.rentCurrency);
   try {
     return await prisma.$transaction(async (transaction) => {
       const apartment = await transaction.apartment.create({
@@ -190,6 +226,10 @@ async function updateApartment(organizationId, apartmentId, data) {
   if (!apartment) throw createApartmentError('APARTMENT_NOT_FOUND', 'Apartment not found.');
   if (data.floorId) await assertFloorInOrganization(organizationId, data.floorId);
   const { apartmentData, spaces } = splitApartmentData(data, apartment.spaces);
+  // Only resolve what was sent, so a partial update cannot reset the currency.
+  if (apartmentData.rentCurrency !== undefined) {
+    apartmentData.rentCurrency = await resolveRentCurrency(organizationId, apartmentData.rentCurrency);
+  }
   try {
     return await prisma.$transaction(async (transaction) => {
       await transaction.apartment.update({ where: { id: apartmentId }, data: apartmentData });

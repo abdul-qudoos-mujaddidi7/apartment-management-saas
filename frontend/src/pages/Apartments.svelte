@@ -13,6 +13,8 @@
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ApartmentSpacesEditor from '../components/apartments/ApartmentSpacesEditor.svelte';
 
+  import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
+  import { formatMoney } from '../utils/formatters';
   import { getFloor } from '../services/floors';
   import {
     createApartment,
@@ -73,11 +75,17 @@
       area: '',
       spaces: [],
       monthlyRent: 0,
+      /* The currency the rent is stated in. Empty means the reporting currency,
+         which is what the selector starts on. */
+      rentCurrency: '',
       status: 'AVAILABLE'
     };
   }
 
   onMount(async () => {
+    // The currency list is supporting data: the page works without it and falls
+    // back to the reporting currency.
+    loadCurrencies().catch(() => {});
     try {
       await applyRoute(params?.id || null);
       routeReady = true;
@@ -184,7 +192,7 @@
     lastSavedApartmentNumber = null;
     modalError = '';
     formErrors = {};
-    form = { ...emptyForm(), apartmentNumber: nextApartmentNumber() };
+    form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(), rentCurrency: $baseCurrency };
     modalOpen = true;
   }
 
@@ -200,6 +208,7 @@
       area: apartment.area === null || apartment.area === undefined ? '' : apartment.area,
       spaces: (apartment.spaces || []).map((space) => ({ name: space.name, quantity: space.quantity })),
       monthlyRent: apartment.monthlyRent,
+      rentCurrency: apartment.rentCurrency || '',
       status: apartment.status
     };
     modalOpen = true;
@@ -247,6 +256,7 @@
       area: form.area === '' ? null : Number(form.area),
       spaces: form.spaces.map((space) => ({ name: space.name.trim(), quantity: Number(space.quantity) })),
       monthlyRent: Number(form.monthlyRent),
+      rentCurrency: form.rentCurrency || $baseCurrency,
       status: form.status
     };
   }
@@ -277,6 +287,9 @@
       formErrors = { apartmentNumber: $locale.apartments.apartmentNumberExists };
     } else if (error.data?.code === 'FLOOR_NOT_FOUND') {
       modalError = $locale.apartments.notFound;
+    } else if (error.data?.errors?.rentCurrency?.length) {
+      // A currency the workspace does not trade in belongs under that select.
+      formErrors = { ...formErrors, rentCurrency: error.data.errors.rentCurrency[0] };
     } else {
       modalError = error.message;
     }
@@ -301,7 +314,7 @@
         noticeMessage = $locale.apartments.saved;
         lastSavedApartmentNumber = response.apartment.apartmentNumber;
         await loadApartments(1);
-        form = { ...emptyForm(), apartmentNumber: nextApartmentNumber() };
+        form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(), rentCurrency: payload.rentCurrency };
       }
     } catch (error) {
       applyModalError(error);
@@ -434,7 +447,7 @@
               <td class="data-cell">{apartment.bedrooms}</td>
               <td class="data-cell">{apartment.bathrooms}</td>
               <td class="data-cell">{formatArea(apartment.area, $language)}</td>
-              <td class="amount-cell">{formatNumber(apartment.monthlyRent, $language)}</td>
+              <td class="amount-cell">{formatMoney(apartment.monthlyRent, apartment.rentCurrency)}</td>
               <td>
                 <StatusBadge label={statusLabel(apartment.status)} tone={statusTone(apartment.status)} />
               </td>
@@ -514,9 +527,25 @@
         {#if formErrors.area}<div class="invalid-feedback">{formErrors.area}</div>{/if}
       </div>
       <div class="col-sm-6">
-        <label class="form-label" for="apartment-rent">{$locale.apartments.monthlyRent}</label>
-        <input class:is-invalid={formErrors.monthlyRent} class="form-control" id="apartment-rent" type="number" min="0" step="0.01" bind:value={form.monthlyRent} />
+        <div class="row g-2">
+          <div class="col-7">
+            <label class="form-label" for="apartment-rent">{$locale.apartments.monthlyRent}</label>
+            <input class:is-invalid={formErrors.monthlyRent} class="form-control" id="apartment-rent" type="number" min="0" step="0.01" bind:value={form.monthlyRent} />
+          </div>
+          <div class="col-5">
+            <label class="form-label" for="apartment-rent-currency">{$locale.apartments.rentCurrency}</label>
+            <select class:is-invalid={formErrors.rentCurrency} class="form-select" id="apartment-rent-currency" bind:value={form.rentCurrency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code}</option>
+              {/each}
+              {#if !$activeCurrencies.length}
+                <option value={$baseCurrency}>{$baseCurrency}</option>
+              {/if}
+            </select>
+          </div>
+        </div>
         {#if formErrors.monthlyRent}<div class="invalid-feedback">{formErrors.monthlyRent}</div>{/if}
+        {#if formErrors.rentCurrency}<div class="invalid-feedback">{formErrors.rentCurrency}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="apartment-status">{$locale.apartments.status}</label>
@@ -548,6 +577,10 @@
 
 <Modal bind:open={detailsOpen} title={detailsApartment ? `${detailsApartment.apartmentNumber} · ${detailsApartment.name}` : ''} closeLabel={$locale.common.close} on:close={closeDetails}>
   {#if detailsApartment}
+    <div class="details-rent">
+      <span>{$locale.apartments.monthlyRent}</span>
+      <strong>{formatMoney(detailsApartment.monthlyRent, detailsApartment.rentCurrency)}</strong>
+    </div>
     <section aria-labelledby="apartment-spaces-details">
       <h3 class="details-heading" id="apartment-spaces-details">{$locale.apartments.spaces.title}</h3>
       {#if detailsApartment.spaces?.length}
@@ -589,6 +622,9 @@
     gap: 0.4rem;
   }
   :global([dir='rtl']) .save-continue i { transform: rotate(180deg); }
+  .details-rent { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-block-end: .9rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface-subtle); }
+  .details-rent span { color: var(--text-secondary); font-size: .85rem; }
+  .details-rent strong { font-size: .95rem; }
   .details-heading { margin: 0 0 .75rem; font-size: .95rem; font-weight: 700; }
   .details-spaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
   .details-space { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface-subtle); }

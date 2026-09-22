@@ -36,8 +36,13 @@ today cannot restate what a document meant when it was posted.
 | `JournalLine` | `debit`, `credit` | `baseDebit`, `baseCredit` |
 | `TenantLedgerEntry` | `currency`, `exchangeRate` (provenance) | `debit`, `credit`, `balanceAfter` are all base |
 | `SecurityDepositTransaction` | `currency`, `amount` | `baseAmount` |
+| `Lease` | `currency` — `monthlyRent` and `securityDeposit` are quoted in it | — (priced per invoice) |
+| `Apartment` | `rentCurrency` — the rent it is offered at | — (quoted, not yet money) |
 
-The tenant sub-ledger is deliberately single-currency (base): a tenant's
+An apartment's rent and a lease's rent have no base mirror on purpose: nothing
+has been asked for or received yet, so there is no second number to keep in step.
+The first base figure appears when the lease is invoiced, priced at that day's
+rate. The tenant sub-ledger is deliberately single-currency (base): a tenant's
 receivable has to be one number, and it has to reconcile against account `1100`,
 which is also summed from base amounts.
 
@@ -183,6 +188,45 @@ advances in AFN — the currency it was billed in.
 invoice, payment, journal or deposit. Every stored base amount was converted to
 the old base, so re-denominating them would silently restate history instead of
 converting it; the endpoint answers `BASE_CURRENCY_LOCKED` after that point.
+
+### An apartment's rent
+
+An apartment states the currency its rent is asked for in, so `1,200` is a fact
+and not a question:
+
+```
+POST /api/apartments
+{ "floorId": "…", "apartmentNumber": "A-101", "name": "Corner flat",
+  "type": "RESIDENTIAL", "monthlyRent": 900, "rentCurrency": "usd" }
+```
+
+`rentCurrency` is uppercased, must be one the workspace trades in
+(`CURRENCY_NOT_SUPPORTED` otherwise) and the API reports it under
+`errors.rentCurrency`, so the form can put the message on the field. Omitting it
+— or sending an empty string — means the reporting currency, which is what every
+rent quoted before the column existed was in. A partial update that does not
+mention it leaves the stored currency alone.
+
+`Apartment.rentCurrency` is a column of the table itself rather than something a
+later migration added: it is part of `CREATE TABLE Apartment` in the single
+migration (see `docs/migrations.md`), with `'AFN'` as its default — the one place
+the schema names a currency without asking, because a default is what keeps a
+`NOT NULL` column addable to a table that already has rows.
+
+There is no backfill statement beside it. The migration that added this column
+originally did backfill existing rents from each organization's `baseCurrency`,
+and it ran before the baseline was amended; the column is now created with the
+table, so a database built from the baseline has no rents to backfill. The rows
+that were backfilled keep their values. A database restored from a dump taken
+*before* the column existed would land on the default instead — 'AFN' rather than
+the organization's reporting currency, which is only wrong for a workspace that
+reports in something else. If that ever needs repairing, it belongs in
+`scripts/` as a `backfill-*` script, not in a migration.
+
+The list and details views format the rent with its currency (`900.00 USD`), and
+the lease form adopts the apartment's currency as soon as the apartment is
+chosen — the rent the tenant agrees to is the rent the apartment was let at,
+rather than silently restated in the reporting currency.
 
 ### Leases
 
