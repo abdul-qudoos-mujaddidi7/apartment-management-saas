@@ -8,6 +8,8 @@
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
+  import { formatShortDate } from '../utils/formatters';
   import { onMount } from 'svelte';
 
   import { api } from '../services/api';
@@ -317,7 +319,7 @@
             <td>{lease.apartment.floor.building.name}</td>
             <td>{lease.apartment.floor.name}</td>
             <td class="data-cell">{lease.apartment.apartmentNumber}</td>
-            <td class="date-cell">{lease.startDate.slice(0, 10)} – {lease.endDate.slice(0, 10)}</td>
+            <td class="date-cell">{formatShortDate(lease.startDate)} – {formatShortDate(lease.endDate)}</td>
             <td class="money-cell">{formatMoney(lease.monthlyRent, lease.currency)}</td>
             <td><StatusBadge label={statusLabel(lease.status)} tone={statusTone(lease.status)} /></td>
             <td class="actions-cell">
@@ -421,11 +423,11 @@
       </div>
       <div class="col-md-6">
         <label class="form-label" for="lease-start-date">{$locale.leases.startDate}</label>
-        <input class="form-control" id="lease-start-date" type="date" bind:value={form.startDate} required />
+        <ShamsiDatePicker id="lease-start-date" bind:value={form.startDate} required />
       </div>
       <div class="col-md-6">
         <label class="form-label" for="lease-end-date">{$locale.leases.endDate}</label>
-        <input class="form-control" id="lease-end-date" type="date" bind:value={form.endDate} required />
+        <ShamsiDatePicker id="lease-end-date" bind:value={form.endDate} required />
       </div>
       <div class="col-md-4">
         <label class="form-label" for="lease-monthly-rent">{$locale.leases.monthlyRent}</label>
@@ -480,8 +482,8 @@
       <div class="detail-item"><span>{$locale.leases.floor}</span><strong>{detail.apartment.floor.name}</strong></div>
       <div class="detail-item"><span>{$locale.leases.apartment}</span><strong>{detail.apartment.apartmentNumber}</strong></div>
       <div class="detail-item"><span>{$locale.leases.status}</span><StatusBadge label={statusLabel(detail.status)} tone={statusTone(detail.status)} /></div>
-      <div class="detail-item"><span>{$locale.leases.startDate}</span><strong>{detail.startDate.slice(0, 10)}</strong></div>
-      <div class="detail-item"><span>{$locale.leases.endDate}</span><strong>{detail.endDate.slice(0, 10)}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.startDate}</span><strong>{formatShortDate(detail.startDate)}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.endDate}</span><strong>{formatShortDate(detail.endDate)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.currency}</span><strong>{detail.currency}</strong></div>
       <div class="detail-item"><span>{$locale.leases.monthlyRent}</span><strong>{formatMoney(detail.monthlyRent, detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.securityDeposit}</span><strong>{formatMoney(detail.securityDeposit, detail.currency)}</strong></div>

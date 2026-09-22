@@ -8,10 +8,11 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { locale } from '../i18n';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
-  import { formatMoney } from '../utils/formatters';
+  import { formatMoney, formatShortDate } from '../utils/formatters';
 
   const tenantName = (payment) => `${payment.tenant?.firstName || ''} ${payment.tenant?.lastName || ''}`.trim() || '—';
   let payments = [];
@@ -98,11 +99,11 @@
         </div>
         <div class="filters-field">
           <label class="filters-field-label" for="payment-filter-from">{$locale.payments.dateFrom}</label>
-          <input class="form-control" id="payment-filter-from" type="date" bind:value={filters.dateFrom} on:change={() => loadPayments(1)} />
+          <ShamsiDatePicker id="payment-filter-from" bind:value={filters.dateFrom} on:change={() => loadPayments(1)} />
         </div>
         <div class="filters-field">
           <label class="filters-field-label" for="payment-filter-to">{$locale.payments.dateTo}</label>
-          <input class="form-control" id="payment-filter-to" type="date" bind:value={filters.dateTo} on:change={() => loadPayments(1)} />
+          <ShamsiDatePicker id="payment-filter-to" bind:value={filters.dateTo} on:change={() => loadPayments(1)} />
         </div>
       </svelte:fragment>
     </PageToolbar>
@@ -119,7 +120,7 @@
       <tbody>{#each payments as payment (payment.id)}
         <tr class:is-selected={selectedIds.has(payment.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(payment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(payment.id)} /></td>
-          <td><strong>{payment.paymentNumber}</strong></td><td class="date-cell">{payment.paymentDate.slice(0, 10)}</td><td>{tenantName(payment)}</td><td>{payment.lease?.apartment?.floor?.building?.name || '—'}</td><td class="data-cell">{payment.lease?.apartment?.apartmentNumber || '—'}</td><td>{payment.receiveAccount.code} — {payment.receiveAccount.name}</td><td>{$locale.paymentMethods[payment.paymentMethod]}</td><td class="amount-cell">{formatMoney(payment.amount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.allocatedAmount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.unallocatedAmount, payment.currency)}</td><td><StatusBadge label={paymentLabel(payment.status)} tone={paymentTone(payment.status)} /></td>
+          <td><strong>{payment.paymentNumber}</strong></td><td class="date-cell">{formatShortDate(payment.paymentDate)}</td><td>{tenantName(payment)}</td><td>{payment.lease?.apartment?.floor?.building?.name || '—'}</td><td class="data-cell">{payment.lease?.apartment?.apartmentNumber || '—'}</td><td>{payment.receiveAccount.code} — {payment.receiveAccount.name}</td><td>{$locale.paymentMethods[payment.paymentMethod]}</td><td class="amount-cell">{formatMoney(payment.amount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.allocatedAmount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.unallocatedAmount, payment.currency)}</td><td><StatusBadge label={paymentLabel(payment.status)} tone={paymentTone(payment.status)} /></td>
           <td class="actions-cell"><button class="icon-button" type="button" on:click={() => openDetails(payment)} aria-label={$locale.payments.view}><i class="bi bi-eye" aria-hidden="true"></i></button>{#if payment.status === 'POSTED'}<button class="icon-button warning" type="button" on:click={() => requestVoid(payment)} aria-label={$locale.payments.void}><i class="bi bi-x-circle" aria-hidden="true"></i></button>{/if}</td>
         </tr>
       {/each}</tbody>

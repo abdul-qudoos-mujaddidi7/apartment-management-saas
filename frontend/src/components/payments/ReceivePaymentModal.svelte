@@ -5,6 +5,7 @@
   import { createPayment, getOutstandingItems } from '../../services/payments';
   import { activeCurrencies, baseCurrency, convertAmount } from '../../stores/currency';
   import { locale, translate } from '../../i18n';
+  import ShamsiDatePicker from '../ui/ShamsiDatePicker.svelte';
   import { formatMoney } from '../../utils/formatters';
 
   export let open = false;
@@ -112,9 +113,46 @@
     }
   }
 
+  /**
+   * The rounding difference a closing allocation is about to absorb.
+   *
+   * An amount that settles an item is applied in the invoice's currency, but the
+   * base value it credits the receivable with is the item's remaining base
+   * balance — the amount that actually clears it. The difference between that
+   * and the converted value of the money handed over lands on the receipt, and
+   * it is shown before saving because the receipt's stored base value will not
+   * be exactly amount × rate. That includes an item paid in its own currency
+   * whose base balance no longer matches its currency figures, which is exactly
+   * what an earlier cross-currency receipt leaves behind.
+   */
+  function roundingNotes(currentAllocations, paymentCurrency, groups) {
+    const notes = [];
+    for (const group of groups) {
+      for (const item of group.items) {
+        const entered = Number(currentAllocations[item.id]) || 0;
+        if (entered <= 0) continue;
+        const appliedInInvoiceCurrency = convertAmount(entered, paymentCurrency, group.currency || $baseCurrency, $activeCurrencies, $baseCurrency);
+        if (appliedInInvoiceCurrency < item.balance - 0.005) continue;
+        // The item's remaining base value is what a closing allocation applies;
+        // the converted balance would agree with the money handed over by
+        // construction and would never reveal the difference.
+        const settlesWith = item.baseBalance ?? convertAmount(item.balance, group.currency || $baseCurrency, $baseCurrency, $activeCurrencies, $baseCurrency);
+        const handedOver = convertAmount(entered, paymentCurrency, $baseCurrency, $activeCurrencies, $baseCurrency);
+        const difference = settlesWith - handedOver;
+        if (Math.abs(difference) >= 0.005) {
+          notes.push({ invoiceNumber: group.invoiceNumber, difference });
+        }
+      }
+    }
+    return notes;
+  }
+
   $: if (open && contextKey() && loadedKey !== contextKey()) prepare();
   $: totalAllocated = Object.values(allocations).reduce((total, val) => total + (Number(val) || 0), 0);
   $: unallocated = Math.max((Number(form.amount) || 0) - totalAllocated, 0);
+  // The arguments are what make this reactive: without them the block would run
+  // once and never see an allocation change.
+  $: roundingAdjustments = roundingNotes(allocations, form.currency, invoiceGroups);
   $: outstandingBalance = invoiceGroups.reduce((total, group) =>
     total + group.items.reduce((sum, item) => sum + item.balance, 0), 0);
 
@@ -239,7 +277,7 @@
             </fieldset>
             <fieldset><legend class="section-label">{$locale.payments.paymentDetails}</legend>
               <div class="row g-3">
-                <div class="col-md-4"><label class="form-label" for="payment-date">{$locale.payments.paymentDate}</label><input id="payment-date" class:is-invalid={formErrors.paymentDate} class="form-control" type="date" bind:value={form.paymentDate}/>{#if formErrors.paymentDate}<div class="invalid-feedback">{formErrors.paymentDate}</div>{/if}</div>
+                <div class="col-md-4"><label class="form-label" for="payment-date">{$locale.payments.paymentDate}</label><ShamsiDatePicker id="payment-date" invalid={Boolean(formErrors.paymentDate)} bind:value={form.paymentDate}/>{#if formErrors.paymentDate}<div class="invalid-feedback">{formErrors.paymentDate}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="payment-currency">{$locale.currencies.currency}</label><select id="payment-currency" class="form-select" bind:value={form.currency}>{#each $activeCurrencies as item (item.id)}<option value={item.code}>{item.code} — {item.name}</option>{/each}</select>{#if form.currency !== $baseCurrency}<div class="form-text">1 {form.currency} = {money(convertAmount(1, form.currency, $baseCurrency, $activeCurrencies, $baseCurrency))}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="receive-account">{$locale.payments.receiveInto}</label><select id="receive-account" class:is-invalid={formErrors.receiveAccountId} class="form-select" bind:value={form.receiveAccountId}><option value="">{$locale.payments.selectAccount}</option>{#each accounts as account (account.id)}<option value={account.id}>{account.code} — {account.name}</option>{/each}</select>{#if formErrors.receiveAccountId}<div class="invalid-feedback">{formErrors.receiveAccountId}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="payment-method">{$locale.payments.method}</label><select id="payment-method" class="form-select" bind:value={form.paymentMethod}>{#each paymentMethods as method (method)}<option value={method}>{$locale.paymentMethods[method]}</option>{/each}</select></div>
@@ -296,6 +334,12 @@
                   <strong>{money(convertAmount(Number(form.amount) || 0, form.currency, $baseCurrency, $activeCurrencies, $baseCurrency))}</strong>
                 </p>
               {/if}
+              {#each roundingAdjustments as note (note.invoiceNumber)}
+                <p class="base-hint">
+                  {note.invoiceNumber}:
+                  {$locale.payments.roundingNote.replace('{amount}', money(note.difference, $baseCurrency))}
+                </p>
+              {/each}
             </fieldset>
           {/if}
         </div>

@@ -14,6 +14,8 @@
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
+  import { formatShortDate } from '../utils/formatters';
   import { locale, translate } from '../i18n';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
@@ -248,7 +250,7 @@
           <td class="data-cell">{meter.unit}</td>
           <td class="reading-cell">{formatMoney(meter.defaultUnitPrice)} / {meter.unit}</td>
           <td class="reading-cell">{meter.initialReading === null ? '—' : meter.initialReading.toLocaleString()}</td>
-          <td class="date-cell">{meter.installationDate ? meter.installationDate.slice(0, 10) : '—'}</td>
+          <td class="date-cell">{formatShortDate(meter.installationDate)}</td>
           <td><StatusBadge label={statusLabel(meter.status)} tone={meterStatusTone(meter.status)} /></td>
           <td class="actions-cell">
             <button class="icon-button success" type="button" on:click={() => openReadingModal(meter)} aria-label={$locale.meters.addReading} title={$locale.meters.addReading} disabled={meter.status !== 'ACTIVE'}><i class="bi bi-clipboard-plus" aria-hidden="true"></i></button>
@@ -279,7 +281,7 @@
         <div><dt>{$locale.meterReadings.lastReading}</dt><dd class="reading-cell">{#if loadingLatestReading}<span class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">{$locale.meterReadings.loading}</span></span>{:else if displayedLatestReading() !== null && displayedLatestReading() !== undefined}{formatReading(displayedLatestReading())} {selectedMeter.unit}{:else}—{/if}</dd></div>
       </dl>
       <div class="row g-3">
-        <div class="col-sm-6"><label class="form-label" for="quick-reading-date">{$locale.meterReadings.readingDate}</label><input class:is-invalid={readingFormErrors.readingDate} class="form-control" id="quick-reading-date" type="date" bind:value={readingForm.readingDate} />{#if readingFormErrors.readingDate}<div class="invalid-feedback">{readingFormErrors.readingDate}</div>{/if}</div>
+        <div class="col-sm-6"><label class="form-label" for="quick-reading-date">{$locale.meterReadings.readingDate}</label><ShamsiDatePicker invalid={Boolean(readingFormErrors.readingDate)} id="quick-reading-date" bind:value={readingForm.readingDate} />{#if readingFormErrors.readingDate}<div class="invalid-feedback">{readingFormErrors.readingDate}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="quick-current-reading">{$locale.meterReadings.currentReading}</label><input class:is-invalid={readingFormErrors.currentReading} class="form-control" id="quick-current-reading" type="number" min="0" step="0.001" bind:value={readingForm.currentReading} />{#if readingFormErrors.currentReading}<div class="invalid-feedback">{readingFormErrors.currentReading}</div>{/if}</div>
         <div class="col-12"><label class="form-label" for="quick-reading-notes">{$locale.meterReadings.notes}</label><textarea class="form-control" id="quick-reading-notes" rows="3" bind:value={readingForm.notes}></textarea></div>
       </div>
@@ -313,7 +315,7 @@
         <div class="col-sm-3"><label class="form-label" for="meter-unit">{$locale.meters.unit}</label><input class:is-invalid={formErrors.unit} class="form-control" id="meter-unit" bind:value={form.unit} />{#if formErrors.unit}<div class="invalid-feedback">{formErrors.unit}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="meter-reading">{$locale.meters.initialReading}</label><input class:is-invalid={formErrors.initialReading} class="form-control" id="meter-reading" type="number" min="0" step="0.001" bind:value={form.initialReading} />{#if formErrors.initialReading}<div class="invalid-feedback">{formErrors.initialReading}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="meter-default-unit-price">{$locale.meters.defaultUnitPrice}</label><input class:is-invalid={formErrors.defaultUnitPrice} class="form-control" id="meter-default-unit-price" type="number" min="0" step="0.0001" bind:value={form.defaultUnitPrice} /><div class="form-text">{formatMoney(form.defaultUnitPrice || 0)} {$locale.meters.pricePerUnit} {form.unit || '—'}</div>{#if formErrors.defaultUnitPrice}<div class="invalid-feedback">{formErrors.defaultUnitPrice}</div>{/if}</div>
-        <div class="col-sm-3"><label class="form-label" for="meter-installed">{$locale.meters.installationDate}</label><input class="form-control" id="meter-installed" type="date" bind:value={form.installationDate} /></div>
+        <div class="col-sm-3"><label class="form-label" for="meter-installed">{$locale.meters.installationDate}</label><ShamsiDatePicker id="meter-installed" bind:value={form.installationDate} /></div>
         <div class="col-sm-3"><label class="form-label" for="meter-status">{$locale.meters.status}</label><select class="form-select" id="meter-status" bind:value={form.status}>{#each STATUSES as status (status)}<option value={status}>{statusLabel(status)}</option>{/each}</select></div>
         <div class="col-12"><label class="form-label" for="meter-notes">{$locale.meters.notes}</label><textarea class="form-control" id="meter-notes" rows="3" bind:value={form.notes}></textarea></div>
       </div>

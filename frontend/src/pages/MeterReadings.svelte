@@ -13,6 +13,8 @@
   import Modal from '../components/ui/Modal.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
+  import { formatShortDate } from '../utils/formatters';
   import { locale, translate } from '../i18n';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
@@ -159,11 +161,11 @@
         </div>
         <div class="filters-field">
           <label class="filters-field-label" for="reading-filter-from">{$locale.meterReadings.dateFrom}</label>
-          <input class="form-control" id="reading-filter-from" type="date" bind:value={filters.dateFrom} on:change={() => loadReadings(1)} />
+          <ShamsiDatePicker id="reading-filter-from" bind:value={filters.dateFrom} on:change={() => loadReadings(1)} />
         </div>
         <div class="filters-field">
           <label class="filters-field-label" for="reading-filter-to">{$locale.meterReadings.dateTo}</label>
-          <input class="form-control" id="reading-filter-to" type="date" bind:value={filters.dateTo} on:change={() => loadReadings(1)} />
+          <ShamsiDatePicker id="reading-filter-to" bind:value={filters.dateTo} on:change={() => loadReadings(1)} />
         </div>
       </svelte:fragment>
     </PageToolbar>
@@ -183,7 +185,7 @@
       <tbody>{#each readings as reading (reading.id)}
         <tr class:is-selected={selectedIds.has(reading.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(reading.id)} label={$locale.common.selectRow} on:change={() => toggleRow(reading.id)} /></td>
-          <td class="date-cell">{reading.readingDate.slice(0, 10)}</td>
+          <td class="date-cell">{formatShortDate(reading.readingDate)}</td>
           <td class="meter-number">{reading.meter.meterNumber}</td>
           <td>{utilityLabel(reading.meter.utilityType)}</td>
           <td>{reading.meter.apartment.floor.building.name}</td>
@@ -219,7 +221,7 @@
       <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-meter">{$locale.meterReadings.meter}</label><select class:is-invalid={formErrors.meterId} class="form-select" id="reading-meter" bind:value={form.meterId} disabled={!form.apartmentId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectMeter}</option>{#each meters as meter (meter.id)}<option value={meter.id}>{meterLabel(meter)}</option>{/each}</select>{#if formErrors.meterId}<div class="invalid-feedback">{formErrors.meterId}</div>{/if}</div>
     </div></fieldset>
     <fieldset><legend class="section-label">{$locale.meterReadings.reading}</legend><div class="row g-3">
-      <div class="col-sm-6"><label class="form-label" for="reading-date">{$locale.meterReadings.date}</label><input class:is-invalid={formErrors.readingDate} class="form-control" id="reading-date" type="date" bind:value={form.readingDate} />{#if formErrors.readingDate}<div class="invalid-feedback">{formErrors.readingDate}</div>{/if}</div>
+      <div class="col-sm-6"><label class="form-label" for="reading-date">{$locale.meterReadings.date}</label><ShamsiDatePicker invalid={Boolean(formErrors.readingDate)} id="reading-date" bind:value={form.readingDate} />{#if formErrors.readingDate}<div class="invalid-feedback">{formErrors.readingDate}</div>{/if}</div>
       <div class="col-sm-6"><label class="form-label" for="reading-current">{$locale.meterReadings.currentReading}</label><input class:is-invalid={formErrors.currentReading} class="form-control" id="reading-current" type="number" min="0" step="0.001" bind:value={form.currentReading} />{#if formErrors.currentReading}<div class="invalid-feedback">{formErrors.currentReading}</div>{/if}</div>
       <div class="col-12"><label class="form-label" for="reading-notes">{$locale.meterReadings.notes}</label><textarea class="form-control" id="reading-notes" rows="3" bind:value={form.notes}></textarea></div>
     </div></fieldset>

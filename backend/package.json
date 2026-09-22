@@ -10,6 +10,7 @@
     "backfill:tenant-accounts": "node scripts/backfill-tenant-accounts.js --apply",
     "backfill:meter-reading-amounts": "node scripts/backfill-meter-reading-amounts.js --apply",
     "check:currency": "node scripts/check-currency-backfill.js",
+    "repair:settlement": "node scripts/repair-settlement-rounding.js --apply",
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "prisma skills sync || exit 0"
   },

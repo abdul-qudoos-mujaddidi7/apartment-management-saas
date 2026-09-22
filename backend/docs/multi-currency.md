@@ -55,6 +55,55 @@ A rate mistake is not silently absorbed: an unknown currency is rejected
 write (`EXCHANGE_RATE_MISSING`). Defaulting to 1 would post a foreign-currency
 document as if it were base currency with no trace of the mistake.
 
+### Sub-cent settlement: the rounding residue
+
+Converting a receipt into the invoice's currency rounds to cents, and converting
+that rounded figure back to base does **not** return the money that was handed
+over. `19,000 AFN` against a `300 USD` invoice at `64` is `296.875 USD`; rounded
+to `296.88` it credits the tenant with `19,000.32 AFN` — `0.32` they never paid.
+The invoice then reads as fully paid while the receivable keeps `0.32` open, and
+no document can ever clear it: paying the `3.12 USD` the UI shows as remaining
+leaves `0.32` behind all over again.
+
+So an allocation that **closes** an item does not use the rounded figure. It
+takes the item's remaining base balance, settling the item in both currencies at
+once, and the sub-cent difference lands on the receipt:
+
+| | `amount` | `appliedAmount` | `baseAmount` |
+|---|---|---|---|
+| `PAY-000001` — 19,000 AFN on a 300 USD item at 64 | 19,000 AFN | 296.88 USD | 19,000.00 AFN |
+| `PAY-000002` — the 3.12 USD the UI shows as remaining | 3.12 USD | 3.12 USD | **200.00** AFN |
+
+`PAY-000002` receives 199.68 AFN of value and settles 200.00 AFN of receivable,
+so the receivable reaches exactly zero and the invoice is paid in both
+currencies. The `0.32` is reported as `roundingAdjustment` on the receipt and
+shown in the payment form before saving, so the absorption is visible rather than
+silent. A **partial** allocation never applies more base than the money it
+arrived with — the residue is only absorbed by the allocation that closes the
+item.
+
+One consequence worth knowing: when a closing allocation absorbs a residue, the
+receipt's `baseAmount` is not exactly `amount × rate`. For a rate of 64 that is
+at most `0.32`; the size is bounded by half a minor unit of the invoice currency
+(`0.005 × invoiceRate`), which is the tolerance `check:currency` applies.
+
+#### Repairing a residue written before the fix
+
+Receipts written by the old rounding left the mirrors and the ledger `0.32`
+apart. `npm run repair:settlement` reconciles them by raising the ledger to the
+value the allocations actually applied — the receipt's base value, the journal's
+cash and receivable lines, and the tenant sub-ledger credit, then recomputing the
+affected invoices:
+
+```bash
+cd backend
+node scripts/repair-settlement-rounding.js            # dry run, prints the plan
+npm run repair:settlement                             # writes, in one transaction
+```
+
+It only touches receipts whose allocations applied more base than the ledger
+credited, so it is safe to re-run: a second pass finds nothing and exits.
+
 ## Applying the migration
 
 The migration is hand-written so the schema change and the backfill land

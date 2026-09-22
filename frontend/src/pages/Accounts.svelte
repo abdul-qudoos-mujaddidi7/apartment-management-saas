@@ -9,7 +9,7 @@
   import { locale } from '../i18n';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { baseCurrency } from '../stores/currency';
-  import { formatMoney } from '../utils/formatters';
+  import { formatMoney, formatShortDate } from '../utils/formatters';
 
   let loading = true;
   let accounts = [];
@@ -118,7 +118,7 @@
   <div class="table-responsive">
     <table class="table">
       <thead><tr><th>{$locale.accounts.date}</th><th>{$locale.accounts.journal}</th><th>{$locale.accounts.descriptionColumn}</th><th class="amount-cell">{$locale.accounts.debit}</th><th class="amount-cell">{$locale.accounts.credit}</th></tr></thead>
-      <tbody>{#each ledger as entry (entry.id)}<tr><td class="date-cell">{entry.journal.transactionDate.slice(0, 10)}</td><td>{entry.journal.journalNumber}</td><td>{entry.description || entry.journal.description || '—'}{#if entry.journal.currency && entry.journal.currency !== $baseCurrency}<small class="cell-sub">{formatMoney(entry.debit, entry.journal.currency)} @ {entry.journal.exchangeRate}</small>{/if}</td><td class="amount-cell">{formatMoney(entry.baseDebit, $baseCurrency)}</td><td class="amount-cell">{formatMoney(entry.baseCredit, $baseCurrency)}</td></tr>{/each}</tbody>
+      <tbody>{#each ledger as entry (entry.id)}<tr><td class="date-cell">{formatShortDate(entry.journal.transactionDate)}</td><td>{entry.journal.journalNumber}</td><td>{entry.description || entry.journal.description || '—'}{#if entry.journal.currency && entry.journal.currency !== $baseCurrency}<small class="cell-sub">{formatMoney(entry.debit, entry.journal.currency)} @ {entry.journal.exchangeRate}</small>{/if}</td><td class="amount-cell">{formatMoney(entry.baseDebit, $baseCurrency)}</td><td class="amount-cell">{formatMoney(entry.baseCredit, $baseCurrency)}</td></tr>{/each}</tbody>
     </table>
   </div>
   <div slot="footer">

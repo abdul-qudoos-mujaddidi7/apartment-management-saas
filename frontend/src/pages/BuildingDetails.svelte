@@ -4,6 +4,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
+  import { formatDate as formatShamsiDate } from '../utils/formatters';
   import { push } from 'svelte-spa-router';
   import { api } from '../services/api';
 
@@ -41,16 +42,7 @@
 
   // The current language is passed in so the template re-renders when it changes.
   function formatDate(value, currentLanguage) {
-    if (!value) return '—';
-    try {
-      return new Date(value).toLocaleDateString(dateLocales[currentLanguage] || 'en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return new Date(value).toISOString().slice(0, 10);
-    }
+    return formatShamsiDate(value);
   }
 
   async function refresh() {

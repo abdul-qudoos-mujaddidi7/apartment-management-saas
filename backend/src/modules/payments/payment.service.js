@@ -96,6 +96,16 @@ function formatPayment(payment) {
     exchangeRate: Number(payment.exchangeRate ?? 1),
     amount: Number(payment.amount),
     baseAmount: Number(payment.baseAmount ?? payment.amount),
+    /*
+     * How much more (or less) base the receipt settled than its own conversion
+     * says. Non-zero only when a closing allocation absorbed a sub-cent
+     * rounding difference, and shown so that absorption is auditable rather
+     * than silent.
+     */
+    roundingAdjustment: Number(
+      new Decimal(payment.baseAmount ?? payment.amount)
+        .minus(toBase(payment.amount, payment.exchangeRate ?? 1)),
+    ),
     allocatedAmount: Number(allocated),
     unallocatedAmount: Number(new Decimal(payment.amount).minus(allocated)),
     allocatedBaseAmount: Number(allocatedBase),
@@ -177,7 +187,7 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
           amount: true,
           paymentAllocations: {
             where: { payment: { status: 'POSTED' } },
-            select: { amount: true, appliedAmount: true, voidedAt: true },
+            select: { amount: true, appliedAmount: true, baseAppliedAmount: true, voidedAt: true },
           },
         },
         orderBy: { createdAt: 'asc' },
@@ -188,6 +198,7 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
 
   const result = [];
   for (const invoice of invoices) {
+    const invoiceRate = new Decimal(invoice.exchangeRate ?? 1);
     const outstandingItems = [];
     for (const item of invoice.items) {
       // Paid against an item is always counted in the invoice's own currency.
@@ -197,6 +208,18 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
       }, new Decimal(0)).toDecimalPlaces(2);
       const balance = new Decimal(item.amount).minus(paid).toDecimalPlaces(2);
       if (balance.greaterThan(0)) {
+        /*
+         * The item's remaining value in the base currency. It is what a receipt
+         * that settles the item will credit the receivable with, so a caller can
+         * see the rounding difference a closing allocation is about to absorb
+         * rather than inferring it from the invoice-currency figures, which
+         * round to the same number and hide the difference.
+         */
+        const basePaid = item.paymentAllocations.reduce((sum, alloc) => {
+          if (alloc.voidedAt) return sum;
+          return sum.plus(new Decimal(alloc.baseAppliedAmount ?? alloc.amount));
+        }, new Decimal(0));
+        const baseBalance = Decimal.max(toBase(item.amount, invoiceRate).minus(basePaid), 0).toDecimalPlaces(2);
         outstandingItems.push({
           id: item.id,
           type: item.type,
@@ -204,6 +227,7 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
           amount: Number(item.amount),
           paidAmount: Number(paid),
           balance: Number(balance),
+          baseBalance: Number(baseBalance),
         });
       }
     }
@@ -290,7 +314,7 @@ async function validateAllocations(client, organizationId, tenantId, leaseId, al
         voidedAt: null,
         payment: { status: 'POSTED' },
       },
-      _sum: { appliedAmount: true, amount: true },
+      _sum: { appliedAmount: true, baseAppliedAmount: true, amount: true },
     });
     // `amount` is the fallback for rows written before allocations carried an
     // applied figure; both are the same number when no conversion happened.
@@ -309,13 +333,41 @@ async function validateAllocations(client, organizationId, tenantId, leaseId, al
       );
     }
 
+    /*
+     * The base mirror is what the receivable and the tenant's sub-ledger are
+     * actually moved by, so it is derived here and never recomputed from the
+     * rounded invoice-currency amount.
+     *
+     * Rounding the other way strand money: 19,000 AFN against a USD invoice at
+     * 64 is 296.875 USD, and rounding that to 296.88 credits the tenant with
+     * 0.32 AFN they never paid. The receivable then sits 0.32 away from zero
+     * forever, because the invoice reads as fully paid in USD.
+     *
+     * So an allocation that closes an item takes the item's remaining base
+     * balance instead, settling the item in both currencies at once, and the
+     * sub-cent difference becomes a rounding adjustment on the receipt rather
+     * than an unpayable remainder. A partial allocation never applies more base
+     * than the money it arrived with.
+     */
+    const itemBaseAmount = toBase(invoiceItem.amount, invoiceRate);
+    const paidBaseSum = aggregate._sum.baseAppliedAmount ?? aggregate._sum.amount;
+    const baseBalance = Decimal.max(
+      itemBaseAmount.minus(new Decimal(paidBaseSum || 0)),
+      0,
+    ).toDecimalPlaces(2);
+    const settlesItem = appliedAmount.greaterThanOrEqualTo(balance);
+    const baseAppliedAmount = (settlesItem
+      ? baseBalance
+      : Decimal.min(toBase(appliedAmount, invoiceRate), baseBalance, toBase(amount, paymentRate))
+    ).toDecimalPlaces(2);
+
     allocated = allocated.plus(amount);
-    appliedBase = appliedBase.plus(toBase(appliedAmount, invoiceRate));
+    appliedBase = appliedBase.plus(baseAppliedAmount);
     verified.push({
       invoiceItemId: invoiceItem.id,
       amount,
       appliedAmount,
-      baseAppliedAmount: toBase(appliedAmount, invoiceRate),
+      baseAppliedAmount,
     });
   }
 
@@ -349,13 +401,17 @@ async function createPayment(organizationId, data) {
       tx, organizationId, data.tenantId, data.leaseId, data.allocations, amount, pricing.exchangeRate,
     );
     const remaining = amount.minus(allocationResult.allocated);
-    // Base value of what is still unallocated: the receipt's base value minus
-    // the base value actually applied to invoices. Derived this way the ledger
-    // balances to the cent even when the invoice and payment rates differ, and
-    // clamping keeps a cent of rounding in the applied figures from ever making
-    // the unallocated side negative.
-    const appliedBase = Decimal.min(allocationResult.appliedBase, baseAmount);
+    /*
+     * What the receipt is worth in the base currency: everything its allocations
+     * applied, plus whatever is left unallocated. A closing allocation can apply
+     * a hair more base than the nominal conversion — the rounding difference the
+     * allocations were written to absorb — and the receipt is where it belongs,
+     * so the journal balances on both its own-currency and base sides and the
+     * receivable reaches exactly zero.
+     */
+    const appliedBase = allocationResult.appliedBase;
     const baseRemaining = baseAmount.minus(appliedBase);
+    const receiptBase = appliedBase.plus(Decimal.max(baseRemaining, 0));
     const paymentNumber = await nextPaymentNumber(tx, organizationId);
 
     const payment = await tx.payment.create({
@@ -368,7 +424,7 @@ async function createPayment(organizationId, data) {
         currency: pricing.currency,
         exchangeRate: pricing.exchangeRate,
         amount,
-        baseAmount,
+        baseAmount: receiptBase,
         receiveAccountId: receiveAccount.id,
         paymentMethod: data.paymentMethod,
         reference: data.reference || null,
@@ -389,7 +445,7 @@ async function createPayment(organizationId, data) {
       currency: pricing.currency,
       exchangeRate: pricing.exchangeRate,
       lines: [
-        { accountId: receiveAccount.id, tenantId: data.tenantId, debit: amount, credit: 0, description: `Receipt ${paymentNumber}` },
+        { accountId: receiveAccount.id, tenantId: data.tenantId, debit: amount, credit: 0, baseDebit: receiptBase, description: `Receipt ${paymentNumber}` },
         ...(allocationResult.allocated.greaterThan(0) ? [{
           accountId: accounts['1100'].id,
           tenantId: data.tenantId,

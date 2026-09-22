@@ -15,6 +15,8 @@
   import PageToolbar from '../components/ui/PageToolbar.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
+  import { formatShortDate } from '../utils/formatters';
   import { locale, translate } from '../i18n';
   import { debounce } from '../utils/debounce';
   import { formatMoney } from '../utils/formatters';
@@ -392,7 +394,7 @@
             </td>
             <td class="symbol-cell">{currency.symbol || '—'}</td>
             <td class="amount-cell">{rateLabel(currency)}</td>
-            <td class="date-cell">{currency.rateEffectiveDate?.slice(0, 10) || '—'}</td>
+            <td class="date-cell">{formatShortDate(currency.rateEffectiveDate)}</td>
             <td>
               <StatusBadge
                 label={currency.isActive ? $locale.currencies.active : $locale.currencies.inactive}
@@ -534,7 +536,7 @@
         </div>
         <div class="col-md-6">
           <label class="form-label" for="currency-rate-date">{$locale.currencies.rateDate}</label>
-          <input id="currency-rate-date" class="form-control" type="date" bind:value={form.effectiveDate} />
+          <ShamsiDatePicker id="currency-rate-date" bind:value={form.effectiveDate} />
           <div class="form-text">{$locale.currencies.rateDateHint}</div>
         </div>
       {/if}
@@ -570,7 +572,7 @@
         </div>
         <div class="col-md-6">
           <label class="form-label" for="rate-date">{$locale.currencies.rateDate}</label>
-          <input id="rate-date" class="form-control" type="date" bind:value={rateForm.effectiveDate} />
+          <ShamsiDatePicker id="rate-date" bind:value={rateForm.effectiveDate} />
           <div class="form-text">{$locale.currencies.rateDateHint}</div>
         </div>
       </div>
@@ -592,7 +594,7 @@
           <tbody>
             {#each rateTarget.rates as entry (entry.id)}
               <tr>
-                <td class="date-cell">{entry.effectiveDate.slice(0, 10)}</td>
+                <td class="date-cell">{formatShortDate(entry.effectiveDate)}</td>
                 <td class="amount-cell text-end">1 {rateTarget.code} = {formatMoney(entry.rate, $baseCurrency)}</td>
                 <td>{entry.source === 'MANUAL' ? $locale.currencies.manual : entry.source}</td>
               </tr>

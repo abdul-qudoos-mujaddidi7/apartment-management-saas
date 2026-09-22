@@ -10,7 +10,7 @@
   import { locale } from '../i18n';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
-  import { formatMoney } from '../utils/formatters';
+  import { formatMoney, formatShortDate } from '../utils/formatters';
 
   let loading = true;
   let accounts = [];
@@ -121,7 +121,7 @@
   <div class="table-responsive">
     <table class="table">
       <thead><tr><th>{$locale.tenantAccounts.date}</th><th>{$locale.tenantAccounts.reference}</th><th>{$locale.tenantAccounts.descriptionColumn}</th><th>{$locale.tenantAccounts.debit}</th><th>{$locale.tenantAccounts.credit}</th><th>{$locale.tenantAccounts.balanceAfter}</th></tr></thead>
-      <tbody>{#each ledger as entry (entry.id)}<tr><td class="date-cell">{entry.transactionDate.slice(0, 10)}</td><td>{entry.referenceType} — {entry.referenceId}</td><td>{entry.description || '—'}</td><td class="amount-cell">{formatMoney(entry.debit)}</td><td class="amount-cell">{formatMoney(entry.credit)}</td><td class="amount-cell">{formatMoney(entry.balanceAfter)}</td></tr>{/each}</tbody>
+      <tbody>{#each ledger as entry (entry.id)}<tr><td class="date-cell">{formatShortDate(entry.transactionDate)}</td><td>{entry.referenceType} — {entry.referenceId}</td><td>{entry.description || '—'}</td><td class="amount-cell">{formatMoney(entry.debit)}</td><td class="amount-cell">{formatMoney(entry.credit)}</td><td class="amount-cell">{formatMoney(entry.balanceAfter)}</td></tr>{/each}</tbody>
     </table>
   </div>
   <div slot="footer">

@@ -6,6 +6,8 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
+  import { formatShortDate } from '../utils/formatters';
   import { onMount } from 'svelte';
 
   import {
@@ -248,7 +250,7 @@
           </div>
           <div class="col-md-3">
             <label class="form-label" for="transaction-date">{$locale.securityDeposits.date}</label>
-            <input class="form-control" id="transaction-date" type="date" bind:value={transaction.transactionDate} required />
+            <ShamsiDatePicker id="transaction-date" bind:value={transaction.transactionDate} required />
           </div>
           <div class="col-md-3">
             <label class="form-label" for="transaction-reference">{$locale.securityDeposits.reference}</label>
@@ -295,7 +297,7 @@
             <tbody>
               {#each detail.transactions as item (item.id)}
                 <tr>
-                  <td>{item.transactionDate.slice(0, 10)}</td>
+                  <td>{formatShortDate(item.transactionDate)}</td>
                   <td>{statusLabel(item.type)}</td>
                   <td class="money-cell">
                     {formatMoney(item.amount, item.currency)}

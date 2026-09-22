@@ -24,6 +24,7 @@
   import DataTable from '../components/ui/DataTable.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
 
   import { locale, translate } from '../i18n';
   import { formatMoney, formatNumber, formatDate } from '../utils/formatters';
@@ -934,11 +935,9 @@
             <label class="form-label" for="quick-invoice-date">
               {$locale.invoices.invoiceDate}
             </label>
-            <input
-              class:is-invalid={invoiceFormErrors.invoiceDate}
-              class="form-control"
+            <ShamsiDatePicker
+              invalid={Boolean(invoiceFormErrors.invoiceDate)}
               id="quick-invoice-date"
-              type="date"
               bind:value={invoiceForm.invoiceDate}
             />
             {#if invoiceFormErrors.invoiceDate}
@@ -950,11 +949,9 @@
             <label class="form-label" for="quick-invoice-due-date">
               {$locale.invoices.dueDate}
             </label>
-            <input
-              class:is-invalid={invoiceFormErrors.dueDate}
-              class="form-control"
+            <ShamsiDatePicker
+              invalid={Boolean(invoiceFormErrors.dueDate)}
               id="quick-invoice-due-date"
-              type="date"
               bind:value={invoiceForm.dueDate}
             />
             {#if invoiceFormErrors.dueDate}

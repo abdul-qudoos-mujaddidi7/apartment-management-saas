@@ -10,6 +10,8 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
+  import { formatShortDate } from '../utils/formatters';
   import { locale } from '../i18n';
   import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
   import { debounce } from '../utils/debounce';
@@ -360,11 +362,11 @@
         </div>
         <div class="filters-field">
           <label class="filters-field-label" for="journal-filter-from">{$locale.journals.dateFrom}</label>
-          <input class="form-control" id="journal-filter-from" type="date" bind:value={filters.dateFrom} on:change={() => loadJournals(1)} />
+          <ShamsiDatePicker id="journal-filter-from" bind:value={filters.dateFrom} on:change={() => loadJournals(1)} />
         </div>
         <div class="filters-field">
           <label class="filters-field-label" for="journal-filter-to">{$locale.journals.dateTo}</label>
-          <input class="form-control" id="journal-filter-to" type="date" bind:value={filters.dateTo} on:change={() => loadJournals(1)} />
+          <ShamsiDatePicker id="journal-filter-to" bind:value={filters.dateTo} on:change={() => loadJournals(1)} />
         </div>
       </svelte:fragment>
     </PageToolbar>
@@ -395,7 +397,7 @@
           <tr class:is-selected={selectedIds.has(entry.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(entry.id)} label={$locale.common.selectRow} on:change={() => toggleRow(entry.id)} /></td>
             <td><strong>{entry.journalNumber}</strong></td>
-            <td class="date-cell">{String(entry.transactionDate).slice(0, 10)}</td>
+            <td class="date-cell">{formatShortDate(entry.transactionDate)}</td>
             <td><StatusBadge label={sourceLabel(entry)} tone={sourceTone(entry)} /></td>
             <td class="description-cell">{entry.description || '—'}</td>
             <td class="amount-cell">{formatMoney(entry.debitTotal, entry.currency)}</td>
@@ -423,7 +425,7 @@
 <Modal bind:open={detailsOpen} title={detailsEntry ? detailsEntry.journalNumber : ''} size="modal-lg" closeLabel={$locale.common.close} on:close={closeDetails}>
   {#if detailsEntry}
     <dl class="journal-details">
-      <div><dt>{$locale.journals.date}</dt><dd>{String(detailsEntry.transactionDate).slice(0, 10)}</dd></div>
+      <div><dt>{$locale.journals.date}</dt><dd>{formatShortDate(detailsEntry.transactionDate)}</dd></div>
       <div><dt>{$locale.journals.source}</dt><dd><StatusBadge label={sourceLabel(detailsEntry)} tone={sourceTone(detailsEntry)} /></dd></div>
       <div><dt>{$locale.journals.status}</dt><dd><StatusBadge label={statusLabel(detailsEntry.status)} tone={statusTone(detailsEntry.status)} /></dd></div>
       <div><dt>{$locale.journals.description}</dt><dd>{detailsEntry.description || '—'}</dd></div>
@@ -476,7 +478,7 @@
     <div class="journal-meta">
       <div class="journal-meta-field">
         <label class="form-label" for="journal-entry-date">{$locale.journals.date}</label>
-        <input id="journal-entry-date" class="form-control" type="date" bind:value={form.transactionDate} required />
+        <ShamsiDatePicker id="journal-entry-date" bind:value={form.transactionDate} required />
       </div>
       <div class="journal-meta-field">
         <label class="form-label" for="journal-entry-currency">{$locale.currencies.currency}</label>

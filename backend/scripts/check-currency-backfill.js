@@ -68,7 +68,18 @@ async function checkOrganizations() {
 
 async function checkInvoices() {
   const invoices = await prisma.invoice.findMany({
-    select: { id: true, invoiceNumber: true, currency: true, exchangeRate: true, subtotal: true, total: true, paidAmount: true, baseSubtotal: true, baseTotal: true, basePaidAmount: true },
+    select: {
+      id: true, invoiceNumber: true, currency: true, exchangeRate: true, subtotal: true, total: true, paidAmount: true, baseSubtotal: true, baseTotal: true, basePaidAmount: true,
+      items: {
+        select: {
+          amount: true,
+          paymentAllocations: {
+            where: { voidedAt: null, payment: { status: 'POSTED' } },
+            select: { amount: true, appliedAmount: true, baseAppliedAmount: true },
+          },
+        },
+      },
+    },
   });
 
   for (const invoice of invoices) {
@@ -91,6 +102,33 @@ async function checkInvoices() {
         `Invoice ${invoice.invoiceNumber}: base amounts differ from the document amounts at rate 1`,
       );
     }
+
+    /*
+     * An item settled in the invoice's own currency must be settled in base too.
+     * If it is not, the invoice reads as fully paid while the receivable keeps a
+     * residue no document can clear — the rounding trap this check exists for.
+     */
+    for (const item of invoice.items) {
+      const applied = new Decimal(0);
+      let appliedSum = applied;
+      let baseSum = applied;
+      for (const allocation of item.paymentAllocations) {
+        appliedSum = appliedSum.plus(allocation.appliedAmount ?? allocation.amount);
+        baseSum = baseSum.plus(allocation.baseAppliedAmount ?? allocation.amount);
+      }
+      const itemBase = toBase(item.amount, rate);
+      if (appliedSum.greaterThanOrEqualTo(new Decimal(item.amount).minus(TOLERANCE))) {
+        check(
+          closeEnough(baseSum, itemBase),
+          `Invoice ${invoice.invoiceNumber}: the item is fully paid in ${invoice.currency} but ${itemBase.minus(baseSum)} base is still outstanding`,
+        );
+      } else {
+        check(
+          baseSum.lessThanOrEqualTo(itemBase.plus(TOLERANCE)),
+          `Invoice ${invoice.invoiceNumber}: allocations credit an item with more base than the item is worth`,
+        );
+      }
+    }
   }
 
   notes.push(`${invoices.length} invoice(s) checked`);
@@ -105,33 +143,55 @@ async function checkPayments() {
       exchangeRate: true,
       amount: true,
       baseAmount: true,
+      organization: { select: { name: true } },
+      status: true,
       allocations: {
-        select: { amount: true, appliedAmount: true, baseAppliedAmount: true, invoiceItem: { select: { amount: true, invoice: { select: { invoiceNumber: true, currency: true, exchangeRate: true } } } } },
+        select: { amount: true, voidedAt: true, appliedAmount: true, baseAppliedAmount: true, invoiceItem: { select: { amount: true, invoice: { select: { invoiceNumber: true, currency: true, exchangeRate: true } } } } },
       },
     },
   });
 
   for (const payment of payments) {
+    const activeAllocations = payment.allocations.filter((allocation) => !allocation.voidedAt);
+    if (payment.status !== 'POSTED' || !activeAllocations.length) continue;
     const rate = new Decimal(payment.exchangeRate ?? 1);
+    const label = `${payment.organization.name} payment ${payment.paymentNumber}`;
+    let appliedBase = new Decimal(0);
+    for (const allocation of activeAllocations) {
+      appliedBase = appliedBase.plus(allocation.baseAppliedAmount ?? allocation.amount);
+    }
+
+    /*
+     * A receipt is worth the base value its allocations applied, plus whatever
+     * it left unallocated. A closing allocation can apply slightly more base than
+     * the nominal conversion — that difference is a rounding residue the receipt
+     * absorbs, and it is what lets a settled item reach zero.
+     */
     check(
-      closeEnough(payment.baseAmount, toBase(payment.amount, rate)),
-      `Payment ${payment.paymentNumber}: baseAmount ${payment.baseAmount} ≠ amount ${payment.amount} × rate ${rate}`,
+      closeEnough(payment.baseAmount, Decimal.max(appliedBase, toBase(payment.amount, rate))),
+      `${label}: baseAmount ${payment.baseAmount} is neither its allocations' base value (${appliedBase}) nor its own conversion (${toBase(payment.amount, rate)})`,
     );
 
-    for (const allocation of payment.allocations) {
+    for (const allocation of activeAllocations) {
       check(
         new Decimal(allocation.appliedAmount).greaterThan(0),
-        `Payment ${payment.paymentNumber}: an allocation is missing its applied amount`,
+        `${label}: an allocation is missing its applied amount`,
       );
       check(
         new Decimal(allocation.appliedAmount).lessThanOrEqualTo(new Decimal(allocation.invoiceItem.amount)),
-        `Payment ${payment.paymentNumber}: allocation applied to invoice ${allocation.invoiceItem.invoice.invoiceNumber} exceeds that item's amount`,
+        `${label}: allocation applied to invoice ${allocation.invoiceItem.invoice.invoiceNumber} exceeds that item's amount`,
       );
 
+      // Normally the base value is the applied value at the invoice's rate; a
+      // closing allocation may also absorb the sub-cent residue of that
+      // conversion, which is bounded by half a minor unit of the invoice currency.
       const invoiceRate = new Decimal(allocation.invoiceItem.invoice.exchangeRate ?? 1);
+      const expected = toBase(allocation.appliedAmount, invoiceRate);
+      const absorbed = new Decimal(allocation.baseAppliedAmount ?? allocation.amount).minus(expected);
       check(
-        closeEnough(allocation.baseAppliedAmount, toBase(allocation.appliedAmount, invoiceRate)),
-        `Payment ${payment.paymentNumber}: allocation base value does not match its applied value at the invoice's rate`,
+        absorbed.abs().lessThanOrEqualTo(TOLERANCE)
+        || (absorbed.greaterThan(0) && absorbed.lessThanOrEqualTo(invoiceRate.times('0.005').plus(TOLERANCE))),
+        `${label}: allocation base value does not match its applied value at the invoice's rate`,
       );
     }
   }
@@ -189,8 +249,15 @@ async function checkTenantLedgers() {
     });
     if (!receivable) continue;
 
+    /*
+     * Every journal, not just the posted ones: voiding a document keeps the
+     * original journal's lines and posts a mirror-image reversal, and the
+     * sub-ledger keeps the original entry and its reversal too. Comparing the
+     * sub-ledger against posted journals only would count the reversal without
+     * the entry it reverses, and report the voided amount as a discrepancy.
+     */
     const gl = await prisma.journalLine.aggregate({
-      where: { accountId: receivable.id, journal: { organizationId, status: 'POSTED' } },
+      where: { accountId: receivable.id, journal: { organizationId } },
       _sum: { baseDebit: true, baseCredit: true },
     });
 
