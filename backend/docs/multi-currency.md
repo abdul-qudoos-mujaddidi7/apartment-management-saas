@@ -135,6 +135,7 @@ writes.
 | `POST /api/currencies/base` | change the reporting currency (see below) |
 | `GET /api/currencies/rate?currency=USD&date=2026-09-22` | the rate the server would freeze |
 | `GET /api/currencies/convert?amount=100&from=USD&to=AFN` | preview a conversion |
+| `GET /api/currencies/catalogue?search=pound` | reference list for the pickers — **public**, see below |
 
 Money documents take an optional `currency`; omitting it means the base
 currency, so existing clients keep working unchanged.
@@ -215,7 +216,7 @@ USD invoice for a USD lease without anyone choosing it again.
 
 ### The currency picker's reference list
 
-`GET /api/currencies/catalogue` answers with the codes the "Add currency" form
+`GET /api/currencies/catalogue` answers with the codes every currency field
 suggests, each with the name and symbol to fill in:
 
 ```
@@ -242,6 +243,39 @@ Deutsche Mark (`RETIRED`). This is a suggestion list, **not** a validation gate.
 `POST /api/currencies` still accepts any three-letter code, so a currency the
 list has never heard of can be typed in by hand; the picker simply will not
 suggest it.
+
+**This is the one public endpoint in the currency module.** It holds nothing
+about any organization — codes, names and symbols from a public list — and it has
+to be reachable before a session exists, because the reporting currency is chosen
+*while* a workspace is being created. Everything else under `/api/currencies`
+still requires a session.
+
+Both signup forms and Settings › Currencies use the same field,
+`frontend/src/components/ui/CurrencyPicker.svelte`, so one list answers for all
+three. Search works on the code and the name: typing `pound` finds GBP.
+
+### The reporting currency chosen at signup
+
+Registration accepts an optional `currency`, a three-letter code. Leaving it out
+means AFN. The organization is created with it as `baseCurrency`, and its base
+`Currency` row is seeded through the same catalogue, so a workspace registered in
+USD opens Settings › Currencies showing `US Dollar ($)` rather than a bare `USD`:
+
+```http
+POST /api/auth/register
+
+{ "organizationName": "…", "currency": "GBP", … }
+```
+
+```
+Organization.baseCurrency  GBP
+Currency                   GBP  British Pound  £  isBase=true
+ExchangeRate               1    from 1970-01-01   (the base is always 1)
+```
+
+An existing workspace whose base row still carries the bare code as its name is
+repaired the next time it reads its currencies — that is, on the next login — so
+there is no migration to run for it.
 
 Tuning, all optional in `backend/.env`:
 

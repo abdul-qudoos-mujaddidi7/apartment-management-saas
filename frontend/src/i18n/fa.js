@@ -24,7 +24,7 @@ const translations = {
     },
     pricing: { kicker: 'همراه رشد شما', title: 'یک پلتفرم برای تمام بخش‌های مجموعه شما.', description: 'امروز با امکانات ضروری شروع کنید و با رشد عملیات، قابلیت‌های بیشتری اضافه کنید.' },
     cta: { kicker: 'هر زمان آماده بودید', title: 'مدیریت املاک خود را', titleBreak: 'امروز شروع کنید.', description: 'از اولین ساختمان، وضوح را به مجموعه خود بیاورید.' },
-    registration: { ...en.home.registration, kicker: 'امروز شروع کنید', title: 'عملیات ملکی', titleAccent: 'آرام‌تری بسازید.', description: 'فضای کاری ApartmentPro خود را تنظیم کنید و املاک، افراد و فعالیت‌های مالی را یک‌جا بیاورید.', secure: 'اطلاعات شما خصوصی و امن باقی می‌ماند.', eyebrow: 'فضای کاری خود را بسازید', heading: 'شروع کنید', subtitle: 'کمی درباره خود و سازمان‌تان بگویید.', fields: { organization: 'نام سازمان / شرکت', currency: 'ارز گزارش', firstName: 'نام مدیر', lastName: 'تخلص مدیر', email: 'ایمیل', phone: 'شماره تلفن', password: 'رمز عبور', confirmPassword: 'تأیید رمز عبور' }, currencyHint: 'همه گزارش‌ها و مجموع‌های داشبورد با آن بیان می‌شوند. با دقت انتخاب کنید: پس از ثبت اولین صورت‌حساب یا پرداخت ثابت می‌شود.', currencyOther: 'ارز دیگر…', invalidCurrency: 'یک کد سه‌حرفی مانند USD وارد کنید.', create: 'ایجاد حساب', creating: 'در حال ایجاد حساب...', existing: 'حساب دارید؟', required: '{field} الزامی است.', invalidEmail: 'یک ایمیل معتبر وارد کنید.', minPassword: 'رمز عبور باید حداقل ۸ حرف باشد.', mismatch: 'رمزهای عبور یکسان نیستند.', emailExists: 'این ایمیل قبلاً ثبت شده است.', organizationExists: 'شناسه سازمان قبلاً استفاده شده است.', rateLimited: 'تلاش‌ها بیش از حد است. بعداً دوباره کوشش کنید.', requestBlocked: 'این درخواست به دلایل امنیتی مسدود شد.' },
+    registration: { ...en.home.registration, kicker: 'امروز شروع کنید', title: 'عملیات ملکی', titleAccent: 'آرام‌تری بسازید.', description: 'فضای کاری ApartmentPro خود را تنظیم کنید و املاک، افراد و فعالیت‌های مالی را یک‌جا بیاورید.', secure: 'اطلاعات شما خصوصی و امن باقی می‌ماند.', eyebrow: 'فضای کاری خود را بسازید', heading: 'شروع کنید', subtitle: 'کمی درباره خود و سازمان‌تان بگویید.', fields: { organization: 'نام سازمان / شرکت', currency: 'ارز گزارش', firstName: 'نام مدیر', lastName: 'تخلص مدیر', email: 'ایمیل', phone: 'شماره تلفن', password: 'رمز عبور', confirmPassword: 'تأیید رمز عبور' }, currencyHint: 'همه گزارش‌ها و مجموع‌های داشبورد با آن بیان می‌شوند. با دقت انتخاب کنید: پس از ثبت اولین صورت‌حساب یا پرداخت ثابت می‌شود.', currencyDefault: 'برای گزارش با AFN آن را خالی بگذارید.', currencyUnavailable: 'فهرست ارزها بار نشد. کد سه‌حرفی را خودتان وارد کنید، مثلاً USD.', invalidCurrency: 'یک کد سه‌حرفی مانند USD وارد کنید.', create: 'ایجاد حساب', creating: 'در حال ایجاد حساب...', existing: 'حساب دارید؟', required: '{field} الزامی است.', invalidEmail: 'یک ایمیل معتبر وارد کنید.', minPassword: 'رمز عبور باید حداقل ۸ حرف باشد.', mismatch: 'رمزهای عبور یکسان نیستند.', emailExists: 'این ایمیل قبلاً ثبت شده است.', organizationExists: 'شناسه سازمان قبلاً استفاده شده است.', rateLimited: 'تلاش‌ها بیش از حد است. بعداً دوباره کوشش کنید.', requestBlocked: 'این درخواست به دلایل امنیتی مسدود شد.' },
     footer: { ...en.home.footer, description: 'ابزارهای کاربردی برای مدیریت بهتر آپارتمان.', quickLinks: 'لینک‌های سریع', features: 'امکانات', contact: 'تماس', properties: 'املاک', tenants: 'ساکنان', finances: 'امور مالی', contactDescription: 'ساخته شده برای تیم‌های مدرن املاک.', copyright: '© ۲۰۲۶ ApartmentPro. تمامی حقوق محفوظ است.', platform: 'پلتفرم مدیریت آپارتمان' },
   },
   login: { ...en.login, ariaLabel: 'ApartmentPro', eyebrow: 'دسترسی امن', title: 'خوش آمدید', subtitle: 'برای مدیریت سازمان خود وارد شوید.', email: 'ایمیل', password: 'رمز عبور', remember: 'مرا به خاطر بسپار', forgot: 'رمز عبور را فراموش کرده‌اید؟', hidePassword: 'پنهان کردن رمز عبور', showPassword: 'نمایش رمز عبور', signingIn: 'در حال ورود...', submit: 'ورود', footer: 'محافظت‌شده با احراز هویت امن مبتنی بر کوکی.', requiredEmail: 'ایمیل خود را وارد کنید.', invalidEmail: 'یک ایمیل معتبر وارد کنید.', requiredPassword: 'رمز عبور خود را وارد کنید.', noAccount: 'در ApartmentPro تازه هستید؟', createAccount: 'ایجاد حساب', invalidCredentials: 'ایمیل یا رمز عبور نادرست است.', rateLimited: 'تلاش‌ها بیش از حد است. بعداً دوباره کوشش کنید.', requestBlocked: 'این درخواست به دلایل امنیتی مسدود شد.' },
@@ -51,7 +51,8 @@ const translations = {
     fullNameHint: 'نام و تخلص.',
     passwordHint: 'دست‌کم ۸ نویسه.',
     currencyHint: 'همه گزارش‌ها با آن بیان می‌شوند.',
-    currencyOther: 'ارز دیگر…',
+    currencyDefault: 'برای گزارش با AFN آن را خالی بگذارید.',
+    currencyUnavailable: 'فهرست ارزها بار نشد. کد سه‌حرفی را خودتان وارد کنید، مثلاً USD.',
     invalidCurrency: 'کد سه‌حرفی ارز مانند USD را وارد کنید.',
     create: 'ایجاد حساب',
     creating: 'در حال ایجاد حساب...',
@@ -270,6 +271,13 @@ translations.assets = {
   next: 'بعدی',
   page: 'صفحه {page} از {totalPages}',
   conditions: { NEW: 'نو', GOOD: 'خوب', FAIR: 'قابل قبول', DAMAGED: 'آسیب‌دیده', BROKEN: 'خراب' },
+};
+
+translations.apartments.types = {
+  RESIDENTIAL: 'مسکونی',
+  COMMERCIAL: 'تجاری',
+  OFFICE: 'دفتر',
+  OTHER: 'سایر',
 };
 
 export default translations;

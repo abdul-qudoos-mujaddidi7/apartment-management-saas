@@ -1,15 +1,10 @@
 const { z } = require('zod');
 
 const apartmentTypes = [
-  'STUDIO',
-  'ONE_BEDROOM',
-  'TWO_BEDROOM',
-  'THREE_BEDROOM',
-  'FOUR_BEDROOM_PLUS',
-  'DUPLEX',
-  'PENTHOUSE',
+  'RESIDENTIAL',
+  'COMMERCIAL',
   'OFFICE',
-  'SHOP',
+  'OTHER',
 ];
 
 const apartmentStatuses = ['AVAILABLE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE', 'INACTIVE'];

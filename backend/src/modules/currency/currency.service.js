@@ -45,6 +45,25 @@ async function getOrganization(client, organizationId) {
 }
 
 /**
+ * What the currency API calls this code, so a workspace's own currency reads as
+ * "US Dollar ($)" instead of a bare "USD".
+ *
+ * A code the list has never heard of keeps the code as its name and no symbol:
+ * an unusual currency is still a currency, and its name can be edited in
+ * Settings › Currencies.
+ */
+async function describeCurrency(code) {
+  try {
+    const { items } = await searchCatalogue(code);
+    const match = items.find((item) => item.code === code)
+      || (items.length === 1 ? items[0] : null);
+    return { name: match?.name || code, symbol: match?.symbol || null };
+  } catch {
+    return { name: code, symbol: null };
+  }
+}
+
+/**
  * Currencies are initialized lazily, exactly like the default chart of
  * accounts: the first read or write makes sure the organization has its base
  * currency row, and the unique constraint keeps that safe under load.
@@ -55,18 +74,35 @@ async function ensureBaseCurrency(client, organizationId) {
 
   const existing = await client.currency.findFirst({
     where: { organizationId, code: baseCode },
-    select: { id: true, code: true, isBase: true, isActive: true, deletedAt: true },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      symbol: true,
+      isBase: true,
+      isActive: true,
+      deletedAt: true,
+    },
   });
 
   if (existing) {
-    if (!existing.isBase || !existing.isActive || existing.deletedAt) {
-      return client.currency.update({
-        where: { id: existing.id },
-        data: { isBase: true, isActive: true, deletedAt: null, name: baseCode },
-      });
-    }
-    return existing;
+    const flagged = !existing.isBase || !existing.isActive || existing.deletedAt;
+    // A row created before the name was looked up carries the bare code as its
+    // name; that is what the currency API answers, so fill it in once.
+    const unnamed = !existing.name || existing.name === existing.code;
+    if (!flagged && !unnamed) return existing;
+
+    const described = unnamed
+      ? await describeCurrency(baseCode)
+      : { name: existing.name, symbol: existing.symbol };
+
+    return client.currency.update({
+      where: { id: existing.id },
+      data: { isBase: true, isActive: true, deletedAt: null, ...described },
+    });
   }
+
+  const { name, symbol } = await describeCurrency(baseCode);
 
   // Two concurrent first writes can both find nothing; the unique
   // (organizationId, code) constraint decides, and the loser re-reads.
@@ -76,7 +112,8 @@ async function ensureBaseCurrency(client, organizationId) {
       data: {
         organizationId,
         code: baseCode,
-        name: baseCode,
+        name,
+        symbol,
         isBase: true,
         isActive: true,
       },

@@ -24,7 +24,7 @@ const translations = {
     },
     pricing: { kicker: 'ستاسو له ودې سره جوړېږي', title: 'ستاسو د ټولګې د هرې برخې لپاره یوه پلاتفورم.', description: 'نن له اړینو امکاناتو پیل وکړئ او د کار له ودې سره نور امکانات ورزیات کړئ.' },
     cta: { kicker: 'کله چې چمتو یاست', title: 'د خپلو ملکیتونو مدیریت', titleBreak: 'نن پیل کړئ.', description: 'له لومړۍ ودانۍ څخه خپل ټولګې ته روښانتیا راوړئ.' },
-    registration: { ...en.home.registration, kicker: 'نن پیل وکړئ', title: 'ارامه', titleAccent: 'ملکي چارې جوړې کړئ.', description: 'خپل ApartmentPro کاري ځای جوړ کړئ او ملکیتونه، خلک او مالي فعالیتونه سره راټول کړئ.', secure: 'ستاسو معلومات شخصي او خوندي پاتې کېږي.', eyebrow: 'خپل کاري ځای جوړ کړئ', heading: 'پیل وکړئ', subtitle: 'د خپل ځان او سازمان په اړه لږ معلومات راکړئ.', fields: { organization: 'د سازمان / شرکت نوم', currency: 'د راپور سکه', firstName: 'د مدیر لومړی نوم', lastName: 'د مدیر تخلص', email: 'برېښنالیک', phone: 'د تلیفون شمېره', password: 'پټ نوم', confirmPassword: 'پټ نوم تایید کړئ' }, currencyHint: 'ټول راپورونه او د ډشبورډ ټولټال پرې ښودل کېږي. په دقت وټاکئ: د لومړي بل یا تادیې له ثبت وروسته ثابته کېږي.', currencyOther: 'بله سکه…', invalidCurrency: 'د USD په څېر درې توري کوډ ولیکئ.', create: 'حساب جوړ کړئ', creating: 'حساب جوړېږي...', existing: 'له مخکې حساب لرئ؟', required: '{field} اړین دی.', invalidEmail: 'سم برېښنالیک ولیکئ.', minPassword: 'پټ نوم باید لږ تر لږه ۸ توري ولري.', mismatch: 'پټ نومونه یو شان نه دي.', emailExists: 'دا برېښنالیک مخکې ثبت شوی دی.', organizationExists: 'د سازمان پېژندونکی مخکې کارول شوی دی.', rateLimited: 'هڅې ډېرې شوې. وروسته بیا هڅه وکړئ.', requestBlocked: 'دا غوښتنه د امنیتي دلایلو له امله بنده شوه.' },
+    registration: { ...en.home.registration, kicker: 'نن پیل وکړئ', title: 'ارامه', titleAccent: 'ملکي چارې جوړې کړئ.', description: 'خپل ApartmentPro کاري ځای جوړ کړئ او ملکیتونه، خلک او مالي فعالیتونه سره راټول کړئ.', secure: 'ستاسو معلومات شخصي او خوندي پاتې کېږي.', eyebrow: 'خپل کاري ځای جوړ کړئ', heading: 'پیل وکړئ', subtitle: 'د خپل ځان او سازمان په اړه لږ معلومات راکړئ.', fields: { organization: 'د سازمان / شرکت نوم', currency: 'د راپور سکه', firstName: 'د مدیر لومړی نوم', lastName: 'د مدیر تخلص', email: 'برېښنالیک', phone: 'د تلیفون شمېره', password: 'پټ نوم', confirmPassword: 'پټ نوم تایید کړئ' }, currencyHint: 'ټول راپورونه او د ډشبورډ ټولټال پرې ښودل کېږي. په دقت وټاکئ: د لومړي بل یا تادیې له ثبت وروسته ثابته کېږي.', currencyDefault: 'د AFN راپور لپاره یې خالي پرېږدئ.', currencyUnavailable: 'د اسعارو لیست بار نشو. درې توري کوډ پخپله ولیکئ، لکه USD.', invalidCurrency: 'د USD په څېر درې توري کوډ ولیکئ.', create: 'حساب جوړ کړئ', creating: 'حساب جوړېږي...', existing: 'له مخکې حساب لرئ؟', required: '{field} اړین دی.', invalidEmail: 'سم برېښنالیک ولیکئ.', minPassword: 'پټ نوم باید لږ تر لږه ۸ توري ولري.', mismatch: 'پټ نومونه یو شان نه دي.', emailExists: 'دا برېښنالیک مخکې ثبت شوی دی.', organizationExists: 'د سازمان پېژندونکی مخکې کارول شوی دی.', rateLimited: 'هڅې ډېرې شوې. وروسته بیا هڅه وکړئ.', requestBlocked: 'دا غوښتنه د امنیتي دلایلو له امله بنده شوه.' },
     footer: { ...en.home.footer, description: 'د اپارتمانونو د غوره مدیریت لپاره عملي وسایل.', quickLinks: 'چټک لینکونه', features: 'ځانګړنې', contact: 'اړیکه', properties: 'ملکیتونه', tenants: 'اوسېدونکي', finances: 'مالي چارې', contactDescription: 'د عصري ملکیتونو ټیمونو لپاره جوړ شوی.', copyright: '© ۲۰۲۶ ApartmentPro. ټول حقوق خوندي دي.', platform: 'د اپارتمانونو د مدیریت پلاتفورم' },
   },
   login: { ...en.login, ariaLabel: 'ApartmentPro', eyebrow: 'خوندي لاسرسی', title: 'بېرته ښه راغلاست', subtitle: 'د خپل سازمان د مدیریت لپاره ننوتئ.', email: 'برېښنالیک', password: 'پټ نوم', remember: 'ما په یاد وساته', forgot: 'پټ نوم مو هېر کړی؟', hidePassword: 'پټ نوم پټ کړئ', showPassword: 'پټ نوم ښکاره کړئ', signingIn: 'د ننوتلو په حال کې...', submit: 'ننوتل', footer: 'د خوندي کوکي پر بنسټ تصدیق له لارې خوندي شوی.', requiredEmail: 'خپل برېښنالیک ولیکئ.', invalidEmail: 'سم برېښنالیک ولیکئ.', requiredPassword: 'خپل پټ نوم ولیکئ.', noAccount: 'په ApartmentPro کې نوی یاست؟', createAccount: 'حساب جوړ کړئ', invalidCredentials: 'برېښنالیک یا پټ نوم ناسم دی.', rateLimited: 'هڅې ډېرې شوې. وروسته بیا هڅه وکړئ.', requestBlocked: 'دا غوښتنه د امنیتي دلایلو له امله بنده شوه.' },
@@ -51,7 +51,8 @@ const translations = {
     fullNameHint: 'نوم او تخلص.',
     passwordHint: 'لږ تر لږه ۸ توري.',
     currencyHint: 'ټول راپورونه پرې ښودل کېږي.',
-    currencyOther: 'بله سکه…',
+    currencyDefault: 'د AFN راپور لپاره یې خالي پرېږدئ.',
+    currencyUnavailable: 'د اسعارو لیست بار نشو. درې توري کوډ پخپله ولیکئ، لکه USD.',
     invalidCurrency: 'د USD په څېر دری توري کوډ ولیکئ.',
     create: 'حساب جوړ کړئ',
     creating: 'حساب جوړېږي...',
@@ -269,6 +270,13 @@ translations.assets = {
   next: 'بل',
   page: 'پاڼه {page} له {totalPages}',
   conditions: { NEW: 'نوی', GOOD: 'ښه', FAIR: 'منځنی', DAMAGED: 'زیانمن', BROKEN: 'مات' },
+};
+
+translations.apartments.types = {
+  RESIDENTIAL: 'د استوګنې',
+  COMMERCIAL: 'سوداګریز',
+  OFFICE: 'دفتر',
+  OTHER: 'نور',
 };
 
 export default translations;

@@ -7,7 +7,7 @@ const baseApartment = {
   floorId: 'floor-1',
   apartmentNumber: 'A-101',
   name: 'Apartment 101',
-  type: 'TWO_BEDROOM',
+  type: 'RESIDENTIAL',
   monthlyRent: 15000,
 };
 

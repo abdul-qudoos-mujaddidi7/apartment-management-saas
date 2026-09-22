@@ -1,4 +1,4 @@
-export default {
+const translations = {
   common: {
     language: 'Language',
     apartmentPro: 'ApartmentPro',
@@ -85,7 +85,8 @@ export default {
       kicker: 'Get started today', title: 'Build a calmer', titleAccent: 'property operation.', description: 'Set up your ApartmentPro workspace and bring your properties, people, and financial activity together.', secure: 'Your information stays private and secure.', eyebrow: 'Create your workspace', heading: 'Get Started', subtitle: 'Tell us a little about you and your organization.',
       fields: { organization: 'Organization / Company Name', currency: 'Reporting currency', firstName: 'Admin First Name', lastName: 'Admin Last Name', email: 'Email', phone: 'Phone', password: 'Password', confirmPassword: 'Confirm Password' },
       currencyHint: 'Every report and dashboard total is stated in it. Pick carefully: it is fixed once you post your first invoice or payment.',
-      currencyOther: 'Other currency…',
+      currencyDefault: 'Leave it empty to report in AFN.',
+      currencyUnavailable: 'The currency list could not be loaded. Type the three-letter code yourself, for example USD.',
       invalidCurrency: 'Enter a three-letter currency code such as USD.',
       create: 'Create Account', creating: 'Creating Account...', existing: 'Already have an account?', required: '{field} is required.', invalidEmail: 'Enter a valid email address.', minPassword: 'Password must be at least 8 characters.', mismatch: 'Passwords must match.', emailExists: 'Email is already registered.', organizationExists: 'Organization slug already exists.', rateLimited: 'Too many attempts. Please try again later.', requestBlocked: 'This request was blocked for security reasons.',
     },
@@ -113,7 +114,8 @@ export default {
     fullNameHint: 'First and last name.',
     passwordHint: 'At least 8 characters.',
     currencyHint: 'Every report is stated in it.',
-    currencyOther: 'Other currency…',
+    currencyDefault: 'Leave it empty to report in AFN.',
+    currencyUnavailable: 'The currency list could not be loaded. Type the three-letter code yourself, for example USD.',
     invalidCurrency: 'Enter a three-letter currency code such as USD.',
     create: 'Create account',
     creating: 'Creating your account...',
@@ -402,3 +404,12 @@ export default {
     conditions: { NEW: 'New', GOOD: 'Good', FAIR: 'Fair', DAMAGED: 'Damaged', BROKEN: 'Broken' },
   },
 };
+
+translations.apartments.types = {
+  RESIDENTIAL: 'Residential',
+  COMMERCIAL: 'Commercial',
+  OFFICE: 'Office',
+  OTHER: 'Other',
+};
+
+export default translations;

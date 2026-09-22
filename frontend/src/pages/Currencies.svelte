@@ -5,11 +5,11 @@
     addExchangeRate,
     createCurrency,
     deleteCurrency,
-    listCatalogue,
     setBaseCurrency,
     updateCurrency,
   } from '../services/currencies';
   import { currencies as currencyStore, baseCurrency, currenciesLoading, loadCurrencies } from '../stores/currency';
+  import CurrencyPicker from '../components/ui/CurrencyPicker.svelte';
   import PageLayout from '../components/ui/PageLayout.svelte';
   import DataTable from '../components/ui/DataTable.svelte';
   import PageToolbar from '../components/ui/PageToolbar.svelte';
@@ -34,22 +34,6 @@
   let currencyOpen = false;
   let editing = null;
   let form = emptyForm();
-
-  /*
-   * The picker's reference list, from the currency API via our own endpoint.
-   * It is fetched when the form opens and kept for the session, so opening the
-   * form twice does not re-ask the server. A failure is not fatal: the three
-   * fields stay typeable, which is how a currency the API has never heard of
-   * gets added.
-   */
-  let catalogue = [];
-  let catalogueSource = '';
-  let catalogueTotal = 0;
-  let catalogueLoading = false;
-  let catalogueError = '';
-  let codeOpen = false;
-  let codeHighlight = 0;
-  const MAX_CODE_MATCHES = 8;
 
   // Rate book for one currency
   let rateOpen = false;
@@ -98,88 +82,7 @@
     editing = null;
     form = emptyForm();
     modalError = '';
-    codeOpen = false;
     currencyOpen = true;
-    loadCatalogue();
-  }
-
-  async function loadCatalogue(force = false) {
-    if (catalogue.length && !force) return;
-
-    catalogueLoading = true;
-    catalogueError = '';
-    try {
-      const result = await listCatalogue({ refresh: force });
-      catalogue = result.items;
-      catalogueSource = result.source;
-      catalogueTotal = result.total;
-    } catch (error) {
-      if (!(await handleRequestError(error))) catalogueError = error.message;
-    } finally {
-      catalogueLoading = false;
-    }
-  }
-
-  /* Typing filters on both the code and the name, so "pound" finds GBP. */
-  $: codeQuery = form.code.trim().toUpperCase();
-  $: codeMatches = (codeQuery
-    ? catalogue.filter((item) => item.code.includes(codeQuery) || item.name.toUpperCase().includes(codeQuery))
-    : catalogue
-  ).slice(0, MAX_CODE_MATCHES);
-
-  /* Picking a currency is what fills the name and symbol in. */
-  function chooseCurrency(item) {
-    form = { ...form, code: item.code, name: item.name, symbol: item.symbol || '' };
-    codeOpen = false;
-    codeHighlight = 0;
-  }
-
-  function onCodeInput(event) {
-    form = { ...form, code: event.currentTarget.value.toUpperCase() };
-    codeOpen = true;
-    codeHighlight = 0;
-  }
-
-  function onCodeKeydown(event) {
-    if (event.key === 'Escape') {
-      codeOpen = false;
-      return;
-    }
-
-    /* Enter takes the highlighted currency rather than submitting the form. */
-    if (event.key === 'Enter' && codeOpen && codeMatches.length) {
-      event.preventDefault();
-      chooseCurrency(codeMatches[codeHighlight]);
-      return;
-    }
-
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    event.preventDefault();
-    if (!codeOpen) {
-      codeOpen = true;
-      return;
-    }
-    if (!codeMatches.length) return;
-
-    const step = event.key === 'ArrowDown' ? 1 : -1;
-    codeHighlight = (codeHighlight + step + codeMatches.length) % codeMatches.length;
-  }
-
-  /*
-   * mousedown on an option is prevented, so the input never blurs first.
-   * Leaving the field with a name typed in — "euro", "pound" — adopts the one
-   * currency it matches, so a half-typed search never becomes a bad code.
-   */
-  function onCodeBlur() {
-    codeOpen = false;
-
-    const typed = form.code.trim().toUpperCase();
-    if (!typed || /^[A-Z]{3}$/.test(typed)) return;
-
-    const matches = catalogue.filter(
-      (item) => item.code.includes(typed) || item.name.toUpperCase().includes(typed),
-    );
-    if (matches.length === 1) chooseCurrency(matches[0]);
   }
 
   function openEdit(currency) {
@@ -198,7 +101,6 @@
   function closeCurrency() {
     if (saving) return;
     currencyOpen = false;
-    codeOpen = false;
     editing = null;
   }
 
@@ -465,50 +367,13 @@
         {#if editing}
           <input id="currency-code" class="form-control" value={editing.code} disabled />
         {:else}
-          <div class="currency-picker">
-            <input
-              id="currency-code"
-              class="form-control"
-              maxlength="24"
-              placeholder="USD"
-              autocomplete="off"
-              role="combobox"
-              aria-expanded={codeOpen && codeMatches.length > 0}
-              aria-controls="currency-code-options"
-              aria-autocomplete="list"
-              value={form.code}
-              on:input={onCodeInput}
-              on:focus={() => { codeOpen = true; loadCatalogue(); }}
-              on:keydown={onCodeKeydown}
-              on:blur={onCodeBlur}
-            />
-            {#if codeOpen && codeMatches.length}
-              <ul class="currency-options" id="currency-code-options" role="listbox">
-                {#each codeMatches as item, index (item.code)}
-                  <li class:active={index === codeHighlight} role="option" aria-selected={index === codeHighlight}>
-                    <button type="button" on:mousedown|preventDefault on:click={() => chooseCurrency(item)}>
-                      <span class="currency-option-code">{item.code}</span>
-                      <span class="currency-option-name">{item.name}</span>
-                      <span class="currency-option-symbol">{item.symbol || ''}</span>
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-          </div>
-          <div class="form-text">{$locale.currencies.codeHint}</div>
-          {#if catalogueLoading}
-            <div class="form-text">{$locale.currencies.catalogueLoading}</div>
-          {:else if catalogueError}
-            <div class="form-text">{$locale.currencies.catalogueUnavailable}</div>
-          {:else if catalogue.length}
-            <div class="form-text">
-              {(catalogueSource === 'api' ? $locale.currencies.catalogueHint : $locale.currencies.catalogueOffline).replace('{count}', catalogueTotal)}
-              <button class="link-button" type="button" on:mousedown|preventDefault on:click={() => loadCatalogue(true)}>
-                {$locale.currencies.catalogueRefresh}
-              </button>
-            </div>
-          {/if}
+          <CurrencyPicker
+            id="currency-code"
+            bind:code={form.code}
+            bind:name={form.name}
+            bind:symbol={form.symbol}
+            hint={$locale.currencies.codeHint}
+          />
         {/if}
       </div>
       <div class="col-md-4">
@@ -662,49 +527,6 @@
   .symbol-cell { font-size: 1.05rem; }
   /* The code field is a searchable list of currencies: type "po" or "GBP" and
      pick a row to fill the name and symbol in from the API's reference data. */
-  .currency-picker { position: relative; }
-  .currency-options {
-    position: absolute;
-    z-index: 20;
-    inset-inline: 0;
-    inset-block-start: calc(100% + 4px);
-    max-block-size: 16rem;
-    overflow-y: auto;
-    margin: 0;
-    padding: 0.25rem;
-    border: 1px solid var(--border);
-    border-radius: 0.6rem;
-    background: var(--surface);
-    box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.12));
-    list-style: none;
-  }
-  .currency-options button {
-    display: grid;
-    grid-template-columns: 3.2rem 1fr auto;
-    align-items: center;
-    gap: 0.5rem;
-    inline-size: 100%;
-    padding: 0.4rem 0.5rem;
-    border: 0;
-    border-radius: 0.45rem;
-    background: transparent;
-    color: inherit;
-    text-align: start;
-  }
-  .currency-options li.active button,
-  .currency-options button:hover { background: var(--surface-muted); }
-  .currency-option-code { font-weight: var(--weight-bold); font-size: 0.82rem; }
-  .currency-option-name { color: var(--text-secondary); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .currency-option-symbol { color: var(--text-muted); font-size: 0.9rem; }
-  .link-button {
-    margin-inline-start: 0.4rem;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--accent);
-    font-size: inherit;
-    text-decoration: underline;
-  }
   .icon-button.danger { color: var(--danger); }
   .icon-button.danger:hover { border-color: var(--danger-border, var(--danger)); }
   @media (max-width: 767px) { .base-panel { flex-direction: column; align-items: stretch; } }

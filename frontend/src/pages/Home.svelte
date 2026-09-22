@@ -3,9 +3,10 @@
   import { push } from 'svelte-spa-router';
   import { register } from '../services/auth';
   import { resetAuth } from '../stores/auth';
+  import CurrencyPicker from '../components/ui/CurrencyPicker.svelte';
   import LanguageSwitcher from '../components/LanguageSwitcher.svelte';
   import { locale, translate } from '../i18n';
-  import { currencyOptions, CUSTOM_CURRENCY, isCurrencyCode, resolveCurrencyCode } from '../utils/currencies';
+  import { isCurrencyCode } from '../utils/currencies';
 
   onMount(() => {
     const onScroll = () => { scrolled = window.scrollY > 48; };
@@ -54,16 +55,25 @@
     confirmPassword: '',
     /* The workspace's reporting currency. Asked here as well as on the Register
        page because this page's form is the one people actually submit, and the
-       answer cannot be changed once the organization has posted money. */
-    currency: 'AFN',
-    customCurrency: '',
+       answer cannot be changed once the organization has posted money. Empty
+       means the default, AFN. */
+    currency: '',
+    currencyName: '',
+    currencySymbol: '',
   };
   let registrationErrors = {};
   let registrationMessage = '';
   let registrationSubmitting = false;
 
-  // The three-letter code the API receives, whether it was picked or typed.
-  $: selectedRegistrationCurrency = resolveCurrencyCode(registration.currency, registration.customCurrency);
+  // The three-letter code the API receives, picked or typed or left empty.
+  $: selectedRegistrationCurrency = registration.currency.trim().toUpperCase();
+
+  /* Clear the complaint as soon as the field holds a code again, rather than
+     making the next submit do it. */
+  $: if (registrationErrors.currency && (!registration.currency.trim() || isCurrencyCode(registration.currency))) {
+    const { currency, ...rest } = registrationErrors;
+    registrationErrors = rest;
+  }
 
   function validateRegistration() {
     const errors = {};
@@ -90,8 +100,9 @@
     if (registration.confirmPassword && registration.password !== registration.confirmPassword) {
       errors.confirmPassword = translate('home.registration.mismatch');
     }
-    if (registration.currency === CUSTOM_CURRENCY && !isCurrencyCode(registration.customCurrency)) {
-      errors.customCurrency = translate('home.registration.invalidCurrency');
+    /* Empty is the default, AFN; anything else has to be a three-letter code. */
+    if (registration.currency.trim() && !isCurrencyCode(registration.currency)) {
+      errors.currency = translate('home.registration.invalidCurrency');
     }
 
     registrationErrors = errors;
@@ -382,34 +393,22 @@
             </div>
             <div class="lp-field-wide">
               <label class="form-label" for="registration-currency">{$locale.home.registration.fields.currency}</label>
-              <select
-                class:lp-invalid={Boolean(registrationErrors.customCurrency)}
-                class="form-select"
+              <CurrencyPicker
                 id="registration-currency"
-                value={registration.currency}
-                on:change={(event) => updateRegistration('currency', event.currentTarget.value)}
-                aria-describedby="registration-currency-hint"
-              >
-                {#each currencyOptions as option (option.code)}
-                  <option value={option.code}>{option.code} — {option.name}</option>
-                {/each}
-                <option value={CUSTOM_CURRENCY}>{$locale.home.registration.currencyOther}</option>
-              </select>
-              <p class="form-text lp-hint" id="registration-currency-hint">{$locale.home.registration.currencyHint}</p>
-              {#if registration.currency === CUSTOM_CURRENCY}
-                <input
-                  class:lp-invalid={Boolean(registrationErrors.customCurrency)}
-                  class="form-control lp-currency-custom"
-                  id="registration-custom-currency"
-                  type="text"
-                  maxlength="3"
-                  placeholder="USD"
-                  value={registration.customCurrency}
-                  on:input={(event) => updateRegistration('customCurrency', event.currentTarget.value)}
-                  aria-invalid={Boolean(registrationErrors.customCurrency)}
-                />
-              {/if}
-              {#if registrationErrors.customCurrency}<div class="lp-error">{registrationErrors.customCurrency}</div>{/if}
+                bind:code={registration.currency}
+                bind:name={registration.currencyName}
+                bind:symbol={registration.currencySymbol}
+                invalid={Boolean(registrationErrors.currency)}
+                unavailableMessage={$locale.home.registration.currencyUnavailable}
+              />
+              <p class="form-text lp-hint" id="registration-currency-hint">
+                {#if registration.currencyName}
+                  {registration.currency} — {registration.currencyName} {registration.currencySymbol}
+                {:else}
+                  {$locale.home.registration.currencyDefault}
+                {/if}
+              </p>
+              {#if registrationErrors.currency}<div class="lp-error">{registrationErrors.currency}</div>{/if}
             </div>
             <div>
               <label class="form-label" for="first-name">{$locale.home.registration.fields.firstName}</label>
@@ -955,7 +954,6 @@
   /* The reporting-currency hint and the typed-in code sit inside their own field,
      so they need their own spacing rather than the grid's gap. */
   .lp-hint { margin: 6px 0 0; }
-  .lp-currency-custom { margin-top: 10px; }
   .lp-submit { width: 100%; margin-top: 26px; }
   .lp-signin-note { margin: 18px 0 0; font-size: .94rem; color: var(--lp-ink-soft); text-align: center; }
   .lp-signin-note button { padding: 0; border: 0; background: transparent; color: var(--lp-teal); font-size: inherit; font-weight: 700; cursor: pointer; }

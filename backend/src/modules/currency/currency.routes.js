@@ -5,11 +5,21 @@ const currencyController = require('./currency.controller');
 
 const router = express.Router();
 
+/*
+ * The catalogue is public, and it is the only thing here that is.
+ *
+ * It is reference data — currency codes with the name and symbol to fill in,
+ * read from the currency API or from the bundled list when that is unreachable.
+ * It holds nothing about any organization, and signup needs it *before* there is
+ * a session: the reporting currency is chosen while the workspace is being
+ * created. Everything below it requires a session.
+ */
+router.get('/catalogue', currencyController.catalogue);
+
 router.use(requireAuth);
 
-// Static paths come before `/:id` so `catalogue`, `base`, `rate` and `convert`
-// are never mistaken for a currency id.
-router.get('/catalogue', currencyController.catalogue);
+// Static paths come before `/:id` so `base`, `rate` and `convert` are never
+// mistaken for a currency id.
 router.get('/rate', currencyController.rate);
 router.get('/convert', currencyController.convertAmount);
 router.post('/base', currencyController.setBase);

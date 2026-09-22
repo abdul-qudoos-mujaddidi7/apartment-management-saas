@@ -2,19 +2,22 @@
   import { push } from 'svelte-spa-router';
   import { register } from '../services/auth';
   import { resetAuth } from '../stores/auth';
+  import CurrencyPicker from '../components/ui/CurrencyPicker.svelte';
   import LanguageSwitcher from '../components/LanguageSwitcher.svelte';
   import { locale, translate } from '../i18n';
   /*
    * The workspace's reporting currency, chosen at signup because every later
    * report is stated in it and because it cannot be changed once the
-   * organization has posted its first invoice or payment. The options are
-   * shared with the marketing page's signup form.
+   * organization has posted its first invoice or payment. The field searches the
+   * currency API's list and fills the name and symbol in from what is picked, and
+   * it is the same picker Settings › Currencies uses.
    */
-  import { currencyOptions, CUSTOM_CURRENCY, isCurrencyCode, resolveCurrencyCode } from '../utils/currencies';
+  import { isCurrencyCode } from '../utils/currencies';
 
   const points = ['pointOne', 'pointTwo', 'pointThree'];
 
-  let form = { organization: '', fullName: '', email: '', phone: '', password: '', confirmPassword: '', currency: 'AFN', customCurrency: '' };
+  // Empty currency means the workspace reports in AFN, the default.
+  let form = { organization: '', fullName: '', email: '', phone: '', password: '', confirmPassword: '', currency: '', currencyName: '', currencySymbol: '' };
   let fieldErrors = {};
   let errorMessage = '';
   let submitting = false;
@@ -44,16 +47,24 @@
     else if (form.password.length < 8) errors.password = translate('register.minPassword');
     if (!form.confirmPassword) errors.confirmPassword = required('confirmPassword');
     else if (form.password !== form.confirmPassword) errors.confirmPassword = translate('register.mismatch');
-    if (form.currency === CUSTOM_CURRENCY && !isCurrencyCode(form.customCurrency)) {
-      errors.customCurrency = translate('register.invalidCurrency');
+    /* Empty is the default, AFN; anything else has to be a three-letter code. */
+    if (form.currency.trim() && !isCurrencyCode(form.currency)) {
+      errors.currency = translate('register.invalidCurrency');
     }
 
     fieldErrors = errors;
     return Object.keys(errors).length === 0;
   }
 
-  // The three-letter code the API receives, whether it was picked or typed.
-  $: selectedCurrency = resolveCurrencyCode(form.currency, form.customCurrency);
+  // The three-letter code the API receives, picked or typed or left empty.
+  $: selectedCurrency = form.currency.trim().toUpperCase();
+
+  /* Clear the complaint as soon as the field holds a code again, rather than
+     making the next submit do it. */
+  $: if (fieldErrors.currency && (!form.currency.trim() || isCurrencyCode(form.currency))) {
+    const { currency, ...rest } = fieldErrors;
+    fieldErrors = rest;
+  }
 
   function messageFor(error) {
     const keyByCode = {
@@ -190,35 +201,23 @@
               {$locale.register.fields.currency}
               <span class="au-hint">{$locale.register.currencyHint}</span>
             </label>
-            <select
-              class="au-input"
+            <CurrencyPicker
               id="register-currency"
-              value={form.currency}
-              on:change={(event) => update('currency', event.currentTarget.value)}
-              aria-invalid={Boolean(fieldErrors.customCurrency)}
-              aria-describedby={fieldErrors.customCurrency ? 'register-currency-error' : undefined}
-            >
-              {#each currencyOptions as option (option.code)}
-                <option value={option.code}>{option.code} — {option.name}</option>
-              {/each}
-              <option value={CUSTOM_CURRENCY}>{$locale.register.currencyOther}</option>
-            </select>
-            {#if form.currency === CUSTOM_CURRENCY}
-              <input
-                class="au-input"
-                style="margin-block-start: .5rem;"
-                id="register-custom-currency"
-                type="text"
-                maxlength="3"
-                placeholder="USD"
-                value={form.customCurrency}
-                on:input={(event) => update('customCurrency', event.currentTarget.value)}
-                aria-invalid={Boolean(fieldErrors.customCurrency)}
-              />
+              bind:code={form.currency}
+              bind:name={form.currencyName}
+              bind:symbol={form.currencySymbol}
+              inputClass="au-input"
+              invalid={Boolean(fieldErrors.currency)}
+              unavailableMessage={$locale.register.currencyUnavailable}
+            />
+            {#if form.currencyName}
+              <p class="au-hint">{form.currency} — {form.currencyName} {form.currencySymbol}</p>
+            {:else}
+              <p class="au-hint">{$locale.register.currencyDefault}</p>
             {/if}
-            {#if fieldErrors.customCurrency}
+            {#if fieldErrors.currency}
               <p class="au-error" id="register-currency-error">
-                <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.customCurrency}
+                <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.currency}
               </p>
             {/if}
           </div>
