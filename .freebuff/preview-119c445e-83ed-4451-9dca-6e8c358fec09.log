@@ -1,0 +1,36 @@
+
+> frontend@0.0.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v8.3.0[39m  [2mready in [0m[1m923[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m3:25:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/tokens.css[22m
+[2m3:48:38 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/en.js[22m
+[2m3:48:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/fa.js[22m
+[2m3:49:02 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/ps.js[22m
+[2m3:51:04 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte, /src/pages/Dashboard.svelte?svelte&type=style&lang.css[22m
+[2m3:54:00 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte[22m
+[2m3:54:50 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/en.js[22m
+[2m3:54:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/fa.js[22m
+[2m3:55:02 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/ps.js[22m
+[2m3:55:09 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte?svelte&type=style&lang.css[22m
+[2m4:02:47 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte[22m
+[2m4:04:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte[22m
+[2m4:11:15 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte[22m
+[2m4:11:34 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte[22m
+[2m4:11:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte?svelte&type=style&lang.css[22m
+[2m4:12:21 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte?svelte&type=style&lang.css[22m
+[2m4:12:59 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.svelte, /src/pages/Dashboard.svelte?svelte&type=style&lang.css[22m
+[2m4:13:23 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/en.js[22m
+[2m4:13:36 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/fa.js[22m
+[2m4:13:47 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/ps.js[22m
+[2m4:14:47 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/en.js[22m
+[2m4:14:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/fa.js[22m
+[2m4:15:06 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/ps.js[22m
+[2m4:15:39 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/en.js[22m
+[2m4:15:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/fa.js[22m
+[2m4:15:56 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/fa.js[22m
+[2m4:16:07 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/i18n/ps.js[22m

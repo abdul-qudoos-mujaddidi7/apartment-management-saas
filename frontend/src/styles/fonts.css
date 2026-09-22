@@ -1,0 +1,60 @@
+/* ==========================================================================
+   ApartmentPro — typefaces
+   --------------------------------------------------------------------------
+   Vazirmatn, self-hosted (no CDN, no network dependency at runtime).
+
+   Why this face: the product ships in English, Dari and Pashto, and Dari is
+   the default language — so the UI face has to draw Latin and Arabic script
+   in one voice, at 12–15px, all day. Vazirmatn was designed for Persian
+   text first and its Latin is drawn to match, which is exactly the balance
+   this product needs; a Latin-only UI face would leave the RTL screens
+   falling back to a different family mid-sentence.
+
+   Licensed under the SIL Open Font License 1.1.
+   https://github.com/rastikerdar/vazirmatn
+
+   Only the five weights the token scale actually uses are shipped — the
+   design system declares exactly these: 400, 500, 600, 700, 800. Adding a
+   weight to tokens.css means adding the file here, or the browser will
+   synthesise it and the numerals will smear.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/vazirmatn/Vazirmatn-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/vazirmatn/Vazirmatn-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/vazirmatn/Vazirmatn-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/vazirmatn/Vazirmatn-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/vazirmatn/Vazirmatn-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}

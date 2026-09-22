@@ -1,0 +1,21 @@
+[2m3:19:36 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: src/App.svelte:155:31 Can only bind to state or props
+https://svelte.dev/e/bind_invalid_value
+  Plugin: [35mvite-plugin-svelte:compile[39m
+  File: [36msrc/App.svelte[39m:155:31
+[33m   153 |  
+   154 |    <AddPropertyModal bind:open={addPropertyOpen} onsubmit={handleAddProperty} />
+   155 |    <AddBuildingModal bind:open={addBuildingOpen} onsubmit={handleAddBuilding} />
+                                                        ^
+   156 |  </div>
+   157 |  [39m
+[2m3:19:36 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: src/App.svelte:155:31 Can only bind to state or props
+https://svelte.dev/e/bind_invalid_value[39m
+  Plugin: [35mvite-plugin-svelte:compile[39m
+  File: [36msrc/App.svelte[39m:155:31
+[33m   153 |  
+   154 |    <AddPropertyModal bind:open={addPropertyOpen} onsubmit={handleAddProperty} />
+   155 |    <AddBuildingModal bind:open={addBuildingOpen} onsubmit={handleAddBuilding} />
+                                                        ^
+   156 |  </div>
+   157 |  [39m
+[2m3:30:36 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/styles/theme.css (resolved id: C:/Users/deel/apartment-management-saas/dashboard-bootstrap/src/styles/theme.css) in C:/Users/deel/apartment-management-saas/dashboard-bootstrap/src/main.js. Does the file exist?

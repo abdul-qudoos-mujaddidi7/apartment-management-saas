@@ -1,0 +1,790 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApartmentType {
+  STUDIO
+  ONE_BEDROOM
+  TWO_BEDROOM
+  THREE_BEDROOM
+  FOUR_BEDROOM_PLUS
+  DUPLEX
+  PENTHOUSE
+  OFFICE
+  SHOP
+}
+
+enum ApartmentStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+  INACTIVE
+}
+
+enum TenantStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssetCondition {
+  NEW
+  GOOD
+  FAIR
+  DAMAGED
+  BROKEN
+}
+
+enum LeaseStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum SecurityDepositTransactionType {
+  RECEIVED
+  DEDUCTION
+  REFUND
+}
+
+enum SecurityDepositTransactionStatus {
+  POSTED
+  VOIDED
+}
+
+enum UtilityType {
+  ELECTRICITY
+  WATER
+  GAS
+}
+
+enum MeterStatus {
+  ACTIVE
+  INACTIVE
+  REPLACED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum InvoiceItemType {
+  RENT
+  ELECTRICITY
+  WATER
+  GAS
+  OTHER
+}
+
+enum FinancialAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum JournalStatus {
+  POSTED
+  VOIDED
+}
+
+enum PaymentStatus {
+  POSTED
+  VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  MOBILE_MONEY
+  OTHER
+}
+
+enum TenantLedgerEntryType {
+  INVOICE
+  PAYMENT
+  DEBIT_ADJUSTMENT
+  CREDIT_ADJUSTMENT
+  REVERSAL
+}
+
+model Organization {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  // Reporting currency. Every money document keeps its own currency and a
+  // frozen rate, and mirrors its amounts into this one so reports can be summed
+  // without ever adding different currencies together.
+  baseCurrency String @default("AFN") @db.VarChar(3)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users                       User[]
+  buildings                   Building[]
+  apartments                  Apartment[]
+  tenants                     Tenant[]
+  leases                      Lease[]
+  invoices                    Invoice[]
+  securityDepositTransactions SecurityDepositTransaction[]
+  financialAccounts           FinancialAccount[]
+  journals                    Journal[]
+  payments                    Payment[]
+  tenantAccounts              TenantAccount[]
+  tenantLedgerEntries         TenantLedgerEntry[]
+  assetCategories             AssetCategory[]
+  assets                      Asset[]
+  apartmentAssets             ApartmentAsset[]
+  currencies                  Currency[]
+  exchangeRates               ExchangeRate[]
+
+  @@index([deletedAt])
+}
+
+/* --- Multi-currency model ------------------------------------------------
+ *
+ * Every money document carries three things:
+ *   * `currency`      — the currency it is denominated in
+ *   * `exchangeRate`  — base-currency units per 1 unit of `currency`, frozen
+ *                       when the document is posted, never re-read later
+ *   * `base*` columns — the same amounts converted at that frozen rate
+ *
+ * Reports and account balances are summed from the `base*` columns only, so a
+ * single number is correct at every point in history: editing a rate today
+ * cannot rewrite what last year's ledger meant. The document itself still
+ * displays the currency the tenant was actually billed or paid in.
+ */
+
+// A currency an organization trades in. `Organization.baseCurrency` is the one
+// every report sums to, and it always has exactly one isBase row here.
+model Currency {
+  id             String    @id @default(cuid())
+  organizationId String
+  code           String    @db.VarChar(3)
+  name           String    @db.VarChar(100)
+  symbol         String?   @db.VarChar(8)
+  // Exactly one base currency per organization; its rate is always 1.
+  isBase         Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  exchangeRates ExchangeRate[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, isActive])
+}
+
+// Effective-dated rate history: 1 unit of `currency` is worth `rate` units of
+// the organization's base currency on and after `effectiveDate`.
+model ExchangeRate {
+  id             String   @id @default(cuid())
+  organizationId String
+  currencyId     String
+  rate           Decimal  @db.Decimal(18, 8)
+  effectiveDate  DateTime @db.Date
+  source         String   @default("MANUAL") @db.VarChar(20)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  currency     Currency     @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+
+  @@unique([currencyId, effectiveDate])
+  @@index([organizationId, effectiveDate])
+  @@index([currencyId, effectiveDate])
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  firstName      String?
+  lastName       String?
+  organizationId String
+  roleId         String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([roleId])
+  @@index([deletedAt])
+}
+
+model Building {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  code           String
+  address        String?
+  status         String    @default("ACTIVE")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  floors       Floor[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([deletedAt])
+  @@index([organizationId, deletedAt])
+}
+
+model Floor {
+  id          String    @id @default(cuid())
+  buildingId  String
+  floorNumber Int
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  building   Building    @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  apartments Apartment[]
+
+  @@unique([buildingId, floorNumber])
+  @@index([buildingId])
+  @@index([deletedAt])
+  @@index([buildingId, deletedAt])
+}
+
+model Apartment {
+  id              String          @id @default(cuid())
+  organizationId  String
+  floorId         String
+  apartmentNumber String
+  name            String
+  type            ApartmentType
+  area            Decimal?        @db.Decimal(10, 2)
+  bedrooms        Int             @default(0)
+  bathrooms       Int             @default(0)
+  monthlyRent     Decimal         @default(0) @db.Decimal(12, 2)
+  status          ApartmentStatus @default(AVAILABLE)
+  // NULL means the apartment's asset/furniture registration is still pending;
+  // a timestamp means the user finished registering its assets.
+  assetSetupCompletedAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  floor           Floor            @relation(fields: [floorId], references: [id], onDelete: Restrict)
+  leases          Lease[]
+  meters          Meter[]
+  apartmentAssets ApartmentAsset[]
+
+  @@unique([floorId, apartmentNumber])
+  @@index([organizationId])
+  @@index([floorId])
+  @@index([deletedAt])
+  @@index([organizationId, deletedAt])
+  @@index([floorId, deletedAt])
+  @@index([organizationId, assetSetupCompletedAt])
+}
+
+// Meters hang off an apartment and carry no organizationId: ownership is always
+// resolved through Apartment -> Floor -> Building -> Organization.
+model Meter {
+  id               String      @id @default(cuid())
+  apartmentId      String
+  meterNumber      String
+  utilityType      UtilityType
+  unit             String
+  defaultUnitPrice Decimal     @default(0) @db.Decimal(15, 4)
+  initialReading   Decimal?    @db.Decimal(15, 3)
+  installationDate DateTime?
+  status           MeterStatus @default(ACTIVE)
+  notes            String?     @db.Text
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
+
+  apartment Apartment      @relation(fields: [apartmentId], references: [id], onDelete: Restrict)
+  readings  MeterReading[]
+
+  @@unique([apartmentId, meterNumber])
+  @@index([apartmentId])
+  @@index([apartmentId, deletedAt])
+  @@index([utilityType])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model MeterReading {
+  id              String    @id @default(cuid())
+  meterId         String
+  readingDate     DateTime
+  previousReading Decimal   @db.Decimal(15, 3)
+  currentReading  Decimal   @db.Decimal(15, 3)
+  consumption     Decimal   @db.Decimal(15, 3)
+  unitPrice       Decimal   @default(0) @db.Decimal(15, 4)
+  amount          Decimal   @default(0) @db.Decimal(15, 2)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  meter       Meter        @relation(fields: [meterId], references: [id], onDelete: Restrict)
+  invoiceItem InvoiceItem?
+
+  @@unique([meterId, readingDate])
+  @@index([meterId])
+  @@index([readingDate])
+  @@index([deletedAt])
+  @@index([meterId, readingDate])
+}
+
+model Tenant {
+  id                    String       @id @default(cuid())
+  organizationId        String
+  firstName             String
+  lastName              String
+  phone                 String
+  alternatePhone        String?
+  email                 String?
+  nationalId            String?
+  address               String?      @db.VarChar(500)
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  notes                 String?      @db.Text
+  status                TenantStatus @default(ACTIVE)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  deletedAt             DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  leases         Lease[]
+  journalLines   JournalLine[]
+  payments       Payment[]
+  tenantAccounts TenantAccount[]
+
+  @@index([organizationId])
+  @@index([deletedAt])
+  @@index([organizationId, deletedAt])
+}
+
+model Lease {
+  id              String      @id @default(cuid())
+  organizationId  String
+  tenantId        String
+  apartmentId     String
+  contractNumber  String
+  startDate       DateTime
+  endDate         DateTime
+  monthlyRent     Decimal     @db.Decimal(12, 2)
+  securityDeposit Decimal     @default(0) @db.Decimal(12, 2)
+  paymentDueDay   Int
+  status          LeaseStatus @default(DRAFT)
+  notes           String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
+
+  organization                Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  tenant                      Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  apartment                   Apartment                    @relation(fields: [apartmentId], references: [id], onDelete: Restrict)
+  securityDepositTransactions SecurityDepositTransaction[]
+  invoices                    Invoice[]
+  payments                    Payment[]
+
+  @@unique([organizationId, contractNumber])
+  @@index([organizationId, deletedAt])
+  @@index([tenantId, deletedAt])
+  @@index([apartmentId, deletedAt])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  leaseId        String
+  invoiceNumber  String
+  invoiceDate    DateTime
+  dueDate        DateTime?
+  currency       String        @default("AFN") @db.VarChar(3)
+  exchangeRate   Decimal       @default(1) @db.Decimal(18, 8)
+  subtotal       Decimal       @db.Decimal(15, 2)
+  total          Decimal       @db.Decimal(15, 2)
+  paidAmount     Decimal       @default(0) @db.Decimal(15, 2)
+  // Base-currency mirrors, frozen at the rate above when the invoice was posted.
+  baseSubtotal   Decimal       @default(0) @db.Decimal(15, 2)
+  baseTotal      Decimal       @default(0) @db.Decimal(15, 2)
+  basePaidAmount Decimal       @default(0) @db.Decimal(15, 2)
+  status         InvoiceStatus @default(UNPAID)
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lease        Lease         @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  items        InvoiceItem[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+  @@index([leaseId])
+  @@index([status])
+  @@index([invoiceDate])
+  @@index([deletedAt])
+  @@index([organizationId, currency])
+}
+
+model FinancialAccount {
+  id             String               @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  type           FinancialAccountType
+  isSystem       Boolean              @default(false)
+  isActive       Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
+
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  journalLines     JournalLine[]
+  receivedPayments Payment[]     @relation("PaymentReceiveAccount")
+
+  @@unique([organizationId, code])
+  @@index([organizationId, deletedAt])
+}
+
+// A journal is written in one currency and carries the frozen rate for it, so
+// every line's base mirror uses the same factor and the entry balances in both
+// currencies. Account balances come from the base mirrors only.
+model Journal {
+  id              String        @id @default(cuid())
+  organizationId  String
+  journalNumber   String
+  transactionDate DateTime
+  currency        String        @default("AFN") @db.VarChar(3)
+  exchangeRate    Decimal       @default(1) @db.Decimal(18, 8)
+  referenceType   String
+  referenceId     String
+  description     String?       @db.Text
+  status          JournalStatus @default(POSTED)
+  voidedAt        DateTime?
+  voidReason      String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lines        JournalLine[]
+
+  @@unique([organizationId, journalNumber])
+  @@unique([organizationId, referenceType, referenceId])
+  @@index([organizationId, transactionDate])
+}
+
+model TenantAccount {
+  id             String   @id @default(cuid())
+  organizationId String
+  tenantId       String
+  balance        Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  entries      TenantLedgerEntry[]
+
+  @@unique([organizationId, tenantId])
+  @@index([organizationId, balance])
+}
+
+// The tenant sub-ledger is kept in the organization's base currency so a
+// tenant's running balance is one number, and so it can be reconciled against
+// the 1100 receivable control account. `currency`/`exchangeRate` record which
+// document the entry came from when that document was issued in another
+// currency.
+model TenantLedgerEntry {
+  id              String                @id @default(cuid())
+  organizationId  String
+  tenantAccountId String
+  type            TenantLedgerEntryType
+  transactionDate DateTime
+  currency        String                @default("AFN") @db.VarChar(3)
+  exchangeRate    Decimal               @default(1) @db.Decimal(18, 8)
+  referenceType   String
+  referenceId     String
+  description     String?               @db.Text
+  debit           Decimal               @default(0) @db.Decimal(15, 2)
+  credit          Decimal               @default(0) @db.Decimal(15, 2)
+  balanceAfter    Decimal               @db.Decimal(15, 2)
+  createdAt       DateTime              @default(now())
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  tenantAccount TenantAccount @relation(fields: [tenantAccountId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, referenceType, referenceId, type], map: "tenant_ledger_ref_type_uq")
+  @@index([organizationId])
+  @@index([tenantAccountId, transactionDate])
+  @@index([referenceType, referenceId])
+}
+
+model JournalLine {
+  id          String   @id @default(cuid())
+  journalId   String
+  accountId   String
+  tenantId    String?
+  // Amounts in the journal's own currency…
+  debit       Decimal  @default(0) @db.Decimal(15, 2)
+  credit      Decimal  @default(0) @db.Decimal(15, 2)
+  // …and their base-currency mirror at the journal's frozen rate. Account
+  // balances and trial balances are summed from these columns only.
+  baseDebit   Decimal  @default(0) @db.Decimal(15, 2)
+  baseCredit  Decimal  @default(0) @db.Decimal(15, 2)
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  journal Journal          @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  account FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  tenant  Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([journalId])
+  @@index([accountId])
+  @@index([tenantId])
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  organizationId   String
+  tenantId         String
+  leaseId          String?
+  paymentNumber    String
+  paymentDate      DateTime
+  currency         String        @default("AFN") @db.VarChar(3)
+  exchangeRate     Decimal       @default(1) @db.Decimal(18, 8)
+  amount           Decimal       @db.Decimal(15, 2)
+  // Amount received, converted to the base currency at the frozen rate above.
+  baseAmount       Decimal       @default(0) @db.Decimal(15, 2)
+  receiveAccountId String
+  paymentMethod    PaymentMethod
+  reference        String?       @db.VarChar(191)
+  notes            String?       @db.Text
+  status           PaymentStatus @default(POSTED)
+  voidedAt         DateTime?
+  voidReason       String?       @db.Text
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  lease          Lease?              @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  receiveAccount FinancialAccount    @relation("PaymentReceiveAccount", fields: [receiveAccountId], references: [id], onDelete: Restrict)
+  allocations    PaymentAllocation[]
+
+  @@unique([organizationId, paymentNumber])
+  @@index([organizationId, paymentDate])
+  @@index([tenantId, status])
+  @@index([leaseId])
+}
+
+// `amount` is always in the payment's currency, so allocations still sum to the
+// receipt. When the item belongs to an invoice in another currency, the amount
+// applied to that item is converted once and frozen in `appliedAmount` (invoice
+// currency) and `baseAppliedAmount` (base currency).
+model PaymentAllocation {
+  id                String    @id @default(cuid())
+  paymentId         String
+  invoiceItemId     String
+  amount            Decimal   @db.Decimal(15, 2)
+  appliedAmount     Decimal   @default(0) @db.Decimal(15, 2)
+  baseAppliedAmount Decimal   @default(0) @db.Decimal(15, 2)
+  voidedAt          DateTime?
+  createdAt         DateTime  @default(now())
+
+  payment     Payment     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoiceItem InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentId, invoiceItemId])
+  @@index([invoiceItemId, voidedAt])
+}
+
+model InvoiceItem {
+  id             String             @id @default(cuid())
+  invoiceId      String
+  meterReadingId String?            @unique
+  type           InvoiceItemType
+  description    String
+  quantity       Decimal            @default(1) @db.Decimal(15, 3)
+  unitPrice      Decimal            @db.Decimal(15, 4)
+  amount         Decimal            @db.Decimal(15, 2)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  invoice              Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  meterReading         MeterReading?        @relation(fields: [meterReadingId], references: [id], onDelete: Restrict)
+  paymentAllocations   PaymentAllocation[]
+
+  @@index([invoiceId])
+}
+
+model SecurityDepositTransaction {
+  id              String                           @id @default(cuid())
+  organizationId  String
+  leaseId         String
+  type            SecurityDepositTransactionType
+  currency        String                           @default("AFN") @db.VarChar(3)
+  exchangeRate    Decimal                          @default(1) @db.Decimal(18, 8)
+  amount          Decimal                          @db.Decimal(15, 2)
+  // Amount in the base currency; deposit status is judged on this one.
+  baseAmount      Decimal                          @default(0) @db.Decimal(15, 2)
+  transactionDate DateTime
+  reference       String?
+  notes           String?                          @db.Text
+  status          SecurityDepositTransactionStatus @default(POSTED)
+  voidReason      String?                          @db.Text
+  voidedAt        DateTime?
+  createdAt       DateTime                         @default(now())
+  updatedAt       DateTime                         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lease        Lease        @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([leaseId])
+  @@index([organizationId, leaseId])
+  @@index([type])
+  @@index([status])
+  @@index([transactionDate])
+}
+
+// --- Assets / furniture (سجل‌ها و اموال) --------------------------------
+
+model AssetCategory {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  code           String?
+  description    String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assets       Asset[]
+
+  @@index([organizationId])
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, name])
+  @@index([deletedAt])
+}
+
+model Asset {
+  id             String    @id @default(cuid())
+  organizationId String
+  categoryId     String?
+  name           String
+  code           String?
+  unit           String?
+  description    String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  category        AssetCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  apartmentAssets ApartmentAsset[]
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([name])
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, name])
+  @@index([deletedAt])
+}
+
+// Assets assigned to a specific apartment. organizationId is stored so listing
+// and filtering never have to walk the Apartment -> Floor -> Building chain, but
+// it is always written from the authenticated organization, never the request.
+model ApartmentAsset {
+  id             String         @id @default(cuid())
+  organizationId String
+  apartmentId    String
+  assetId        String
+  quantity       Int            @default(1)
+  condition      AssetCondition @default(GOOD)
+  serialNumber   String?
+  modelNumber    String?
+  purchaseDate   DateTime?
+  unitValue      Decimal?       @db.Decimal(15, 2)
+  notes          String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  apartment    Apartment    @relation(fields: [apartmentId], references: [id], onDelete: Restrict)
+  asset        Asset        @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([organizationId, deletedAt])
+  @@index([apartmentId])
+  @@index([apartmentId, deletedAt])
+  @@index([assetId])
+  @@index([serialNumber])
+  @@index([condition])
+  @@index([deletedAt])
+}
+
+model Role {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@index([deletedAt])
+}
+
+model Permission {
+  id          String    @id @default(cuid())
+  name        String
+  code        String    @unique
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  rolePermissions RolePermission[]
+
+  @@index([deletedAt])
+}
+
+model RolePermission {
+  id           String    @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+  @@index([deletedAt])
+}

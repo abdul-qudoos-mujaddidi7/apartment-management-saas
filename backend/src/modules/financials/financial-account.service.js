@@ -1,0 +1,112 @@
+const { Prisma } = require('@prisma/client');
+
+const Decimal = Prisma.Decimal;
+
+const DEFAULT_ACCOUNTS = [
+  ['1000', 'Cash', 'ASSET'],
+  ['1100', 'Accounts Receivable', 'ASSET'],
+  ['2000', 'Security Deposit Liability', 'LIABILITY'],
+  ['4000', 'Rent Income', 'INCOME'],
+  ['4010', 'Electricity Income', 'INCOME'],
+  ['4020', 'Water Income', 'INCOME'],
+  ['4030', 'Gas Income', 'INCOME'],
+  ['5000', 'Building Expenses', 'EXPENSE'],
+];
+
+async function ensureDefaultAccounts(client, organizationId) {
+  await client.financialAccount.createMany({
+    data: DEFAULT_ACCOUNTS.map(([code, name, type]) => ({
+      organizationId,
+      code,
+      name,
+      type,
+      isSystem: true,
+      isActive: true,
+    })),
+    skipDuplicates: true,
+  });
+
+  const accounts = await client.financialAccount.findMany({
+    where: {
+      organizationId,
+      deletedAt: null,
+      code: { in: DEFAULT_ACCOUNTS.map(([code]) => code) },
+    },
+  });
+
+  const byCode = Object.fromEntries(accounts.map((account) => [account.code, account]));
+  for (const [code] of DEFAULT_ACCOUNTS) {
+    if (!byCode[code]) {
+      throw new Error(`Default account ${code} could not be created.`);
+    }
+  }
+
+  return byCode;
+}
+
+async function listFinancialAccounts(organizationId) {
+  // Financial accounts are initialized lazily on the first financial read or
+  // write. The unique organization/code constraint makes this safe under load.
+  await ensureDefaultAccounts(require('../../lib/prisma'), organizationId);
+  const prisma = require('../../lib/prisma');
+  const accounts = await prisma.financialAccount.findMany({
+    where: { organizationId, deletedAt: null, isActive: true },
+    orderBy: { code: 'asc' },
+  });
+
+  return accounts.map((account) => ({
+    ...account,
+    openingBalance: Number(new Decimal(0)),
+  }));
+}
+
+function accountBalance(account, debit, credit) {
+  const debits = new Decimal(debit || 0);
+  const credits = new Decimal(credit || 0);
+  return ['ASSET', 'EXPENSE'].includes(account.type) ? debits.minus(credits) : credits.minus(debits);
+}
+
+async function listAccountsWithBalances(organizationId) {
+  const prisma = require('../../lib/prisma');
+  await ensureDefaultAccounts(prisma, organizationId);
+  const accounts = await prisma.financialAccount.findMany({ where: { organizationId, deletedAt: null }, orderBy: { code: 'asc' } });
+  const grouped = await prisma.journalLine.groupBy({
+    by: ['accountId'],
+    where: { account: { organizationId }, journal: { organizationId, status: 'POSTED' } },
+    _sum: { debit: true, credit: true },
+  });
+  const totals = Object.fromEntries(grouped.map((row) => [row.accountId, row._sum]));
+  return accounts.map((account) => ({
+    ...account,
+    debit: Number(totals[account.id]?.debit || 0),
+    credit: Number(totals[account.id]?.credit || 0),
+    balance: Number(accountBalance(account, totals[account.id]?.debit, totals[account.id]?.credit)),
+  }));
+}
+
+async function getAccount(organizationId, id) {
+  const accounts = await listAccountsWithBalances(organizationId);
+  const account = accounts.find((item) => item.id === id);
+  if (!account) throw Object.assign(new Error('Account not found.'), { code: 'ACCOUNT_NOT_FOUND' });
+  return account;
+}
+
+async function getAccountLedger(organizationId, id, query) {
+  const prisma = require('../../lib/prisma');
+  await getAccount(organizationId, id);
+  const where = { accountId: id, journal: { organizationId } };
+  const [items, total] = await prisma.$transaction([
+    prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true, lastName: true } } }, orderBy: [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+    prisma.journalLine.count({ where }),
+  ]);
+  return { items: items.map((line) => ({ ...line, debit: Number(line.debit), credit: Number(line.credit) })), pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) } };
+}
+
+module.exports = {
+  DEFAULT_ACCOUNTS,
+  ensureDefaultAccounts,
+  listFinancialAccounts,
+  listAccountsWithBalances,
+  getAccount,
+  getAccountLedger,
+};

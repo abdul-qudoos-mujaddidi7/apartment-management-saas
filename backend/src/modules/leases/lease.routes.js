@@ -1,0 +1,1 @@
+const router=require('express').Router(); const {requireAuth}=require('../auth/auth.middleware'); const c=require('./lease.controller'); router.use(requireAuth); router.get('/',c.list);router.get('/:id',c.get);router.post('/',c.create);router.put('/:id',c.update);router.delete('/:id',c.remove);module.exports=router;
