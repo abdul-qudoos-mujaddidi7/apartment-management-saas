@@ -15,14 +15,36 @@ const optionalCurrencyCode = z.preprocess(
   z.string().trim().length(3).regex(/^[A-Za-z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
 );
 
-const createTransactionSchema = z.object({
-  type: z.enum(['RECEIVED', 'DEDUCTION', 'REFUND']),
-  currency: optionalCurrencyCode,
-  amount: z.coerce.number().positive(),
-  transactionDate: z.coerce.date(),
-  reference: optionalText(191),
-  notes: optionalText(5000),
-});
+// The account a receipt is taken into, and a refund is paid out of. Omitted
+// means the workspace's cash account.
+const optionalAccountId = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z.string().trim().min(1).optional(),
+);
+
+const createTransactionSchema = z
+  .object({
+    type: z.enum(['RECEIVED', 'DEDUCTION', 'REFUND']),
+    // Why the deposit is being kept. Required for a deduction, because the two
+    // reasons post to different accounts: rent arrears settle a receivable,
+    // damage is income that has never been recognised.
+    reason: z.preprocess(
+      (value) => (value === '' || value === null || value === undefined ? undefined : String(value).trim().toUpperCase()),
+      z.enum(['RENT_ARREARS', 'DAMAGE', 'OTHER'], {
+        message: 'Use RENT_ARREARS, DAMAGE or OTHER.',
+      }).optional(),
+    ),
+    currency: optionalCurrencyCode,
+    amount: z.coerce.number().positive(),
+    transactionDate: z.coerce.date(),
+    accountId: optionalAccountId,
+    reference: optionalText(191),
+    notes: optionalText(5000),
+  })
+  .refine((data) => data.type !== 'DEDUCTION' || Boolean(data.reason), {
+    path: ['reason'],
+    message: 'Say why the deposit is being kept: rent arrears, damage, or other.',
+  });
 
 const voidTransactionSchema = z.object({
   voidReason: z.string().trim().min(1).max(5000),

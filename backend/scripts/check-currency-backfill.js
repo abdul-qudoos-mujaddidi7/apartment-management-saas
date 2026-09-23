@@ -294,6 +294,48 @@ async function checkDeposits() {
   }
 
   notes.push(`${deposits.length} security deposit transaction(s) checked`);
+
+  /*
+   * A deposit is held money: what the ledger says is held must be what the
+   * deposit records say is held. Without this rule the whole deposit ledger
+   * could stop posting and nothing would report it — which is exactly how the
+   * liability account sat unused while deposits came and went.
+   */
+  const organizationIds = (await prisma.organization.findMany({ where: { deletedAt: null }, select: { id: true } })).map((organization) => organization.id);
+
+  for (const organizationId of organizationIds) {
+    const liability = await prisma.financialAccount.findFirst({
+      where: { organizationId, code: '2000', deletedAt: null },
+      select: { id: true },
+    });
+    if (!liability) continue;
+
+    // Posted movements only: a voided transaction keeps its journal and posts a
+    // reversal, and the two cancel, so both sides are read the same way.
+    const grouped = await prisma.securityDepositTransaction.groupBy({
+      by: ['type'],
+      where: { organizationId, status: 'POSTED' },
+      _sum: { baseAmount: true },
+    });
+    const held = grouped.reduce((total, row) => {
+      const amount = asMoney(row._sum.baseAmount);
+      if (row.type === 'RECEIVED') return total.plus(amount);
+      return total.minus(amount);
+    }, new Decimal(0));
+
+    const gl = await prisma.journalLine.aggregate({
+      where: { accountId: liability.id, journal: { organizationId } },
+      _sum: { baseDebit: true, baseCredit: true },
+    });
+    const owed = asMoney(gl._sum.baseCredit).minus(asMoney(gl._sum.baseDebit));
+
+    check(
+      closeEnough(held, owed),
+      `Organization ${organizationId}: deposits held (${held}) do not match the 2000 liability account (${owed})`,
+    );
+  }
+
+  notes.push(`${organizationIds.length} organization(s) reconciled against 2000`);
 }
 
 async function main() {

@@ -90,6 +90,7 @@ const listApartmentsSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   search: z.string().trim().max(100).default(''),
   floorId: z.string().trim().min(1).optional(),
+  status: z.enum(apartmentStatuses).optional(),
 });
 
 module.exports = {

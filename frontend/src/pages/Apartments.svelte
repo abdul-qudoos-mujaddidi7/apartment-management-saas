@@ -7,6 +7,7 @@
   import PageToolbar from '../components/ui/PageToolbar.svelte';
   import DataTable from '../components/ui/DataTable.svelte';
   import Checkbox from '../components/ui/Checkbox.svelte';
+  import TabFilters from '../components/ui/TabFilters.svelte';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
@@ -50,6 +51,7 @@
   };
 
   let search = '';
+  let statusFilter = 'all';
   let loading = false;
   let saving = false;
 
@@ -145,7 +147,7 @@
     loading = true;
     errorMessage = '';
     try {
-      const filters = { page, pageSize: pagination.pageSize, search: search.trim() };
+      const filters = { page, pageSize: pagination.pageSize, search: search.trim(), status: statusFilter === 'all' ? undefined : statusFilter };
       if (floorId) filters.floorId = floorId;
       const response = await listApartments(filters);
       apartments = response.items || [];
@@ -350,16 +352,25 @@
 
   function statusLabel(status) { return $locale.apartments.statuses[status] || status; }
 
-  $: resultSummary = `${$locale.apartments.totalApartments}: ${pagination.total}`;
-  $: pageTitle = floor ? floor.name : $locale.apartments.title;
-  // Leading checkbox column — ids of the rows currently rendered.
+  $: statusTabs = [
+    { key: 'all', label: $locale.common.all },
+    { key: 'AVAILABLE', label: $locale.apartments.statuses.AVAILABLE },
+    { key: 'OCCUPIED', label: $locale.apartments.statuses.OCCUPIED },
+    { key: 'RESERVED', label: $locale.apartments.statuses.RESERVED },
+    { key: 'MAINTENANCE', label: $locale.apartments.statuses.MAINTENANCE }
+  ];
+  function handleStatusChange(event) { statusFilter = event.detail; loadApartments(1); }
+
   let selectedIds = createSelection();
   $: rowIds = apartments.map((apartment) => apartment.id);
   $: allRowsSelected = isAllSelected(selectedIds, rowIds);
   $: someRowsSelected = isSomeSelected(selectedIds, rowIds);
-
   function toggleRow(id) { selectedIds = toggleSelected(selectedIds, id); }
   function toggleAllRows() { selectedIds = toggleAllSelected(selectedIds, rowIds); }
+
+  $: resultSummary = `${$locale.apartments.totalApartments}: ${pagination.total}`;
+  $: pageTitle = floor ? floor.name : $locale.apartments.title;
+  // Leading checkbox column — ids of the rows currently rendered.
 </script>
 
 <svelte:head>
@@ -367,118 +378,36 @@
 </svelte:head>
 
 <PageLayout>
-  <svelte:fragment slot="actions">
-    {#if floor?.building?.id}
-      <button class="back-button" type="button" on:click={goBackToBuilding}>
-        <i class="bi bi-arrow-left" aria-hidden="true"></i>
-        {$locale.apartments.back}
-      </button>
-    {/if}
-    {#if floorId}
-      <ActionButton icon="bi-plus-lg" label={$locale.apartments.add} on:click={openAddApartment} />
-    {/if}
+  <svelte:fragment slot="toolbar">
+    <PageToolbar bind:search searchPlaceholder={$locale.apartments.search} onSearch={() => loadApartments(1)} showAdd={Boolean(floorId)} addLabel={$locale.apartments.add} onAdd={openAddApartment}>
+      <svelte:fragment slot="tabs"><TabFilters tabs={statusTabs} active={statusFilter} on:select={handleStatusChange} /></svelte:fragment>
+      <svelte:fragment slot="actions">{#if floor?.building?.id}<button class="toolbar-back" type="button" on:click={goBackToBuilding}><i class="bi bi-arrow-left" aria-hidden="true"></i><span>{$locale.apartments.back}</span></button>{/if}</svelte:fragment>
+    </PageToolbar>
   </svelte:fragment>
 
   <svelte:fragment slot="alerts">
-    {#if errorMessage}
-      <div class="alert alert-danger" role="alert">{errorMessage}</div>
-    {/if}
-    {#if noticeMessage}
-      <div class="alert alert-success" role="status">{noticeMessage}</div>
-    {/if}
+    {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
+    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    {#if floorId && loadingFloor}
-      <div class="panel-loader">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">{$locale.apartments.loading}</span>
-        </div>
-      </div>
-    {:else if !floorId || floor}
-      <DataTable
-        {loading}
-        isEmpty={apartments.length === 0}
-        loadingLabel={$locale.apartments.loading}
-        emptyLabel={$locale.apartments.empty}
-        emptyIcon="bi-door-open"
-        minTableWidth="58rem"
-        showFooter={!loading && apartments.length > 0}
-      >
-        <PageToolbar
-          slot="toolbar"
-          bind:search
-          searchPlaceholder={$locale.apartments.search}
-          onSearch={() => loadApartments(1)}
-          showAdd={Boolean(floorId)}
-          addLabel={$locale.apartments.add}
-          onAdd={openAddApartment}
-        />
-
-        <ActionButton
-          slot="empty-action"
-          icon="bi-plus-lg"
-          label={$locale.apartments.add}
-          on:click={openAddApartment}
-        />
-
-        <thead>
-          <tr>
-            <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-            <th>{$locale.apartments.apartmentNumber}</th>
-            <th>{$locale.apartments.name}</th>
-            <th>{$locale.apartments.type}</th>
-            <th>{$locale.apartments.bedrooms}</th>
-            <th>{$locale.apartments.bathrooms}</th>
-            <th>{$locale.apartments.area}</th>
-            <th>{$locale.apartments.monthlyRent}</th>
-            <th>{$locale.apartments.status}</th>
-            <th class="actions-heading"><span class="visually-hidden">{$locale.apartments.edit}</span></th>
+    <DataTable {loading} isEmpty={apartments.length === 0} loadingLabel={$locale.apartments.loading} emptyLabel={$locale.apartments.empty} emptyIcon="bi-door-open" minTableWidth="72rem" showFooter={false}>
+      {#if floorId}<ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.apartments.add} on:click={openAddApartment} />{/if}
+      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th>{$locale.apartments.apartmentNumber}</th><th>{$locale.apartments.name}</th><th>{$locale.apartments.type}</th><th>{$locale.apartments.area}</th><th>{$locale.apartments.bedrooms}</th><th>{$locale.apartments.bathrooms}</th><th class="amount-cell">{$locale.apartments.monthlyRent}</th><th>{$locale.apartments.status}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
+      <tbody>
+        {#each apartments as apartment (apartment.id)}
+          <tr class:is-selected={selectedIds.has(apartment.id)}>
+            <td class="select-column"><Checkbox checked={selectedIds.has(apartment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(apartment.id)} /></td>
+            <td class="data-cell"><button class="table-link" type="button" on:click={() => openDetails(apartment)}>{apartment.apartmentNumber}</button></td>
+            <td>{apartment.name}</td><td>{$locale.apartments.types[apartment.type] || apartment.type}</td><td class="data-cell">{formatArea(apartment.area, $language)}</td><td class="data-cell">{apartment.bedrooms}</td><td class="data-cell">{apartment.bathrooms}</td><td class="amount-cell">{formatMoney(apartment.monthlyRent, apartment.rentCurrency)}</td><td><StatusBadge label={statusLabel(apartment.status)} tone={statusTone(apartment.status)} /></td>
+            <td class="actions-cell"><button class="icon-button" type="button" on:click={() => openDetails(apartment)} aria-label={$locale.apartments.spaces.title}><i class="bi bi-eye" aria-hidden="true"></i></button><button class="icon-button" type="button" on:click={() => openEditApartment(apartment)} aria-label={$locale.apartments.edit}><i class="bi bi-pencil" aria-hidden="true"></i></button><button class="icon-button danger" type="button" on:click={() => removeApartment(apartment)} aria-label={$locale.apartments.delete}><i class="bi bi-trash3" aria-hidden="true"></i></button></td>
           </tr>
-        </thead>
-
-        <tbody>
-          {#each apartments as apartment (apartment.id)}
-            <tr class:is-selected={selectedIds.has(apartment.id)}>
-              <td class="select-column"><Checkbox checked={selectedIds.has(apartment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(apartment.id)} /></td>
-              <td class="apartment-number">{apartment.apartmentNumber}</td>
-              <td class="apartment-name">{apartment.name}</td>
-              <td>{$locale.apartments.types[apartment.type] || apartment.type}</td>
-              <td class="data-cell">{apartment.bedrooms}</td>
-              <td class="data-cell">{apartment.bathrooms}</td>
-              <td class="data-cell">{formatArea(apartment.area, $language)}</td>
-              <td class="amount-cell">{formatMoney(apartment.monthlyRent, apartment.rentCurrency)}</td>
-              <td>
-                <StatusBadge label={statusLabel(apartment.status)} tone={statusTone(apartment.status)} />
-              </td>
-              <td class="actions-cell">
-                <button class="icon-button" type="button" on:click={() => openDetails(apartment)} aria-label={$locale.apartments.spaces.title}>
-                  <i class="bi bi-eye" aria-hidden="true"></i>
-                </button>
-                <button class="icon-button" type="button" on:click={() => openEditApartment(apartment)} aria-label={$locale.apartments.edit}>
-                  <i class="bi bi-pencil" aria-hidden="true"></i>
-                </button>
-                <button class="icon-button danger" type="button" on:click={() => removeApartment(apartment)} aria-label={$locale.apartments.delete}>
-                  <i class="bi bi-trash3" aria-hidden="true"></i>
-                </button>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-
-        <Pagination
-          slot="footer"
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          previousLabel={$locale.apartments.previous}
-          nextLabel={$locale.apartments.next}
-          label={$locale.apartments.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)}
-          summary={resultSummary}
-          onPage={loadApartments}
-        />
-      </DataTable>
-    {/if}
+        {/each}
+      </tbody>
+    </DataTable>
   </svelte:fragment>
+
+  <svelte:fragment slot="footer"><Pagination page={pagination.page} totalPages={pagination.totalPages} previousLabel={$locale.apartments.previous} nextLabel={$locale.apartments.next} label={$locale.apartments.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)} summary={resultSummary} onPage={loadApartments} /></svelte:fragment>
 </PageLayout>
 
 <Modal
@@ -601,19 +530,9 @@
 </Modal>
 
 <style>
-  .back-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0;
-    border: 0;
-    color: var(--accent);
-    background: none;
-    font-size: 0.8rem;
-    font-weight: 650;
-  }
-  .back-button:hover { color: var(--accent-hover); }
-  :global([dir='rtl']) .back-button i { transform: rotate(180deg); }
+  .toolbar-back { display: inline-flex; align-items: center; gap: .4rem; min-height: var(--control-height); padding: 0 .75rem; border: 1px solid var(--border); border-radius: var(--control-radius); color: var(--text-secondary); background: var(--surface); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+  .toolbar-back:hover { color: var(--accent); border-color: var(--accent-soft-border); background: var(--accent-soft); }
+  :global([dir='rtl']) .toolbar-back i { transform: rotate(180deg); }
   .panel-loader { min-height: 14rem; display: grid; place-items: center; }
 
   .save-continue {

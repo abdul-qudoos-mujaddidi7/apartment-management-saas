@@ -1,0 +1,634 @@
+{
+  "meta": {
+    "database": "apartment_sass",
+    "createdAt": "2026-09-22T10:48:57.729Z",
+    "models": 28,
+    "rows": 62,
+    "schema": "prisma/schema.prisma"
+  },
+  "counts": {
+    "Organization": 2,
+    "Currency": 4,
+    "ExchangeRate": 5,
+    "User": 2,
+    "Building": 0,
+    "Floor": 0,
+    "Apartment": 0,
+    "ApartmentSpace": 0,
+    "Meter": 0,
+    "MeterReading": 0,
+    "Tenant": 0,
+    "Lease": 0,
+    "Invoice": 0,
+    "FinancialAccount": 8,
+    "Journal": 0,
+    "TenantAccount": 0,
+    "TenantLedgerEntry": 0,
+    "JournalLine": 0,
+    "Payment": 0,
+    "PaymentAllocation": 0,
+    "InvoiceItem": 0,
+    "SecurityDepositTransaction": 0,
+    "AssetCategory": 0,
+    "Asset": 0,
+    "ApartmentAsset": 0,
+    "Role": 2,
+    "Permission": 17,
+    "RolePermission": 22
+  },
+  "tables": {
+    "Organization": [
+      {
+        "id": "cmuchvjog0000v50gdn9a86b2",
+        "name": "Demo Apartments",
+        "slug": "demo-apartments",
+        "baseCurrency": "AFN",
+        "createdAt": "2026-09-22T09:51:39.617Z",
+        "updatedAt": "2026-09-22T09:51:39.617Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinbd6000bv5ug4b5v24oq",
+        "name": "jawad",
+        "slug": "jawad",
+        "baseCurrency": "AFN",
+        "createdAt": "2026-09-22T10:13:15.210Z",
+        "updatedAt": "2026-09-22T10:15:12.039Z",
+        "deletedAt": null
+      }
+    ],
+    "Currency": [
+      {
+        "id": "cmuci7q4j0005v5f8bi9u6t06",
+        "organizationId": "cmuchvjog0000v50gdn9a86b2",
+        "code": "AFN",
+        "name": "Afghan Afghani",
+        "symbol": "؋",
+        "isBase": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:01:07.843Z",
+        "updatedAt": "2026-09-22T10:01:07.843Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuci7q4v0009v5f8lt3m7ib9",
+        "organizationId": "cmuchvjog0000v50gdn9a86b2",
+        "code": "USD",
+        "name": "US Dollar",
+        "symbol": "$",
+        "isBase": false,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:01:07.855Z",
+        "updatedAt": "2026-09-22T10:01:07.855Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinbe1000dv5ugce9tx2dw",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "AFN",
+        "name": "Afghan Afghani",
+        "symbol": "؋",
+        "isBase": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:15.241Z",
+        "updatedAt": "2026-09-22T10:15:12.030Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinp45000jv5ugva5h1o5p",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "EUR",
+        "name": "Euro",
+        "symbol": "€",
+        "isBase": false,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:33.030Z",
+        "updatedAt": "2026-09-22T10:15:12.029Z",
+        "deletedAt": null
+      }
+    ],
+    "ExchangeRate": [
+      {
+        "id": "cmuci7q4o0007v5f81lmcakck",
+        "organizationId": "cmuchvjog0000v50gdn9a86b2",
+        "currencyId": "cmuci7q4j0005v5f8bi9u6t06",
+        "rate": "1",
+        "effectiveDate": "1970-01-01T00:00:00.000Z",
+        "source": "MANUAL",
+        "createdAt": "2026-09-22T10:01:07.848Z",
+        "updatedAt": "2026-09-22T10:01:07.848Z"
+      },
+      {
+        "id": "cmuci7q55000bv5f8nrd7x6et",
+        "organizationId": "cmuchvjog0000v50gdn9a86b2",
+        "currencyId": "cmuci7q4v0009v5f8lt3m7ib9",
+        "rate": "64",
+        "effectiveDate": "2026-09-22T00:00:00.000Z",
+        "source": "MANUAL",
+        "createdAt": "2026-09-22T10:01:07.865Z",
+        "updatedAt": "2026-09-22T10:01:07.865Z"
+      },
+      {
+        "id": "cmucinbe5000fv5ugilz43sd6",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "currencyId": "cmucinbe1000dv5ugce9tx2dw",
+        "rate": "1",
+        "effectiveDate": "1970-01-01T00:00:00.000Z",
+        "source": "MANUAL",
+        "createdAt": "2026-09-22T10:13:15.245Z",
+        "updatedAt": "2026-09-22T10:15:12.035Z"
+      },
+      {
+        "id": "cmucinp4e000lv5ugr4l9plaq",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "currencyId": "cmucinp45000jv5ugva5h1o5p",
+        "rate": "75",
+        "effectiveDate": "2026-09-22T00:00:00.000Z",
+        "source": "MANUAL",
+        "createdAt": "2026-09-22T10:13:33.038Z",
+        "updatedAt": "2026-09-22T10:13:33.038Z"
+      },
+      {
+        "id": "cmucipnzo0011v5pke9u03cbl",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "currencyId": "cmucinp45000jv5ugva5h1o5p",
+        "rate": "1",
+        "effectiveDate": "1970-01-01T00:00:00.000Z",
+        "source": "MANUAL",
+        "createdAt": "2026-09-22T10:15:04.884Z",
+        "updatedAt": "2026-09-22T10:15:04.884Z"
+      }
+    ],
+    "User": [
+      {
+        "id": "cmuchvjqs001tv50gzm21szlz",
+        "email": "admin@example.com",
+        "passwordHash": "$2b$12$yQLM7DutHquCQjzqSjZi8ekPWY6SpTF6W7w32xLJoP7l/MlplFsJu",
+        "firstName": "Demo",
+        "lastName": "Admin",
+        "organizationId": "cmuchvjog0000v50gdn9a86b2",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "createdAt": "2026-09-22T09:51:39.700Z",
+        "updatedAt": "2026-09-22T09:51:39.700Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinbec000hv5ugvthj3drh",
+        "email": "abdulqudoosmujaddidi7@gmail.com",
+        "passwordHash": "$2b$12$6p.61Nw.u29pkvDGgAGlv.C.Ah2rytGKoIkrXgplOLX5MQQXHzy/G",
+        "firstName": "Jawad",
+        "lastName": "Mujaddidi",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "createdAt": "2026-09-22T10:13:15.252Z",
+        "updatedAt": "2026-09-22T10:13:15.252Z",
+        "deletedAt": null
+      }
+    ],
+    "Building": [],
+    "Floor": [],
+    "Apartment": [],
+    "ApartmentSpace": [],
+    "Meter": [],
+    "MeterReading": [],
+    "Tenant": [],
+    "Lease": [],
+    "Invoice": [],
+    "FinancialAccount": [
+      {
+        "id": "cmucinsii000mv5ug3qy4s31z",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "1000",
+        "name": "Cash",
+        "type": "ASSET",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinsii000nv5ugn2mvmm1t",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "1100",
+        "name": "Accounts Receivable",
+        "type": "ASSET",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinsii000ov5ugcq9aslg6",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "2000",
+        "name": "Security Deposit Liability",
+        "type": "LIABILITY",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinsii000pv5ugg73kju10",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "4000",
+        "name": "Rent Income",
+        "type": "INCOME",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinsii000qv5ug1pmibt00",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "4010",
+        "name": "Electricity Income",
+        "type": "INCOME",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinsii000rv5ug9wne6hpo",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "4020",
+        "name": "Water Income",
+        "type": "INCOME",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinsii000sv5ugwcsuxgzb",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "4030",
+        "name": "Gas Income",
+        "type": "INCOME",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmucinsii000tv5ugq8cjyl2u",
+        "organizationId": "cmucinbd6000bv5ug4b5v24oq",
+        "code": "5000",
+        "name": "Building Expenses",
+        "type": "EXPENSE",
+        "isSystem": true,
+        "isActive": true,
+        "createdAt": "2026-09-22T10:13:37.434Z",
+        "updatedAt": "2026-09-22T10:13:37.434Z",
+        "deletedAt": null
+      }
+    ],
+    "Journal": [],
+    "TenantAccount": [],
+    "TenantLedgerEntry": [],
+    "JournalLine": [],
+    "Payment": [],
+    "PaymentAllocation": [],
+    "InvoiceItem": [],
+    "SecurityDepositTransaction": [],
+    "AssetCategory": [],
+    "Asset": [],
+    "ApartmentAsset": [],
+    "Role": [
+      {
+        "id": "cmuchvjp70001v50gewf6in0k",
+        "name": "MANAGER",
+        "createdAt": "2026-09-22T09:51:39.643Z",
+        "updatedAt": "2026-09-22T09:51:39.643Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpa0002v50gxwhpcs7q",
+        "name": "ADMIN",
+        "createdAt": "2026-09-22T09:51:39.643Z",
+        "updatedAt": "2026-09-22T10:13:15.206Z",
+        "deletedAt": null
+      }
+    ],
+    "Permission": [
+      {
+        "id": "cmuchvjpn0003v50geia767wt",
+        "name": "View organization",
+        "code": "ORGANIZATION_VIEW",
+        "description": "View organization details.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpn0004v50g5koa1jhw",
+        "name": "Manage organization",
+        "code": "ORGANIZATION_MANAGE",
+        "description": "Update organization settings.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpq0005v50gpvxlhctb",
+        "name": "Manage roles",
+        "code": "ROLE_MANAGE",
+        "description": "Manage roles and their permissions.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjps0006v50gatav5dne",
+        "name": "View users",
+        "code": "USER_VIEW",
+        "description": "View organization users.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjps0007v50gjegdsxvs",
+        "name": "View asset categories",
+        "code": "ASSET_CATEGORY_VIEW",
+        "description": "View asset categories.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpt0008v50gp7t8zaeq",
+        "name": "Manage assets",
+        "code": "ASSET_CREATE",
+        "description": "Add assets to the master catalogue.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpt0009v50ggxg8ggjo",
+        "name": "Delete assets",
+        "code": "ASSET_DELETE",
+        "description": "Remove assets from the master catalogue.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpt000av50gfo3a6e0u",
+        "name": "Update assets",
+        "code": "ASSET_UPDATE",
+        "description": "Edit master asset details.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpu000bv50gh7sbo4nc",
+        "name": "View assets",
+        "code": "ASSET_VIEW",
+        "description": "View the master asset catalogue.",
+        "createdAt": "2026-09-22T09:51:39.659Z",
+        "updatedAt": "2026-09-22T09:51:39.659Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjpw000cv50gw0ss4knx",
+        "name": "Manage users",
+        "code": "USER_MANAGE",
+        "description": "Invite, update, and remove organization users.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq1000dv50gin7acyma",
+        "name": "Update asset categories",
+        "code": "ASSET_CATEGORY_UPDATE",
+        "description": "Edit asset categories.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq2000ev50gtvcl8wii",
+        "name": "Delete asset categories",
+        "code": "ASSET_CATEGORY_DELETE",
+        "description": "Remove asset categories.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq3000fv50gwhls619h",
+        "name": "View apartment assets",
+        "code": "APARTMENT_ASSET_VIEW",
+        "description": "View the assets and furniture registered to apartments.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq3000gv50gftkpa914",
+        "name": "Register apartment assets",
+        "code": "APARTMENT_ASSET_CREATE",
+        "description": "Register assets and furniture to apartments.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq4000hv50gl8lrr0fs",
+        "name": "Create asset categories",
+        "code": "ASSET_CATEGORY_CREATE",
+        "description": "Add asset categories.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq4000iv50gmytw6wev",
+        "name": "Delete apartment assets",
+        "code": "APARTMENT_ASSET_DELETE",
+        "description": "Remove registered apartment assets.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq4000jv50gsjyz52bj",
+        "name": "Update apartment assets",
+        "code": "APARTMENT_ASSET_UPDATE",
+        "description": "Edit registered apartment assets.",
+        "createdAt": "2026-09-22T09:51:39.660Z",
+        "updatedAt": "2026-09-22T09:51:39.660Z",
+        "deletedAt": null
+      }
+    ],
+    "RolePermission": [
+      {
+        "id": "cmuchvjq9000lv50gq7fa1a1y",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpn0003v50geia767wt",
+        "createdAt": "2026-09-22T09:51:39.681Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq9000pv50gg2ff2t1g",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpw000cv50gw0ss4knx",
+        "createdAt": "2026-09-22T09:51:39.681Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq9000qv50g6mgz9w5v",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjps0006v50gatav5dne",
+        "createdAt": "2026-09-22T09:51:39.681Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq9000rv50g50m9kq31",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpn0004v50g5koa1jhw",
+        "createdAt": "2026-09-22T09:51:39.681Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq9000uv50gxo0sh3po",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpq0005v50gpvxlhctb",
+        "createdAt": "2026-09-22T09:51:39.681Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq9000vv50g683nwbn2",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpt000av50gfo3a6e0u",
+        "createdAt": "2026-09-22T09:51:39.682Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjq9000xv50gy9pahw5j",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpt0008v50gp7t8zaeq",
+        "createdAt": "2026-09-22T09:51:39.682Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqa000zv50g89od5izc",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpu000bv50gh7sbo4nc",
+        "createdAt": "2026-09-22T09:51:39.681Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqa0011v50gzwsp4myp",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjpt0009v50ggxg8ggjo",
+        "createdAt": "2026-09-22T09:51:39.682Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqf0013v50g351e5v7d",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjps0007v50gjegdsxvs",
+        "createdAt": "2026-09-22T09:51:39.683Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqg0019v50gdkjyoakq",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjq1000dv50gin7acyma",
+        "createdAt": "2026-09-22T09:51:39.684Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqg001av50gv8sycpy6",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjq4000hv50gl8lrr0fs",
+        "createdAt": "2026-09-22T09:51:39.684Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqg001dv50gky9hdvru",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjq2000ev50gtvcl8wii",
+        "createdAt": "2026-09-22T09:51:39.684Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqg001ev50g11s3ot5q",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjq4000jv50gsjyz52bj",
+        "createdAt": "2026-09-22T09:51:39.684Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqg001fv50gh03yqpg4",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjq3000fv50gwhls619h",
+        "createdAt": "2026-09-22T09:51:39.684Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqg001gv50gpjnn7opi",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjq4000iv50gmytw6wev",
+        "createdAt": "2026-09-22T09:51:39.684Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqh001hv50g4ogq1pd2",
+        "roleId": "cmuchvjpa0002v50gxwhpcs7q",
+        "permissionId": "cmuchvjq3000gv50gftkpa914",
+        "createdAt": "2026-09-22T09:51:39.684Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqm001nv50gsve3ry5p",
+        "roleId": "cmuchvjp70001v50gewf6in0k",
+        "permissionId": "cmuchvjpn0003v50geia767wt",
+        "createdAt": "2026-09-22T09:51:39.695Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqm001ov50gz8cei5kt",
+        "roleId": "cmuchvjp70001v50gewf6in0k",
+        "permissionId": "cmuchvjpu000bv50gh7sbo4nc",
+        "createdAt": "2026-09-22T09:51:39.695Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqm001pv50ga0bz3r1y",
+        "roleId": "cmuchvjp70001v50gewf6in0k",
+        "permissionId": "cmuchvjps0006v50gatav5dne",
+        "createdAt": "2026-09-22T09:51:39.695Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqm001qv50gf74xac08",
+        "roleId": "cmuchvjp70001v50gewf6in0k",
+        "permissionId": "cmuchvjps0007v50gjegdsxvs",
+        "createdAt": "2026-09-22T09:51:39.695Z",
+        "deletedAt": null
+      },
+      {
+        "id": "cmuchvjqm001rv50gw8chev94",
+        "roleId": "cmuchvjp70001v50gewf6in0k",
+        "permissionId": "cmuchvjq3000fv50gwhls619h",
+        "createdAt": "2026-09-22T09:51:39.695Z",
+        "deletedAt": null
+      }
+    ]
+  }
+}

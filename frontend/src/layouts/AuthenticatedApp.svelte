@@ -13,6 +13,7 @@
   import ApartmentAssets from '../pages/ApartmentAssets.svelte';
   import Assets from '../pages/Assets.svelte';
   import Tenants from '../pages/Tenants.svelte';
+  import TenantProfile from '../pages/TenantProfile.svelte';
   import Leases from '../pages/Leases.svelte';
   import SecurityDeposits from '../pages/SecurityDeposits.svelte';
   import Meters from '../pages/Meters.svelte';
@@ -37,6 +38,7 @@
     '/floors': Floors,
     '/floors/:id': Apartments,
     '/tenants': Tenants,
+    '/tenants/:id': TenantProfile,
     '/leases': Leases,
     '/security-deposits': SecurityDeposits,
     '/meters': Meters,

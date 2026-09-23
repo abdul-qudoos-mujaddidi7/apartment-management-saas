@@ -53,6 +53,17 @@ enum SecurityDepositTransactionStatus {
   VOIDED
 }
 
+/// Why part of a deposit was kept. The reason decides what the deduction is
+/// credited against, because the two cases are different: rent arrears were
+/// already earned as income when the rent was billed, so keeping the deposit
+/// settles a receivable, while damage money is income that has never been
+/// recognised before.
+enum SecurityDepositDeductionReason {
+  RENT_ARREARS
+  DAMAGE
+  OTHER
+}
+
 enum UtilityType {
   ELECTRICITY
   WATER
@@ -105,6 +116,10 @@ enum PaymentMethod {
   CARD
   MOBILE_MONEY
   OTHER
+  // Rent settled out of a security deposit the landlord already holds. The
+  // money never passes through a cash account: the receipt is drawn from the
+  // deposit liability instead.
+  DEPOSIT
 }
 
 enum TenantLedgerEntryType {
@@ -352,6 +367,12 @@ model MeterReading {
   id              String    @id @default(cuid())
   meterId         String
   readingDate     DateTime
+  /// The Shamsi month the reading belongs to, as `YYYY-MM` (e.g. `1405-06`).
+  /// A meter is read once a month, and the unique index below is what holds
+  /// that rule rather than a check that two requests can both pass. It is set
+  /// to NULL when the reading is deleted, which is how a deleted reading
+  /// releases its month (MySQL allows many NULLs in a unique index).
+  periodMonth     String?   @db.Char(7)
   previousReading Decimal   @db.Decimal(15, 3)
   currentReading  Decimal   @db.Decimal(15, 3)
   consumption     Decimal   @db.Decimal(15, 3)
@@ -366,6 +387,7 @@ model MeterReading {
   invoiceItem InvoiceItem?
 
   @@unique([meterId, readingDate])
+  @@unique([meterId, periodMonth])
   @@index([meterId])
   @@index([readingDate])
   @@index([deletedAt])
@@ -484,9 +506,10 @@ model FinancialAccount {
   updatedAt      DateTime             @updatedAt
   deletedAt      DateTime?
 
-  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  journalLines     JournalLine[]
-  receivedPayments Payment[]     @relation("PaymentReceiveAccount")
+  organization               Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  journalLines               JournalLine[]
+  receivedPayments           Payment[]                     @relation("PaymentReceiveAccount")
+  securityDepositTransactions SecurityDepositTransaction[] @relation("SecurityDepositAccount")
 
   @@unique([organizationId, code])
   @@index([organizationId, deletedAt])
@@ -611,11 +634,12 @@ model Payment {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  lease          Lease?              @relation(fields: [leaseId], references: [id], onDelete: Restrict)
-  receiveAccount FinancialAccount    @relation("PaymentReceiveAccount", fields: [receiveAccountId], references: [id], onDelete: Restrict)
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  lease          Lease?                     @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  receiveAccount FinancialAccount           @relation("PaymentReceiveAccount", fields: [receiveAccountId], references: [id], onDelete: Restrict)
   allocations    PaymentAllocation[]
+  depositDeduction SecurityDepositTransaction?
 
   @@unique([organizationId, paymentNumber])
   @@index([organizationId, paymentDate])
@@ -668,6 +692,15 @@ model SecurityDepositTransaction {
   organizationId  String
   leaseId         String
   type            SecurityDepositTransactionType
+  // The account the money moved through: received into for RECEIVED, paid out
+  // of for REFUND. Null for a deduction, which moves no cash of its own.
+  accountId       String?
+  // Why a deduction was made, and therefore what it credits.
+  reason          SecurityDepositDeductionReason?
+  // Set on a RENT_ARREARS deduction: the deposit-funded receipt that settled
+  // the tenant's open invoices, which is what keeps the invoices and the
+  // receivable agreeing with each other.
+  paymentId       String?                          @unique
   currency        String                           @default("AFN") @db.VarChar(3)
   exchangeRate    Decimal                          @default(1) @db.Decimal(18, 8)
   amount          Decimal                          @db.Decimal(15, 2)
@@ -682,8 +715,10 @@ model SecurityDepositTransaction {
   createdAt       DateTime                         @default(now())
   updatedAt       DateTime                         @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  lease        Lease        @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lease        Lease            @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  account      FinancialAccount? @relation("SecurityDepositAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  payment      Payment?         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
 
   @@index([organizationId])
   @@index([leaseId])

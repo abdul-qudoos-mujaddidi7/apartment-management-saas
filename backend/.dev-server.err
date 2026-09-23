@@ -1,0 +1,44 @@
+Unhandled API error: PrismaClientValidationError: 
+Invalid `client.meterReading.findMany()` invocation in
+C:\Users\deel\apartment-management-saas\backend\src\modules\meter-readings\meter-reading.service.js:115:46
+
+  112 const periodMonth = shamsiMonthKey(readingDate);
+  113 if (!periodMonth) throw serviceError('INVALID_READING_DATE', 'The reading date is not a valid date.');
+  114 
+→ 115 const readings = await client.meterReading.findMany({
+        where: {
+          meterId: "cmuckq0ev00a6v5po3qv27osl",
+          deletedAt: null
+        },
+        select: {
+          id: true,
+          readingDate: true,
+          periodMonth: true,
+          ~~~~~~~~~~~
+      ?   meterId?: true,
+      ?   previousReading?: true,
+      ?   currentReading?: true,
+      ?   consumption?: true,
+      ?   unitPrice?: true,
+      ?   amount?: true,
+      ?   notes?: true,
+      ?   createdAt?: true,
+      ?   updatedAt?: true,
+      ?   deletedAt?: true,
+      ?   meter?: true,
+      ?   invoiceItem?: true
+        }
+      })
+
+Unknown field `periodMonth` for select statement on model `MeterReading`. Available options are marked with ?.
+    at Nn (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at ei.handleRequestError (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:121:6911)
+    at ei.handleAndLogRequestError (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:121:6593)
+    at ei.request (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:121:6300)
+    at async a (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:130:9551)
+    at async assertMonthIsFree (C:\Users\deel\apartment-management-saas\backend\src\modules\meter-readings\meter-reading.service.js:115:20)
+    at async C:\Users\deel\apartment-management-saas\backend\src\modules\meter-readings\meter-reading.service.js:262:25
+    at async Proxy._transactionWithCallback (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:130:8120)
+    at async create (C:\Users\deel\apartment-management-saas\backend\src\modules\meter-readings\meter-reading.controller.js:46:64) {
+  clientVersion: '6.19.3'
+}

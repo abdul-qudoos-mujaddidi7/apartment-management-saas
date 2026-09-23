@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { push } from 'svelte-spa-router';
 
   import PageLayout from '../components/ui/PageLayout.svelte';
   import TabFilters from '../components/ui/TabFilters.svelte';
@@ -339,7 +340,11 @@
         {#each tenants as tenant (tenant.id)}
           <tr class:is-selected={selectedIds.has(tenant.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(tenant.id)} label={$locale.common.selectRow} on:change={() => toggleRow(tenant.id)} /></td>
-            <td class="tenant-name">{tenant.firstName} {tenant.lastName}</td>
+            <td class="tenant-name">
+              <button class="table-link" type="button" on:click={() => push(`/tenants/${tenant.id}`)}>
+                {tenant.firstName} {tenant.lastName}
+              </button>
+            </td>
             <td class="data-cell">{tenant.phone}</td>
             <td>{tenant.email || '—'}</td>
             <td class="data-cell">{tenant.nationalId || '—'}</td>
@@ -347,6 +352,9 @@
               <StatusBadge label={statusLabel(tenant.status)} tone={statusTone(tenant.status)} />
             </td>
             <td class="actions-cell">
+              <button class="icon-button" type="button" on:click={() => push(`/tenants/${tenant.id}`)} aria-label={$locale.tenants.profile}>
+                <i class="bi bi-person-vcard" aria-hidden="true"></i>
+              </button>
               <button class="icon-button" type="button" on:click={() => openEdit(tenant)} aria-label={$locale.tenants.edit}>
                 <i class="bi bi-pencil" aria-hidden="true"></i>
               </button>

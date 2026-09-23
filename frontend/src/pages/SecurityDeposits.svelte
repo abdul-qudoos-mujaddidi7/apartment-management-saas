@@ -16,6 +16,7 @@
     listSecurityDeposits,
     voidSecurityDepositTransaction,
   } from '../services/securityDeposits';
+  import { listFinancialAccounts } from '../services/financialAccounts';
   import { locale } from '../i18n';
   import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
@@ -24,8 +25,16 @@
   const blankTransaction = () => ({
     type: 'RECEIVED', currency: '', amount: '',
     transactionDate: new Date().toISOString().slice(0, 10),
-    reference: '', notes: '',
+    reason: '', accountId: '', reference: '', notes: '',
   });
+
+  /**
+   * Why the deposit is being kept decides where it is credited, so the form
+   * asks instead of guessing: rent arrears settle what the tenant already owes,
+   * damage is money the deposit was never going to give back as rent.
+   */
+  const deductionReasons = ['RENT_ARREARS', 'DAMAGE', 'OTHER'];
+  let accounts = [];
 
   let rows = [];
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
@@ -43,7 +52,15 @@
   let voidReasons = {};
   let voidingId = '';
 
-  onMount(() => loadDeposits());
+  onMount(() => {
+    loadDeposits();
+    // Supporting data: the form falls back to the cash account without it.
+    listFinancialAccounts()
+      .then((response) => {
+        accounts = (response.accounts || response.items || []).filter((account) => account.type === 'ASSET' && account.isActive !== false);
+      })
+      .catch(() => { accounts = []; });
+  });
 
   async function loadDeposits(page = pagination.page) {
     loading = true;
@@ -62,10 +79,12 @@
     transactionError = '';
     try {
       detail = await getSecurityDeposit(leaseId);
-      // Deposits are collected in whatever the tenant pays in; the summary above
-      // is stated in the reporting currency, so the base currency is the
-      // default here and anything else is converted on save.
-      transaction = { ...blankTransaction(), currency: $baseCurrency };
+      // Deposits are collected in whatever the tenant pays in, so the default is
+      // the currency the deposit was agreed in — the lease's own currency. The
+      // summary above is stated in the reporting currency and anything entered
+      // here is converted to it on save.
+      const leaseCurrency = detail.lease.currency || $baseCurrency;
+      transaction = { ...blankTransaction(), currency: leaseCurrency };
       voidReasons = {};
     } catch (error) { errorMessage = error.message; detailOpen = false; }
     finally { detailLoading = false; }
@@ -86,10 +105,16 @@
     }
     savingTransaction = true;
     try {
+      if (transaction.type === 'DEDUCTION' && !transaction.reason) {
+        transactionError = $locale.securityDeposits.reasonRequired;
+        return;
+      }
       await createSecurityDepositTransaction(detail.lease.id, {
         ...transaction,
         currency: transaction.currency || $baseCurrency,
         amount: Number(transaction.amount),
+        reason: transaction.type === 'DEDUCTION' ? transaction.reason : null,
+        accountId: transaction.type === 'DEDUCTION' ? null : transaction.accountId || null,
         reference: transaction.reference.trim() || null,
         notes: transaction.notes.trim() || null,
       });
@@ -236,6 +261,27 @@
               <option value="REFUND">{$locale.securityDeposits.refund}</option>
             </select>
           </div>
+          {#if transaction.type === 'DEDUCTION'}
+            <div class="col-md-3">
+              <label class="form-label" for="transaction-reason">{$locale.securityDeposits.reason}</label>
+              <select class="form-select" id="transaction-reason" bind:value={transaction.reason} required>
+                <option value="">{$locale.securityDeposits.chooseReason}</option>
+                {#each deductionReasons as value (value)}
+                  <option value={value}>{$locale.securityDeposits.reasons[value]}</option>
+                {/each}
+              </select>
+            </div>
+          {:else}
+            <div class="col-md-3">
+              <label class="form-label" for="transaction-account">{$locale.securityDeposits.account}</label>
+              <select class="form-select" id="transaction-account" bind:value={transaction.accountId}>
+                <option value="">{$locale.securityDeposits.defaultAccount}</option>
+                {#each accounts as account (account.id)}
+                  <option value={account.id}>{account.code} — {account.name}</option>
+                {/each}
+              </select>
+            </div>
+          {/if}
           <div class="col-md-3">
             <label class="form-label" for="transaction-currency">{$locale.currencies.currency}</label>
             <select class="form-select" id="transaction-currency" bind:value={transaction.currency}>
@@ -298,14 +344,23 @@
               {#each detail.transactions as item (item.id)}
                 <tr>
                   <td>{formatShortDate(item.transactionDate)}</td>
-                  <td>{statusLabel(item.type)}</td>
+                  <td>
+                    {statusLabel(item.type)}
+                    {#if item.reason}
+                      <small class="cell-sub">{$locale.securityDeposits.reasons[item.reason]}</small>
+                    {/if}
+                  </td>
                   <td class="money-cell">
                     {formatMoney(item.amount, item.currency)}
                     {#if item.currency !== $baseCurrency}
                       <small class="cell-sub">{formatMoney(item.baseAmount, $baseCurrency)}</small>
                     {/if}
                   </td>
-                  <td>{item.reference || '—'}</td>
+                  <td>{item.reference || '—'}
+                    {#if item.account}
+                      <small class="cell-sub">{item.account.code} — {item.account.name}</small>
+                    {/if}
+                  </td>
                   <td>{item.notes || '—'}</td>
                   <td><StatusBadge label={statusLabel(item.status)} tone={item.status === 'VOIDED' ? 'neutral' : 'success'} /></td>
                   <td>

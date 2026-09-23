@@ -7,6 +7,8 @@ const DEFAULT_ACCOUNTS = [
   ['1100', 'Accounts Receivable', 'ASSET'],
   ['2000', 'Security Deposit Liability', 'LIABILITY'],
   ['4000', 'Rent Income', 'INCOME'],
+  ['4050', 'Security Deposit Forfeited', 'INCOME'],
+  ['4900', 'Foreign Exchange Difference', 'INCOME'],
   ['4010', 'Electricity Income', 'INCOME'],
   ['4020', 'Water Income', 'INCOME'],
   ['4030', 'Gas Income', 'INCOME'],

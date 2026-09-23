@@ -4,7 +4,7 @@
 -- its foreign keys. Tables are ordered so each one's parents already exist, which
 -- is why this file contains nothing but CREATE TABLE statements.
 --
--- Generated from prisma/schema.prisma (28 tables, 45 foreign keys).
+-- Generated from prisma/schema.prisma (28 tables, 47 foreign keys).
 -- This migration replaces the 20 incremental migrations that preceded it.
 
 -- CreateTable
@@ -233,6 +233,7 @@ CREATE TABLE `MeterReading` (
     `id` VARCHAR(191) NOT NULL,
     `meterId` VARCHAR(191) NOT NULL,
     `readingDate` DATETIME(3) NOT NULL,
+    `periodMonth` CHAR(7) NULL,
     `previousReading` DECIMAL(15, 3) NOT NULL,
     `currentReading` DECIMAL(15, 3) NOT NULL,
     `consumption` DECIMAL(15, 3) NOT NULL,
@@ -248,6 +249,7 @@ CREATE TABLE `MeterReading` (
     INDEX `MeterReading_deletedAt_idx`(`deletedAt`),
     INDEX `MeterReading_meterId_readingDate_idx`(`meterId`, `readingDate`),
     UNIQUE INDEX `MeterReading_meterId_readingDate_key`(`meterId`, `readingDate`),
+    UNIQUE INDEX `MeterReading_meterId_periodMonth_key`(`meterId`, `periodMonth`),
     CONSTRAINT `MeterReading_meterId_fkey` FOREIGN KEY (`meterId`)
         REFERENCES `Meter`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
 
@@ -486,7 +488,7 @@ CREATE TABLE `Payment` (
     `amount` DECIMAL(15, 2) NOT NULL,
     `baseAmount` DECIMAL(15, 2) NOT NULL DEFAULT 0,
     `receiveAccountId` VARCHAR(191) NOT NULL,
-    `paymentMethod` ENUM('CASH', 'BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'OTHER') NOT NULL,
+    `paymentMethod` ENUM('CASH', 'BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'OTHER', 'DEPOSIT') NOT NULL,
     `reference` VARCHAR(191) NULL,
     `notes` TEXT NULL,
     `status` ENUM('POSTED', 'VOIDED') NOT NULL DEFAULT 'POSTED',
@@ -561,6 +563,9 @@ CREATE TABLE `SecurityDepositTransaction` (
     `organizationId` VARCHAR(191) NOT NULL,
     `leaseId` VARCHAR(191) NOT NULL,
     `type` ENUM('RECEIVED', 'DEDUCTION', 'REFUND') NOT NULL,
+    `accountId` VARCHAR(191) NULL,
+    `reason` ENUM('RENT_ARREARS', 'DAMAGE', 'OTHER') NULL,
+    `paymentId` VARCHAR(191) NULL,
     `currency` VARCHAR(3) NOT NULL DEFAULT 'AFN',
     `exchangeRate` DECIMAL(18, 8) NOT NULL DEFAULT 1,
     `amount` DECIMAL(15, 2) NOT NULL,
@@ -580,10 +585,15 @@ CREATE TABLE `SecurityDepositTransaction` (
     INDEX `SecurityDepositTransaction_type_idx`(`type`),
     INDEX `SecurityDepositTransaction_status_idx`(`status`),
     INDEX `SecurityDepositTransaction_transactionDate_idx`(`transactionDate`),
+    UNIQUE INDEX `SecurityDepositTransaction_paymentId_key`(`paymentId`),
     CONSTRAINT `SecurityDepositTransaction_organizationId_fkey` FOREIGN KEY (`organizationId`)
         REFERENCES `Organization`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT `SecurityDepositTransaction_leaseId_fkey` FOREIGN KEY (`leaseId`)
         REFERENCES `Lease`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `SecurityDepositTransaction_accountId_fkey` FOREIGN KEY (`accountId`)
+        REFERENCES `FinancialAccount`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `SecurityDepositTransaction_paymentId_fkey` FOREIGN KEY (`paymentId`)
+        REFERENCES `Payment`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

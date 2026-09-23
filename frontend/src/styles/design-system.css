@@ -697,6 +697,21 @@ html hr {
   background: var(--accent-soft);
 }
 
+/* A table cell that opens the row's own page (a tenant's name, say). It is a
+   button rather than a link because the router is driven by clicks. */
+.table-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary, inherit);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  text-align: start;
+  cursor: pointer;
+}
+
+.table-link:hover { color: var(--accent); text-decoration: underline; }
+
 .icon-button.danger { color: var(--danger); }
 .icon-button.danger:hover { color: #b02b40; border-color: var(--danger-border); background: var(--danger-soft); }
 

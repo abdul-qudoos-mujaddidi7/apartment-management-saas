@@ -17,6 +17,23 @@ function floorSelect() {
     building: {
       select: { id: true, name: true, code: true },
     },
+    apartments: {
+      where: { deletedAt: null },
+      select: { status: true },
+    },
+  };
+}
+
+function formatFloor({ apartments = [], ...floor }) {
+  const apartmentStatusCounts = apartments.reduce((counts, apartment) => {
+    counts[apartment.status] = (counts[apartment.status] || 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    ...floor,
+    totalApartments: apartments.length,
+    apartmentStatusCounts,
   };
 }
 
@@ -60,7 +77,7 @@ async function listFloors(organizationId, { page, pageSize, search, buildingId }
   ]);
 
   return {
-    items,
+    items: items.map(formatFloor),
     pagination: {
       page,
       pageSize,
@@ -80,17 +97,18 @@ async function getFloor(organizationId, floorId) {
     throw createFloorError('FLOOR_NOT_FOUND', 'Floor not found.');
   }
 
-  return floor;
+  return formatFloor(floor);
 }
 
 async function createFloor(organizationId, data) {
   await assertBuildingInOrganization(organizationId, data.buildingId);
 
   try {
-    return await prisma.floor.create({
+    const floor = await prisma.floor.create({
       data,
       select: floorSelect(),
     });
+    return formatFloor(floor);
   } catch (error) {
     if (error.code === 'P2002') {
       // The floorNumber unique index also covers soft-deleted rows, so re-adding a
@@ -101,11 +119,12 @@ async function createFloor(organizationId, data) {
       });
 
       if (removed) {
-        return prisma.floor.update({
+        const floor = await prisma.floor.update({
           where: { id: removed.id },
           data: { name: data.name, deletedAt: null },
           select: floorSelect(),
         });
+        return formatFloor(floor);
       }
 
       throw createFloorError('FLOOR_NUMBER_EXISTS', 'Floor number already exists in this building.');
@@ -129,11 +148,12 @@ async function updateFloor(organizationId, floorId, data) {
   }
 
   try {
-    return await prisma.floor.update({
+    const floor = await prisma.floor.update({
       where: { id: floorId },
       data,
       select: floorSelect(),
     });
+    return formatFloor(floor);
   } catch (error) {
     if (error.code === 'P2002') {
       throw createFloorError('FLOOR_NUMBER_EXISTS', 'Floor number already exists in this building.');

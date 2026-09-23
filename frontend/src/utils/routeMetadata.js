@@ -5,6 +5,7 @@ const routes = [
   { matches: (path) => /^\/apartments\/[^/]+\/assets$/.test(path), title: ['assets', 'apartmentTitle'], icon: 'bi-box-seam' },
   { matches: (path) => path === '/assets', title: ['assets', 'title'], icon: 'bi-box-seam' },
   { matches: (path) => path === '/apartments' || /^\/floors\/[^/]+$/.test(path), title: ['apartments', 'title'], icon: 'bi-door-open' },
+  { matches: (path) => /^\/tenants\/[^/]+$/.test(path), title: ['tenantProfile', 'title'], icon: 'bi-person-vcard' },
   { matches: (path) => path === '/tenants', title: ['tenants', 'title'], icon: 'bi-people' },
   { matches: (path) => path === '/leases', title: ['leases', 'title'], icon: 'bi-file-earmark-text' },
   { matches: (path) => path === '/security-deposits', title: ['securityDeposits', 'title'], icon: 'bi-shield-check' },

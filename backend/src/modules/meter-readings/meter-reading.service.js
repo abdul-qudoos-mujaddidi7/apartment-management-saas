@@ -1,6 +1,7 @@
 const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
+const { shamsiMonthKey, shamsiMonthLabel } = require('../../lib/shamsi');
 const Decimal = Prisma.Decimal;
 
 function serviceError(code, message) {
@@ -93,6 +94,45 @@ function billingStatus(invoiceItem) {
 function isActivelyBilled(invoiceItem) {
   const invoice = invoiceItem?.invoice;
   return Boolean(invoice && !invoice.deletedAt && invoice.status !== 'CANCELLED');
+}
+
+/**
+ * A meter is read once a month — one reading per meter, per apartment, per
+ * month — and the month is a **Shamsi** one, because that is the calendar every
+ * date in this application is shown in. A Shamsi month does not line up with a
+ * Gregorian one (Sunbula 1405 runs from 2026-08-23 to 2026-09-22), so keying the
+ * rule on the Gregorian month would allow two readings in one month the user can
+ * see and refuse one in the next.
+ *
+ * The unique index on (meterId, periodMonth) is what actually holds the rule;
+ * this check turns it into a message, and also catches rows written before the
+ * column existed, which have no periodMonth of their own.
+ */
+async function assertMonthIsFree(client, meterId, readingDate, ignoreId = null) {
+  const periodMonth = shamsiMonthKey(readingDate);
+  if (!periodMonth) throw serviceError('INVALID_READING_DATE', 'The reading date is not a valid date.');
+
+  const readings = await client.meterReading.findMany({
+    where: {
+      meterId,
+      deletedAt: null,
+      ...(ignoreId ? { id: { not: ignoreId } } : {}),
+    },
+    select: { id: true, readingDate: true, periodMonth: true },
+  });
+
+  const clash = readings.find(
+    (reading) => (reading.periodMonth || shamsiMonthKey(reading.readingDate)) === periodMonth,
+  );
+
+  if (clash) {
+    throw serviceError(
+      'METER_READING_MONTH_EXISTS',
+      `This meter already has a reading for ${shamsiMonthLabel(periodMonth)}. A meter is read once a month.`,
+    );
+  }
+
+  return periodMonth;
 }
 
 async function assertMeterInOrganization(client, organizationId, meterId, requireActive = false) {
@@ -219,10 +259,11 @@ async function createMeterReading(organizationId, data) {
       where: { meterId: data.meterId, readingDate: data.readingDate, deletedAt: null }, select: { id: true },
     });
     if (active) throw serviceError('METER_READING_DATE_EXISTS', 'A reading already exists for this date.');
+    const periodMonth = await assertMonthIsFree(tx, data.meterId, data.readingDate);
     const removed = await tx.meterReading.findFirst({
       where: { meterId: data.meterId, readingDate: data.readingDate, deletedAt: { not: null } }, select: { id: true },
     });
-    const payload = { currentReading: new Decimal(data.currentReading), notes: data.notes ?? null, deletedAt: null };
+    const payload = { periodMonth, currentReading: new Decimal(data.currentReading), notes: data.notes ?? null, deletedAt: null };
     const reading = removed
       ? await tx.meterReading.update({ where: { id: removed.id }, data: payload })
       : await tx.meterReading.create({
@@ -259,8 +300,12 @@ async function updateMeterReading(organizationId, id, data) {
       where: { meterId: existing.meterId, readingDate: nextDate, deletedAt: null, id: { not: id } }, select: { id: true },
     });
     if (conflict) throw serviceError('METER_READING_DATE_EXISTS', 'A reading already exists for this date.');
+    // Moving a reading into a month that already has one is the same duplicate,
+    // and the unique index would refuse it anyway — with a message no one can act on.
+    const periodMonth = await assertMonthIsFree(tx, existing.meterId, nextDate, id);
     const payload = {
       readingDate: nextDate,
+      periodMonth,
       currentReading: data.currentReading === undefined ? existing.currentReading : new Decimal(data.currentReading),
       notes: data.notes === undefined ? existing.notes : data.notes,
     };
@@ -271,7 +316,7 @@ async function updateMeterReading(organizationId, id, data) {
     if (removed) {
       // A MySQL unique index includes soft-deleted rows, so reviving the old
       // date row is the safe way to reuse its date without dropping history.
-      await tx.meterReading.update({ where: { id }, data: { deletedAt: new Date() } });
+      await tx.meterReading.update({ where: { id }, data: { deletedAt: new Date(), periodMonth: null } });
       await tx.meterReading.update({ where: { id: removed.id }, data: { ...payload, deletedAt: null } });
       resultId = removed.id;
     } else {
@@ -292,13 +337,15 @@ async function softDeleteMeterReading(organizationId, id) {
     if (isActivelyBilled(reading.invoiceItem)) {
       throw serviceError('METER_READING_ALREADY_BILLED', 'A billed meter reading cannot be deleted. Cancel the invoice first to release it.');
     }
-    await tx.meterReading.update({ where: { id }, data: { deletedAt: new Date() } });
+    // Clearing the month is what releases it: the unique index ignores NULLs, so
+    // the meter can be read again for that month once this reading is gone.
+    await tx.meterReading.update({ where: { id }, data: { deletedAt: new Date(), periodMonth: null } });
     await recalculateMeterReadings(reading.meterId, tx);
     return { id };
   });
 }
 
 module.exports = {
-  createMeterReading, getMeterReading, listMeterReadings, recalculateMeterReadings,
+  assertMonthIsFree, createMeterReading, getMeterReading, listMeterReadings, recalculateMeterReadings,
   softDeleteMeterReading, updateMeterReading,
 };

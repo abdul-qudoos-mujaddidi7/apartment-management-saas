@@ -15,6 +15,7 @@
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
+  import { AFGHAN_MONTHS, gregorianToShamsi } from '../utils/shamsiDate';
   import { locale, translate } from '../i18n';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
@@ -97,6 +98,13 @@
       if (error.data?.errors) { formErrors = Object.fromEntries(Object.entries(error.data.errors).map(([field, messages]) => [field, messages[0]])); }
       else if (error.data?.code === 'CURRENT_READING_TOO_LOW') { formErrors = { ...formErrors, currentReading: $locale.meterReadings.currentReadingTooLow }; }
       else if (error.data?.code === 'METER_READING_DATE_EXISTS') { formErrors = { ...formErrors, readingDate: $locale.meterReadings.dateExists }; }
+      else if (error.data?.code === 'METER_READING_MONTH_EXISTS') {
+        // Name the month the user can see on their own calendar: the server's
+        // message says "Sunbula 1405", the form says آن by its Afghan name.
+        const parts = gregorianToShamsi(form.readingDate);
+        const month = parts ? `${AFGHAN_MONTHS[parts.jm - 1]} ${parts.jy}` : '';
+        formErrors = { ...formErrors, readingDate: translate('meterReadings.monthExists', { month }) };
+      }
       else if (error.data?.code === 'METER_READING_ALREADY_BILLED') { modalError = $locale.meterReadings.alreadyBilled; }
       else { modalError = error.message; }
     } finally { saving = false; }

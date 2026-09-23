@@ -33,13 +33,27 @@ function handle(error, res, next) {
     });
   }
 
+  // A bad field rather than a conflict: the form can put it on the input.
+  if (['DEPOSIT_ACCOUNT_NOT_FOUND', 'DEPOSIT_ACCOUNT_NOT_ASSET', 'DEDUCTION_REASON_REQUIRED'].includes(error.code)) {
+    const field = error.code === 'DEDUCTION_REASON_REQUIRED' ? 'reason' : 'accountId';
+    return res.status(400).json({
+      success: false,
+      code: error.code,
+      message: error.message,
+      errors: { [field]: [error.message] },
+    });
+  }
+
   if (
     [
       'DEPOSIT_OVERPAYMENT',
       'REFUND_EXCEEDS_BALANCE',
       'DEDUCTION_EXCEEDS_BALANCE',
+      'DEPOSIT_ALREADY_USED',
       'TRANSACTION_ALREADY_VOIDED',
       'EXCHANGE_RATE_MISSING',
+      // Rent arrears settled from a deposit cannot exceed what the tenant owes.
+      'TENANT_BALANCE_NEGATIVE',
     ].includes(error.code)
   ) {
     return res.status(409).json({

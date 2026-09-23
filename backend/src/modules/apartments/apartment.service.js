@@ -155,11 +155,12 @@ async function replaceSpaces(transaction, apartmentId, spaces) {
   }
 }
 
-async function listApartments(organizationId, { page, pageSize, search, floorId }) {
+async function listApartments(organizationId, { page, pageSize, search, floorId, status }) {
   const where = {
     organizationId,
     deletedAt: null,
     ...(floorId ? { floorId } : {}),
+    ...(status ? { status } : {}),
     ...(search ? { OR: [{ name: { contains: search } }, { apartmentNumber: { contains: search } }] } : {}),
   };
   const [items, total] = await prisma.$transaction([

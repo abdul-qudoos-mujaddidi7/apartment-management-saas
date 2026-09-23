@@ -25,6 +25,13 @@ router.get(
   asyncHandler(tenantController.list),
 );
 
+// One tenant's whole file: identity, tenancy, money, deposit and meters.
+router.get(
+  '/:id/profile',
+  validate({ params: tenantIdParamsSchema }),
+  asyncHandler(tenantController.profile),
+);
+
 router.get(
   '/:id',
   validate({ params: tenantIdParamsSchema }),

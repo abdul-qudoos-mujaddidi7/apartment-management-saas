@@ -1,8 +1,9 @@
 import { api } from './api';
 
-export const listApartments = ({ page = 1, pageSize = 10, search = '', floorId } = {}) => {
+export const listApartments = ({ page = 1, pageSize = 10, search = '', floorId, status } = {}) => {
   const query = new URLSearchParams({ page, pageSize, search });
   if (floorId) query.set('floorId', floorId);
+  if (status) query.set('status', status);
   return api.get(`/apartments?${query.toString()}`);
 };
 
