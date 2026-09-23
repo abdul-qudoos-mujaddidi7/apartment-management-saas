@@ -13,10 +13,12 @@
   import Modal from '../components/ui/Modal.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { locale, translate } from '../i18n';
+  import { sortRows } from '../utils/sortRows';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
 
@@ -27,6 +29,8 @@
   const emptyReadingForm = () => ({ readingDate: new Date().toISOString().slice(0, 10), currentReading: '', notes: '' });
 
   let meters = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(meters, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let filters = { search: '', buildingId: '', utilityType: '', status: '' };
   let buildings = [];
@@ -233,13 +237,13 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    <DataTable {loading} isEmpty={meters.length === 0} loadingLabel={$locale.meters.loading} emptyLabel={$locale.meters.empty} emptyIcon="bi-speedometer2" minTableWidth="60rem" showFooter={!loading && meters.length > 0}>
+    <DataTable {loading} isEmpty={meters.length === 0} loadingLabel={$locale.meters.loading} emptyLabel={$locale.meters.empty} emptyIcon="bi-speedometer2" minTableWidth="60rem" showFooter={!loading && meters.length > 0} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
       <ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.meters.add} on:click={openCreate} />
       <thead><tr>
         <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-        <th>{$locale.meters.meterNumber}</th><th>{$locale.meters.utilityType}</th><th>{$locale.meters.building}</th><th>{$locale.meters.floor}</th><th>{$locale.meters.apartment}</th><th>{$locale.meters.unit}</th><th>{$locale.meters.defaultUnitPrice}</th><th>{$locale.meters.initialReading}</th><th>{$locale.meters.installationDate}</th><th>{$locale.meters.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.meters.edit}</span></th>
+        <th data-sort="meterNumber">{$locale.meters.meterNumber}</th><th data-sort="utilityType">{$locale.meters.utilityType}</th><th data-sort="apartment.floor.building.name">{$locale.meters.building}</th><th data-sort="apartment.floor.name">{$locale.meters.floor}</th><th data-sort="apartment.apartmentNumber">{$locale.meters.apartment}</th><th data-sort="unit">{$locale.meters.unit}</th><th data-sort="defaultUnitPrice">{$locale.meters.defaultUnitPrice}</th><th data-sort="initialReading">{$locale.meters.initialReading}</th><th data-sort="installationDate">{$locale.meters.installationDate}</th><th data-sort="status">{$locale.meters.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.meters.edit}</span></th>
       </tr></thead>
-      <tbody>{#each meters as meter (meter.id)}
+      <tbody>{#each view as meter (meter.id)}
         <tr class:is-selected={selectedIds.has(meter.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(meter.id)} label={$locale.common.selectRow} on:change={() => toggleRow(meter.id)} /></td>
           <td class="meter-number">{meter.meterNumber}</td>
@@ -253,9 +257,11 @@
           <td class="date-cell">{formatShortDate(meter.installationDate)}</td>
           <td><StatusBadge label={statusLabel(meter.status)} tone={meterStatusTone(meter.status)} /></td>
           <td class="actions-cell">
-            <button class="row-action success" type="button" on:click={() => openReadingModal(meter)} aria-label={$locale.meters.addReading} disabled={meter.status !== 'ACTIVE'}><i class="bi bi-clipboard-plus" aria-hidden="true"></i><span>{$locale.meters.addReading}</span></button>
-            <button class="row-action" type="button" on:click={() => openEdit(meter)} aria-label={$locale.meters.edit}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.common.actions.edit}</span></button>
-            <button class="row-action danger" type="button" on:click={() => removeMeter(meter)} aria-label={$locale.meters.delete}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.meters.delete}</span></button>
+            <RowActions label={$locale.meters.edit}>
+              <button class="row-menu-item" type="button" on:click={() => openReadingModal(meter)} disabled={meter.status !== 'ACTIVE'}><i class="bi bi-clipboard-plus" aria-hidden="true"></i>{$locale.meters.addReading}</button>
+              <button class="row-menu-item" type="button" on:click={() => openEdit(meter)}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.common.actions.edit}</button>
+              <button class="row-menu-item danger" type="button" on:click={() => removeMeter(meter)}><i class="bi bi-trash3" aria-hidden="true"></i>{$locale.meters.delete}</button>
+            </RowActions>
           </td>
         </tr>
       {/each}</tbody>

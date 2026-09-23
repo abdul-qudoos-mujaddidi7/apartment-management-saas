@@ -6,21 +6,24 @@
 :root {
   /* --- Brand blue — the single accent -----------------------------------
      Primary buttons, links, active navigation and focus rings all come from
-     this ramp. Anchored on #1e6ca5, a mid-tone steel blue that stays calm in
-     large fills while still carrying white text at AA. Every step is
-     monotonic in luminance, so the ramp works for fills, borders and text
-     without re-measuring. The public sign-in and landing pages keep their own
-     teal, intentionally outside the console palette. */
-  --brand-50: #eef5fb;  /* --accent-soft — badge and soft fills            */
-  --brand-100: #d9e9f6; /* --accent-tint — selected rows, chart bars       */
-  --brand-200: #b6d3ec; /* --accent-soft-border                            */
-  --brand-300: #8bb8dd; /* --accent-border — hovered/focused control edges */
-  --brand-400: #5c97c6; /* Add-button gradient top, disabled fills         */
-  --brand-500: #3580b7; /* bright blue — highlights on dark surfaces       */
-  --brand-600: #1e6ca5; /* primary accent: buttons, links, active nav      */
-  --brand-700: #17577f; /* hover                                           */
-  --brand-800: #114468; /* pressed                                         */
-  --brand-900: #0c3250; /* deep tone — shadows on dark surfaces            */
+     this ramp, anchored on #3586ff. Every step is monotonic in luminance, so
+     the ramp serves fills, borders and text without re-measuring. Two numbers
+     on this anchor are worth knowing: as a *fill* #3586ff carries white text at
+     3.5:1, and as *text* on white it is the same 3.5:1 — both short of AA for
+     body copy. So the 600 is for fills and icons, and anything that has to be
+     read as words on a light surface takes the 700 (4.6:1) or the 800 (6.7:1)
+     instead — see `--accent-text` below. The public sign-in and landing pages
+     keep their own teal, outside the console palette. */
+  --brand-50: #f0f7ff;  /* --accent-soft — badge and soft fills            */
+  --brand-100: #e5f1ff; /* --accent-tint — selected rows, chart bars       */
+  --brand-200: #cfe4ff; /* --accent-soft-border                            */
+  --brand-300: #a9cdff; /* --accent-border — hovered/focused control edges */
+  --brand-400: #77aeff; /* the bright step — rings and marks on dark       */
+  --brand-500: #4f95ff; /* mid step                                        */
+  --brand-600: #3586ff; /* primary accent: buttons, active nav, fills      */
+  --brand-700: #2570e6; /* hover, and accent text on white (4.6:1)         */
+  --brand-800: #1c58b8; /* pressed, and accent text that must be read (6.7:1) */
+  --brand-900: #143f85; /* deep tone — shadows on dark surfaces            */
 
   /* Deep brand navy — dark surfaces only (footer, brand marks) */
   --navy-deep: #0a1931;
@@ -40,25 +43,79 @@
 
   /* --- Surfaces & borders ----------------------------------------------- */
   --surface: var(--white);
-  /* Page/content background — also the table header band, the toolbar band and
-     the topbar, so the whole working area reads as one surface. */
-  --surface-sunken: #fbfcfe;
-  --surface-muted: #fbfcfe; /* same as --surface-sunken: one near-white surface */
-  --surface-hover: #f4f8fe;
-  --border: var(--grey-300);
-  --border-strong: #d5deea;
 
-  /* --- Text roles ------------------------------------------------------- */
-  --text-strong: var(--ink-900);
-  --text: var(--ink-700);
-  --text-secondary: var(--ink-600);
-  --text-muted: var(--ink-500);
+  /* --- Canvas -------------------------------------------------------------
+     The console is a white sheet. A card is separated from it by a hairline
+     and a 1px shadow rather than by a fill difference, which is what lets the
+     table, its header band and the card head read as one continuous surface.
+     `--surface-sunken` is kept for the rare band that must read inset; it is
+     the same white, so nothing drifts between the two. The working area is
+     that sheet plus the shell wash below, which is why `.app-page` itself is
+     transparent rather than painted with `--canvas`.
+
+     The canvas is light grey, not white: a white card on a white page can only
+     be found by its hairline, and every panel, table and form ends up relying
+     on a 1px border to be seen at all. Against #f2f2f2 the cards are white
+     objects on a grey desk — the border becomes a nicety rather than the thing
+     doing the work. The topbar paints from this same token, so the bar and the
+     page below it stay one surface. */
+  --canvas: #f2f2f2;
+  --card-border: #eef0f4;
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --card-shadow-raised: 0 2px 8px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  /* Row surface for a raised control that sits on the canvas (secondary button). */
+  --control-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+
+  /* --- Shell wash ---------------------------------------------------------
+     The one piece of atmosphere in the shell: a faint cool tint across the top
+     of the working area that dissolves into the sheet roughly a screen-header
+     deep. It is slate and blue, not pink: white and the accent blue are the
+     console's two hues, and a warm bloom was the only thing on the page not in
+     the palette — it pulled the eye before the content did. Both alphas are
+     under 8%, so the tint reads as light falling on the sheet rather than as a
+     coloured band. The two centres sit on the top corners rather than toward
+     the middle because the middle is where the white panels are — the corners
+     are the canvas you actually see, in the gutters either side of a card.
+     Painted from this single value on both the topbar and the content column,
+     anchored at the same top edge, so the bar and the page behind it read as
+     one continuous surface; the bar keeps its own copy only so that content
+     scrolling under it stays masked. */
+  --wash-left: rgba(100, 116, 139, 0.055);
+  --wash-right: rgba(53, 134, 255, 0.07);
+  --shell-wash:
+    radial-gradient(85% 820px at 0% 0%, var(--wash-left), rgba(100, 116, 139, 0) 74%),
+    radial-gradient(85% 900px at 100% 0%, var(--wash-right), rgba(53, 134, 255, 0) 76%);
+
+  --surface-sunken: #ffffff;
+  --surface-muted: #ffffff; /* same as --surface-sunken: one white surface */
+  --surface-hover: #fafbfd;
+  /* Retired: the toolbar's search box is unfilled at rest, so nothing reads
+     this. Kept out rather than left dangling — a token with no referent is the
+     kind of thing the next person deletes twice. */
+  --border: #e9edf2;
+  --border-strong: #d3d9e0;
+
+  /* --- Text roles -------------------------------------------------------
+     Slate greys, one step cooler and lighter than the ink ramp below, so a
+     table full of secondary columns stays quiet. `--text-muted` is #6b7788
+     (4.9:1 on white) rather than the lighter grey of the reference shell:
+     that one measures 4.0:1, which fails AA for the 12px column labels it is
+     used for here. */
+  --text-strong: #1f2937;
+  --text: #344054;
+  --text-secondary: #475467;
+  --text-muted: #6b7788;
   --text-disabled: var(--ink-400);
-  --text-placeholder: var(--ink-500);
+  --text-placeholder: #98a2b3;
   --text-on-accent: var(--white);
 
-  /* --- Accent roles ----------------------------------------------------- */
+  /* --- Accent roles -----------------------------------------------------
+     `--accent` is the fill (a button, the active nav pill, a chart bar) and is
+     never asked to carry words on a light surface — at #3586ff that is 3.5:1.
+     `--accent-text` is the step that can: 4.6:1 on white and 4.3:1 on the grey
+     canvas, so links, active tab labels and accent words use it instead. */
   --accent: var(--brand-600);
+  --accent-text: var(--brand-700);
   --accent-hover: var(--brand-700);
   --accent-active: var(--brand-800);
   --accent-soft: var(--brand-50);
@@ -67,54 +124,96 @@
   --accent-tint: var(--brand-100); /* selected rows, chart bars, swatches */
   /* Active link and active control background — the same value the content area
      uses, so a selected tab reads as a hole cut into the page. */
-  --accent-highlight: #fbfcfe;
+  --accent-highlight: #ffffff;
 
-  /* --- Status roles ----------------------------------------------------- */
-  --success: #11875d;
-  --success-soft: #e7f5ef;
-  --success-border: #c2e3d6;
-  --warning: #b77905;
-  --warning-soft: #fdf4e4;
-  --warning-border: #eeddb9;
-  --danger: #c83248;
-  --danger-soft: #fdeef0;
-  --danger-border: #f4ccd3;
-  --info: #14839a;
-  --info-soft: #e8f6f8;
-  --info-border: #c2e3e8;
-  --neutral: var(--ink-500);
-  --neutral-soft: #f1f5f9;
-  --neutral-border: #dfe6ee;
+  /* --- Status roles -----------------------------------------------------
+     A tint for the pill fill and a darker shade of the same hue for the word.
+     Both ends are one step stronger than the reference shell's: its fills are
+     so pale that a row of pills reads as one grey band, and its words land
+     between 2.2:1 and 3.2:1 on those fills — half the text is not legible at
+     11px. Every pair here keeps the hue and the softness but measures at least
+     5:1, so the colour is unmistakably a status *and* the word is readable. */
+  --success: #146c46; /* 5.8:1 on --success-soft, 6.3:1 on white */
+  --success-soft: #e2f7eb;
+  --success-border: #bfe9d2;
+  --warning: #8f5708; /* 5.4:1 — the amber is the hardest one to keep legible */
+  --warning-soft: #fff3dd;
+  --warning-border: #f5ddab;
+  --danger: #b83030; /* 5.2:1 */
+  --danger-soft: #fdeaea;
+  --danger-border: #f5cfcf;
+  --info: #1157bd; /* 5.9:1 */
+  --info-soft: #e6f0fe;
+  --info-border: #c7dafc;
+  --purple: #6d28d9; /* 6.0:1 */
+  --purple-soft: #f3e8ff;
+  --purple-border: #ddd0fd;
+  --neutral: #5a6478; /* 5.3:1 — "draft"/"inactive", still a status not a label */
+  --neutral-soft: #eff1f5;
+  --neutral-border: #e0e4ea;
 
-  /* --- Sidebar: brand-blue rail with a notched active tab -----------------
-     The rail is a single flat fill on purpose. The active item is a white tab
-     that runs off the content edge, and the concave fillets that join it back
-     into the rail paint the rail colour — so the rail has to be one colour and
-     nothing else may sit behind those corners. */
-  --sidebar-bg: var(--accent); /* #1e6ca5 */
-  --sidebar-divider: rgba(255, 255, 255, 0.2);
-  --sidebar-accent: var(--white); /* focus ring reads on the rail blue and stays outside the white tab */
-  --sidebar-icon: rgba(255, 255, 255, 0.82);
-  --sidebar-text: #ffffff; /* 5.6:1 on the brand blue */
-  --sidebar-text-muted: rgba(255, 255, 255, 0.74);
-  --sidebar-text-strong: #ffffff;
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.16);
-  --sidebar-hover-text: #ffffff;
-  --sidebar-active-bg: var(--accent-highlight);
-  --sidebar-active-text: var(--accent); /* 5.5:1 on the active tab */
-  /* How far the tab's curves reach back into the rail. The reference uses 28px
-     on a 256px rail and a ~52px row; 1.6rem = 22.4px lands within 4% of both
-     ratios at this 208px rail and 41px row. */
-  --sidebar-tab-fillet: 1.6rem;
+  /* --- Sidebar: white rail, one solid accent pill for the current module ---
+     The rail is white, closed by a hairline, so it reads as the same sheet the
+     cards sit on while the grey working area shows between them. Ink on the
+     rail is #0d0d0d — near-black, 19.7:1 — with the icons one step dimmer at
+     4.9:1 so the eye lands on the word rather than on the glyph. The current
+     module is a *filled* accent pill carrying `--sidebar-active-text`: the only
+     saturated colour on the rail, and therefore the answer to "where am I".
+     Hover is a light grey wash. The pill sits inside the rail's own padding —
+     nothing runs off the content edge — which is why `--sidebar-tab-fillet` is
+     0: the concave-fillet rules in the stylesheet key off it and collapse to
+     nothing. */
+  --sidebar-bg: #ffffff;
+  --sidebar-divider: #eef0f4;
+  --sidebar-accent: var(--accent); /* focus ring reads on white */
+  --sidebar-icon: #6b7788;
+  --sidebar-text: #0d0d0d;
+  /* The identity block's second line, which sits on the wash in the topbar —
+     not on the rail, so it is a mid grey rather than the rail's near-black.
+     #64748b only reaches 4.4:1 against the tinted end of that wash, so this is
+     one step deeper: 4.9:1 there, 5.3:1 on the white below it. */
+  --sidebar-text-muted: #5f6d80;
+  --sidebar-text-strong: #0d0d0d;
+  --sidebar-hover-bg: #f5f7fa;
+  --sidebar-hover-text: #0d0d0d;
+  --sidebar-active-bg: var(--accent);
+  --sidebar-active-text: #f5ffff; /* ~white, one step cool of it on the fill */
+  /* The pill's lift: the accent, spread and blurred downward, so the fill reads
+     as sitting *on* the rail rather than being printed into it. */
+  --sidebar-active-shadow: 0 8px 16px -8px rgba(53, 134, 255, 0.55);
+  /* Retired: the active pill no longer reaches the content edge, so there are
+     no fillets to size. Kept at 0 rather than deleted so the rules that read
+     it stay valid CSS. */
+  --sidebar-tab-fillet: 0px;
+  /* The collapse toggle straddles the rail's edge, so it stays a solid white
+     chip: a translucent one would half-vanish against whichever surface it
+     happened to sit over. */
   --sidebar-control-bg: var(--white);
-  --sidebar-control-border: rgba(255, 255, 255, 0.72);
+  --sidebar-control-border: var(--border);
   --sidebar-control-text: var(--accent);
-  --sidebar-card-bg: rgba(255, 255, 255, 0.14);
-  --sidebar-card-border: rgba(255, 255, 255, 0.24);
+  /* Sizes are quoted in rem against a 14px root, which is what this console
+     sets, so the rendered numbers stay the ones the rail is drawn to: an ~8px
+     corner and a ~38px row. The row sits on a ~40px pitch (item + 2px of air,
+     set by `.app-nav-item`'s block margin): eleven modules on one screen with
+     no scrolling, without the rows touching — a rail that needs a scrollbar to
+     reach the last module costs more than the air is worth. `--sidebar-gutter`
+     is the air either side of a row, and it is generous on purpose — the rail
+     reads as a column of pills floating in the panel rather than rows wired to
+     its edges. */
+  --sidebar-gutter: 2.4rem;
+  /* The ERP's own rail geometry: a 0.7rem corner on a 2.75rem row, which is
+     ~38px against this console's 14px root (~36px against the ERP's 13.1px). */
   --sidebar-item-radius: 0.7rem;
   --sidebar-item-height: 2.75rem;
 
-  /* --- Typography ------------------------------------------------------- */
+  /* --- Typography -------------------------------------------------------
+     One face for all three languages: Vazirmatn leads the stack, so English,
+     Dari and Pashto are drawn by the same family rather than switching voice
+     between a Latin face and an Arabic one mid-sentence. It is the face the
+     ERP this console is modelled on uses, and its Latin is cut to sit with the
+     Persian, so a mixed string ("Invoice ۱۴۰۳", an email, a code) keeps one
+     voice. Noto Sans Arabic follows to catch any glyph Vazirmatn does not
+     carry, and the system stack is the last resort. */
   --font-ui: 'Vazirmatn', 'Noto Sans Arabic', system-ui, -apple-system,
     BlinkMacSystemFont, 'Segoe UI', Tahoma, Arial, sans-serif;
   --font-data: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
@@ -165,9 +264,9 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.15);
-  --shadow-accent: 0 3px 10px rgba(30, 108, 165, 0.2);
-  --ring: 0 0 0 3px rgba(30, 108, 165, 0.16);
-  --ring-danger: 0 0 0 3px rgba(200, 50, 72, 0.15);
+  --shadow-accent: 0 8px 16px -8px rgba(53, 134, 255, 0.75);
+  --ring: 0 0 0 3px rgba(53, 134, 255, 0.18);
+  --ring-danger: 0 0 0 3px rgba(201, 59, 59, 0.15);
 
   /* --- Density & layout ------------------------------------------------- */
   --page-max: 1400px;
@@ -181,25 +280,50 @@
   --page-content-pad-inline: clamp(1rem, 1.3vw, 1.5rem);
   --section-gap: clamp(0.55rem, 0.75vw, 0.9rem);
   --card-pad: clamp(0.75rem, 1vw, 1.25rem);
-  --card-radius: var(--radius-lg);
-  --control-height: clamp(2.125rem, 2vw, 2.375rem);
+  --card-radius: 16px;
+  --control-height: clamp(2.25rem, 2vw, 2.5rem);
   --control-height-sm: clamp(1.875rem, 1.75vw, 2rem);
   --control-font: clamp(0.8rem, 0.08vw + 0.77rem, 0.86rem);
-  --control-radius: var(--radius-md);
+  --control-radius: 10px;
   --button-height: var(--control-height);
   --button-height-sm: var(--control-height-sm);
 
   /* Shell geometry */
-  --sidebar-width-expanded: 208px;
+  /* Wide enough to pay for the gutter and keep the longest label whole:
+     "Assets & Furniture" needs ~126px at the label size, and "صورت‌حساب‌ها"
+     ~98px. */
+  --sidebar-width-expanded: 260px;
   --sidebar-width-collapsed: 4.25rem;
   --sidebar-width: var(--sidebar-width-expanded);
-  --topbar-height: 56px;
+  --topbar-height: 68px;
 
-  /* Table density */
-  --table-cell-pad-block: 9px;
-  --table-cell-pad-inline: 14px;
-  --table-font-size: 0.8rem;
-  --table-head-font-size: 0.72rem;
+  /* Table density — roomier rows than a spreadsheet: the row is the unit you
+     click, and the header band is a label strip rather than a header row. The
+     band is white (the card's own surface) and closed by hairlines above and
+     below, so the table, its head and the card head read as one sheet. */
+  /* --- Tables ------------------------------------------------------------
+     A 36px label strip over 40px rows. The strip and the rows are the same
+     white; what separates them is a hairline under the strip and a fainter one
+     between rows, so a long list reads as one sheet rather than a stack of
+     boxes. `--table-muted` is the resting colour of an ordinary cell: only the
+     row's identity is drawn at full strength, which is what lets a wide table
+     be scanned by its first column alone. */
+  --table-cell-pad-block: 8px;
+  --table-cell-pad-inline: 18px;
+  --table-font-size: 0.93rem;
+  --table-head-font-size: 0.79rem;
+  --table-head-height: 36px;
+  --table-head-bg: #ffffff;
+  /* One hairline colour for the head rule and the row rules: #f2f2f2, the
+     canvas itself. A table on a grey page reads as a white object, so its
+     internal rules only need to separate rows from each other — they do it
+     without drawing a grid, which is the whole point of the white-sheet table.
+     (At 1.1:1 on white this is still a divider you notice when you look for
+     it rather than a line you see — the cells carry no vertical rules at all,
+     so there is no grid to complete.) */
+  --table-head-line: #f2f2f2;
+  --table-row-line: #f2f2f2;
+  --table-muted: var(--ink-500); /* #64748b — 4.8:1; #8a98ab was 2.9:1 */
 
   /* --- Motion ----------------------------------------------------------- */
   --transition: 150ms ease;
@@ -220,9 +344,9 @@ html {
 /* Bootstrap variable map */
 html:root {
   --bs-primary: var(--accent);
-  --bs-primary-rgb: 30, 108, 165;
+  --bs-primary-rgb: 53, 134, 255;
   --bs-blue: var(--accent);
-  --bs-body-bg: var(--surface-sunken);
+  --bs-body-bg: var(--canvas);
   --bs-body-color: var(--text);
   --bs-body-font-family: var(--font-ui);
   --bs-body-font-size: var(--text-base);
@@ -231,14 +355,18 @@ html:root {
   --bs-emphasis-color: var(--text-strong);
   --bs-secondary-color: var(--text-muted);
   --bs-border-color: var(--border);
-  --bs-border-radius: var(--radius-md);
+  /* Bootstrap's own `.btn`, `.form-control` and `.form-select` read their radius
+     from these, and Bootstrap's stylesheet loads after this one — so a radius
+     set only on `.btn` here is overridden there. 10px is the console's control
+     radius, so the mapping is set at the source instead. */
+  --bs-border-radius: var(--control-radius);
   --bs-border-radius-sm: var(--radius-sm);
-  --bs-border-radius-lg: var(--radius-lg);
+  --bs-border-radius-lg: var(--control-radius);
   --bs-border-radius-xl: var(--radius-xl);
-  --bs-link-color: var(--accent);
-  --bs-link-color-rgb: 30, 108, 165;
+  --bs-link-color: var(--accent-text);
+  --bs-link-color-rgb: 37, 112, 230;
   --bs-link-hover-color: var(--accent-hover);
-  --bs-link-hover-color-rgb: 23, 87, 127;
+  --bs-link-hover-color-rgb: 31, 111, 216;
   --bs-primary-text-emphasis: var(--brand-800);
   --bs-primary-bg-subtle: var(--accent-soft);
   --bs-primary-border-subtle: var(--accent-soft-border);

@@ -4,8 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Marketing home page typography. Console pages keep the app's own faces; if these
-         fonts cannot load, the stacks below fall back to Vazirmatn. -->
+    <!-- Marketing home page typography only: the landing page sets its own display
+         and body faces on top of the console's stack. The console itself is drawn
+         by Vazirmatn, which is self-hosted in /fonts (see styles/fonts.css) and
+         needs no network — these two families are the only ones loaded from
+         Google, and every page still renders correctly if they fail. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -27,7 +27,14 @@ function applyDocumentLanguage(currentLanguage) {
       rtlStylesheet.id = 'bootstrap-rtl-stylesheet';
       rtlStylesheet.rel = 'stylesheet';
       rtlStylesheet.href = rtlBootstrapUrl;
-      document.head.appendChild(rtlStylesheet);
+      /* First in <head>, not last. Bootstrap's RTL sheet is a *replacement*
+         for the LTR one the app imports, not an addition to it, and both
+         hard-code their palette rather than reading our tokens — so whenever
+         the two meet at equal specificity, whichever came last wins. Appended,
+         that was Bootstrap: an outline-primary button drew #0d6efd, its own
+         blue, next to our #3586ff primary. Prepended, the app's stylesheet and
+         its component styles keep the last word, which is what they assume. */
+      document.head.insertBefore(rtlStylesheet, document.head.firstChild);
     }
   } else if (rtlStylesheet) {
     rtlStylesheet.remove();

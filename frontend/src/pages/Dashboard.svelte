@@ -1151,7 +1151,7 @@
   }
 
   .kpi-label i {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 
   .kpi-value {
@@ -1276,7 +1276,7 @@
 
     gap: 0.3rem;
 
-    color: var(--accent);
+    color: var(--accent-text);
 
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
@@ -1664,7 +1664,7 @@
   }
 
   .row-title:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     text-decoration: underline;
   }
 

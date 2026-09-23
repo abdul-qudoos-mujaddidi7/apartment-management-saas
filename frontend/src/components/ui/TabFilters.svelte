@@ -68,7 +68,7 @@
   }
 
   .tab-filter-item.is-active {
-    color: var(--accent);
+    color: var(--accent-text);
     background: var(--accent-highlight);
     font-weight: var(--weight-bold);
   }

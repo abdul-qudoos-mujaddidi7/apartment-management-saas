@@ -10,10 +10,12 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { locale } from '../i18n';
   import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
+  import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
@@ -44,6 +46,8 @@
   const toAmount = (value) => Number(value) || 0;
 
   let entries = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(entries, sort.key, sort.dir);
   let accounts = [];
   /* Tenant accounts are the sub-ledger side of the same picker. They load
      separately from the GL: without them the form still posts general-ledger
@@ -378,22 +382,22 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    <DataTable loading={loading} isEmpty={entries.length === 0} loadingLabel={$locale.journals.loading} emptyLabel={$locale.journals.empty} emptyIcon="bi-journal-text" minTableWidth="68rem" showFooter={!loading && entries.length > 0}>
+    <DataTable loading={loading} isEmpty={entries.length === 0} loadingLabel={$locale.journals.loading} emptyLabel={$locale.journals.empty} emptyIcon="bi-journal-text" minTableWidth="68rem" showFooter={!loading && entries.length > 0} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th>{$locale.journals.journalNumber}</th>
-          <th>{$locale.journals.date}</th>
-          <th>{$locale.journals.source}</th>
-          <th>{$locale.journals.description}</th>
-          <th>{$locale.journals.debit}</th>
-          <th>{$locale.journals.credit}</th>
-          <th>{$locale.journals.status}</th>
-          <th><span class="visually-hidden">{$locale.journals.actions}</span></th>
+          <th data-sort="journalNumber">{$locale.journals.journalNumber}</th>
+          <th data-sort="transactionDate">{$locale.journals.date}</th>
+          <th data-sort="source">{$locale.journals.source}</th>
+          <th data-sort="description">{$locale.journals.description}</th>
+          <th class="amount-cell" data-sort="debitTotal">{$locale.journals.debit}</th>
+          <th class="amount-cell" data-sort="creditTotal">{$locale.journals.credit}</th>
+          <th data-sort="status">{$locale.journals.status}</th>
+          <th class="actions-heading"><span class="visually-hidden">{$locale.journals.actions}</span></th>
         </tr>
       </thead>
       <tbody>
-        {#each entries as entry (entry.id)}
+        {#each view as entry (entry.id)}
           <tr class:is-selected={selectedIds.has(entry.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(entry.id)} label={$locale.common.selectRow} on:change={() => toggleRow(entry.id)} /></td>
             <td><strong>{entry.journalNumber}</strong></td>
@@ -404,11 +408,13 @@
             <td class="amount-cell">{formatMoney(entry.creditTotal, entry.currency)}</td>
             <td><StatusBadge label={statusLabel(entry.status)} tone={statusTone(entry.status)} /></td>
             <td class="actions-cell">
-              <button class="row-action" type="button" on:click={() => openDetails(entry)} aria-label={$locale.journals.view}><i class="bi bi-eye" aria-hidden="true"></i><span>{$locale.common.actions.view}</span></button>
-              {#if editable(entry)}
-                <button class="row-action" type="button" on:click={() => openEdit(entry)} aria-label={$locale.journals.edit}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.common.actions.edit}</span></button>
-                <button class="row-action warning" type="button" on:click={() => requestVoid(entry)} aria-label={$locale.journals.void}><i class="bi bi-x-circle" aria-hidden="true"></i><span>{$locale.common.actions.void}</span></button>
-              {/if}
+              <RowActions label={$locale.journals.actions}>
+                <button class="row-menu-item" type="button" on:click={() => openDetails(entry)}><i class="bi bi-eye" aria-hidden="true"></i>{$locale.common.actions.view}</button>
+                {#if editable(entry)}
+                  <button class="row-menu-item" type="button" on:click={() => openEdit(entry)}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.common.actions.edit}</button>
+                  <button class="row-menu-item warning" type="button" on:click={() => requestVoid(entry)}><i class="bi bi-x-circle" aria-hidden="true"></i>{$locale.common.actions.void}</button>
+                {/if}
+              </RowActions>
             </td>
           </tr>
         {/each}

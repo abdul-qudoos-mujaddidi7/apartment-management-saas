@@ -345,7 +345,7 @@
     gap: 0.4rem;
     padding: 0;
     border: 0;
-    color: var(--accent);
+    color: var(--accent-text);
     background: none;
     font-size: 0.8rem;
     font-weight: 650;

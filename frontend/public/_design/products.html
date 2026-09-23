@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Products — console reference build</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ==========================================================================
+   Console shell — reusable tokens. Port these straight into tokens.css and
+   every value here is one you can re-theme.
+   ========================================================================== */
+:root {
+  --c-page:        #ffffff;
+  --c-rail:        #ffffff;
+  --c-rail-line:   #eef0f4;
+  --c-nav:         #6b7788;
+  --c-nav-active-bg: #eaf2fd;
+  --c-nav-active:  #2f80ed;
+  --c-card:        #ffffff;
+  --c-card-line:   #eef0f4;
+  --c-hairline:    #f1f3f6;
+  --c-hairline-2:  #f4f6f8;
+  --c-ink:         #1f2937;
+  --c-ink-2:       #344054;
+  --c-ink-3:       #667085;
+  --c-ink-4:       #7b8794;
+  --c-ink-5:       #98a2b3;
+  --c-field:       #f5f6f9;
+  --c-field-line:  #e6e9ee;
+  --c-accent:      #2f80ed;
+  --c-accent-700:  #1f6fd8;
+
+  --pill-amber-bg: #fff7e8; --pill-amber: #ef9d13;
+  --pill-green-bg: #e9f9f0; --pill-green: #23a26d;
+  --pill-red-bg:   #feeded; --pill-red:   #ef5b5b;
+  --pill-blue-bg:  #e9f1fe; --pill-blue:  #2f80ed;
+  --pill-violet-bg:#f4e9fe; --pill-violet:#a259f5;
+
+  --rail-w: 236px;
+  --row-h: 48px;
+  --pad-x: 16px;
+  --r-card: 16px;
+  --r-control: 10px;
+  --font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 13.5px;
+  color: var(--c-ink-2);
+  background: var(--c-page);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; border-radius: 6px; }
+
+/* --- Rail ---------------------------------------------------------------- */
+.rail {
+  width: var(--rail-w); flex: 0 0 var(--rail-w);
+  padding: 22px 16px 18px;
+  border-right: 1px solid var(--c-rail-line);
+  background: var(--c-rail);
+  display: flex; flex-direction: column;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; text-decoration: none; }
+.brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; color: #17233b; }
+.nav { display: flex; flex-direction: column; gap: 2px; margin-top: 26px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  height: 44px; padding: 0 14px; border-radius: 10px;
+  color: var(--c-nav); font-size: 13.5px; font-weight: 500;
+  text-align: left; width: 100%;
+  transition: background 140ms ease, color 140ms ease;
+}
+.nav-item svg { width: 19px; height: 19px; flex: none; }
+.nav-item:hover { background: #f5f7fa; color: var(--c-ink); }
+.nav-item .chev { margin-left: auto; width: 15px; height: 15px; color: var(--c-ink-5); }
+.nav-item[aria-current="page"] { background: var(--c-nav-active-bg); color: var(--c-nav-active); font-weight: 600; }
+.nav-item[aria-current="page"] svg { color: var(--c-nav-active); }
+.rail-foot { margin-top: auto; }
+
+/* --- Main ---------------------------------------------------------------- */
+.main { flex: 1; min-width: 0; position: relative; padding: 0 22px 26px; }
+/* soft aurora wash behind the topbar, exactly as in the reference */
+.main::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 120px; pointer-events: none;
+  background:
+    radial-gradient(46% 90px at 34% 0%, rgba(246, 190, 205, .55), rgba(246, 190, 205, 0) 70%),
+    radial-gradient(52% 100px at 62% 0%, rgba(178, 205, 255, .45), rgba(178, 205, 255, 0) 72%);
+}
+
+.topbar { position: relative; display: flex; align-items: center; gap: 18px; height: 74px; }
+.search { position: relative; flex: 0 1 380px; }
+.search svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--c-ink-5); }
+.search input {
+  width: 100%; height: 42px; border-radius: 999px;
+  border: 1px solid var(--c-field-line); background: var(--c-field);
+  padding: 0 18px 0 41px; font: inherit; font-size: 13.5px; color: var(--c-ink);
+}
+.search input::placeholder { color: var(--c-ink-5); }
+.icon-btn {
+  position: relative; width: 40px; height: 40px; border-radius: 999px;
+  display: grid; place-items: center; color: var(--c-ink-3);
+  transition: background 140ms ease;
+}
+.icon-btn svg { width: 19px; height: 19px; }
+.icon-btn:hover { background: var(--c-field); }
+.icon-btn .dot {
+  position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 999px;
+  background: #ef5350; box-shadow: 0 0 0 2px #fff;
+}
+.topbar-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.user { display: flex; align-items: center; gap: 11px; padding: 4px 6px 4px 4px; border-radius: 999px; }
+.user img, .user .avatar {
+  width: 38px; height: 38px; border-radius: 999px; object-fit: cover; flex: none;
+  background: linear-gradient(145deg, #cfe0f5, #9dbde4);
+}
+.user-name { font-size: 13px; font-weight: 700; color: var(--c-ink); line-height: 1.3; }
+.user-mail { font-size: 11.5px; color: var(--c-ink-5); line-height: 1.3; }
+.user .chev { width: 16px; height: 16px; color: var(--c-ink-5); }
+
+/* --- Card ---------------------------------------------------------------- */
+.card {
+  position: relative;
+  background: var(--c-card); border: 1px solid var(--c-card-line);
+  border-radius: var(--r-card);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+  overflow: hidden;
+}
+.card-head { display: flex; align-items: center; gap: 10px; padding: 17px 22px; }
+.card-title { margin: 0 auto 0 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--c-ink); }
+.show-label { font-size: 13px; color: var(--c-ink-4); }
+.select {
+  position: relative; display: inline-flex; align-items: center;
+}
+.select select {
+  appearance: none; height: 36px; border-radius: var(--r-control);
+  border: 1px solid var(--c-field-line); background: #fff;
+  padding: 0 30px 0 13px; font: inherit; font-size: 13px; font-weight: 600; color: var(--c-ink-2);
+  cursor: pointer;
+}
+.select svg { position: absolute; right: 10px; width: 14px; height: 14px; color: var(--c-ink-5); pointer-events: none; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 16px; border-radius: var(--r-control);
+  border: 1px solid var(--c-field-line); background: #fff;
+  font-size: 13px; font-weight: 600; color: var(--c-ink-2);
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.btn svg { width: 16px; height: 16px; }
+.btn:hover { background: #f8fafc; }
+.btn-primary {
+  background: var(--c-accent); border-color: var(--c-accent); color: #fff;
+  box-shadow: 0 8px 16px -8px rgba(47, 128, 237, .75);
+}
+.btn-primary:hover { background: var(--c-accent-700); border-color: var(--c-accent-700); }
+
+/* --- Table --------------------------------------------------------------- */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 860px; }
+thead th {
+  height: 44px; padding: 0 var(--pad-x);
+  font-size: 12.5px; font-weight: 500; color: var(--c-ink-4); text-align: left; white-space: nowrap;
+  border-top: 1px solid var(--c-hairline); border-bottom: 1px solid var(--c-hairline);
+  background: #fff;
+}
+th .th { display: inline-flex; align-items: center; gap: 6px; }
+th .sort { width: 11px; height: 11px; color: #c7cdd6; }
+th.check, td.check { width: 46px; padding-left: 22px; padding-right: 0; }
+th.act, td.act { width: 64px; }
+td {
+  height: var(--row-h); padding: 0 var(--pad-x);
+  font-size: 13px; color: var(--c-ink-3); white-space: nowrap;
+  border-bottom: 1px solid var(--c-hairline-2);
+}
+tbody tr:hover td { background: #fafbfd; }
+tbody tr:last-child td { border-bottom: 0; }
+.cell-name { display: flex; align-items: center; gap: 11px; }
+.thumb { width: 26px; height: 26px; border-radius: 999px; flex: none; box-shadow: inset 0 0 0 1px rgba(16,24,40,.06); }
+.name { font-size: 13px; font-weight: 600; color: var(--c-ink); }
+.price { color: var(--c-ink-2); font-weight: 500; }
+input[type="checkbox"] {
+  appearance: none; width: 17px; height: 17px; border-radius: 5px;
+  border: 1.5px solid #d3d9e0; background: #fff; cursor: pointer; display: grid; place-items: center;
+}
+input[type="checkbox"]:checked { background: var(--c-accent); border-color: var(--c-accent); }
+input[type="checkbox"]:checked::after {
+  content: ""; width: 9px; height: 5px; border: 1.8px solid #fff; border-top: 0; border-right: 0;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.pill {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 12px;
+  border-radius: 999px; font-size: 11.5px; font-weight: 600;
+}
+.pill.pending  { background: var(--pill-amber-bg);  color: var(--pill-amber); }
+.pill.active   { background: var(--pill-green-bg);  color: var(--pill-green); }
+.pill.inactive { background: var(--pill-red-bg);    color: var(--pill-red); }
+.pill.onsale   { background: var(--pill-blue-bg);   color: var(--pill-blue); }
+.pill.bouncing { background: var(--pill-violet-bg); color: var(--pill-violet); }
+.kebab { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--c-ink-5); }
+.kebab:hover { background: var(--c-field); color: var(--c-ink-2); }
+
+/* --- Foot ---------------------------------------------------------------- */
+.card-foot {
+  display: flex; align-items: center; gap: 6px; padding: 15px 22px;
+  border-top: 1px solid var(--c-hairline); font-size: 12.5px;
+}
+.pg-nav { display: inline-flex; align-items: center; gap: 7px; color: var(--c-ink-5); font-weight: 500; }
+.pg-nav.next { margin-left: auto; color: var(--c-ink-2); }
+.pg-nav svg { width: 15px; height: 15px; }
+.pg-nav[disabled] { opacity: .55; cursor: default; }
+.pages { display: flex; align-items: center; gap: 2px; margin: 0 auto; }
+.page {
+  min-width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 500; color: var(--c-ink-3);
+}
+.page:hover { background: var(--c-field); }
+.page[aria-current="page"] { background: var(--c-accent); color: #fff; font-weight: 700; }
+.gap { color: var(--c-ink-5); padding: 0 2px; }
+
+@media (max-width: 1080px) {
+  :root { --rail-w: 76px; }
+  .brand-name, .nav-item span, .nav-item .chev { display: none; }
+  .nav-item { justify-content: center; padding: 0; }
+  .rail { padding-inline: 12px; align-items: center; }
+  .card-head { flex-wrap: wrap; }
+}
+@media (max-width: 760px) {
+  .search { flex: 1 1 120px; }
+  .user-mail { display: none; }
+  .card-head { padding: 15px 16px; }
+  .card-foot { padding: 13px 16px; }
+}
+</style>
+</head>
+<body>
+
+<aside class="rail">
+  <a class="brand" href="#">
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="3" y="3" width="12" height="12" rx="4" fill="#2f80ed"/>
+      <rect x="17" y="3" width="12" height="12" rx="4" fill="#f2994a"/>
+      <rect x="3" y="17" width="12" height="12" rx="4" fill="#27ae90"/>
+      <path d="M23 17a6 6 0 1 1 0 12 6 6 0 0 1 0-12Z" fill="#eb5757"/>
+    </svg>
+    <span class="brand-name">Puzzler</span>
+  </a>
+
+  <nav class="nav" aria-label="Main">
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.55L20 7H6"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>
+      <span>Order</span>
+    </button>
+    <button class="nav-item" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.3 12 3 3.5 7.3v9.4L12 21l8.5-4.3z"/><path d="M3.5 7.3 12 11.6l8.5-4.3M12 11.6V21"/></svg>
+      <span>Product</span>
+    </button>
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg>
+      <span>Customer</span>
+    </button>
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="M12 14v6"/></svg>
+      <span>Employee</span>
+    </button>
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M7 9h5M7 13h8M15.5 9h1.5"/></svg>
+      <span>Billing</span>
+    </button>
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3.5" width="18" height="17" rx="2.5"/><path d="M7.5 15.5V11M12 15.5V8M16.5 15.5v-3"/></svg>
+      <span>Analytics</span>
+    </button>
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6h.09A1.7 1.7 0 0 0 10.12 3.04V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.03Z"/></svg>
+      <span>Setting</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.7.8c0 1.7-2.3 2-2.3 3.5M12 17h.01"/></svg>
+      <span>Help</span>
+    </button>
+  </nav>
+
+  <div class="rail-foot">
+    <button class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8 6 12l4 4M6 12h9"/></svg>
+      <span>Log out</span>
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+      <input type="search" placeholder="Search" aria-label="Search" />
+    </div>
+
+    <div class="topbar-end">
+      <button class="icon-btn" aria-label="Messages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.6 7 7.3 5.2a2 2 0 0 0 2.2 0L20.4 7"/></svg>
+        <span class="dot"></span>
+      </button>
+      <button class="icon-btn" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15.5V11a6 6 0 1 0-12 0v4.5L4.5 18h15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>
+      </button>
+      <button class="user">
+        <span class="avatar" aria-hidden="true"></span>
+        <span>
+          <span class="user-name">Jane Cooper</span><br />
+          <span class="user-mail">jane234@example.com</span>
+        </span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="title">
+    <div class="card-head">
+      <h1 class="card-title" id="title">Product</h1>
+      <span class="show-label">Showing</span>
+      <span class="select">
+        <select aria-label="Rows per page">
+          <option>10</option><option>25</option><option>50</option><option>100</option>
+        </select>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/></svg>
+      </span>
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
+        Filter
+      </button>
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg>
+        Export
+      </button>
+      <button class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add New Product
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="check"><input type="checkbox" aria-label="Select all products" /></th>
+            <th><span class="th">Product Name <svg class="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4-4 4 4M16 14l-4 4-4-4"/></svg></span></th>
+            <th><span class="th">Product ID <svg class="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4-4 4 4M16 14l-4 4-4-4"/></svg></span></th>
+            <th><span class="th">Price <svg class="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4-4 4 4M16 14l-4 4-4-4"/></svg></span></th>
+            <th><span class="th">Stock <svg class="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4-4 4 4M16 14l-4 4-4-4"/></svg></span></th>
+            <th><span class="th">Type <svg class="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4-4 4 4M16 14l-4 4-4-4"/></svg></span></th>
+            <th><span class="th">Status <svg class="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4-4 4 4M16 14l-4 4-4-4"/></svg></span></th>
+            <th class="act"><span class="th">Action <svg class="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4-4 4 4M16 14l-4 4-4-4"/></svg></span></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <div class="card-foot">
+      <button class="pg-nav" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+        Previous
+      </button>
+      <div class="pages" id="pages"></div>
+      <button class="pg-nav next">
+        Next
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+  </section>
+</div>
+
+<script>
+const rows = [
+  ['Cherry Delight', '#KP267400', '$90.50', '350 pcs',  'Dessert',   'Pending',  'pending',  '#c0392b,#e74c3c'],
+  ['Kiwi',           '#TL651535', '$12.00', '650 kg',   'Fruits',    'Active',   'active',   '#7cb342,#4f7f2a'],
+  ['Mango Magic',    '#GB653535', '$100.50','1200 pcs', 'Ice Cream', 'Inactive', 'inactive', '#f6b73c,#e88f1f'],
+  ['Joy Care',       '#ER653535', '$59.99', '700 pcs',  'Care',      'On Sale',  'onsale',   '#ef5350,#b71c1c'],
+  ['Blueberry Bliss','#SD487441', '$150.90','100 lt',   'Dessert',   'Bouncing', 'bouncing', '#4a6fd4,#2c3a80'],
+  ['Watermelon',     '#TL449003', '$10.99', '23 lt',    'Juice',     'Pending',  'pending',  '#e05252,#3f9b4a'],
+  ['Trilogy',        '#KP651535', '$130.00','3000 pcs', 'Oil',       'Active',   'active',   '#e6dcb8,#c9b98a'],
+  ['Dryskin',        '#GB449003', '$40.70', '400 pcs',  'Cream',     'Inactive', 'inactive', '#f0c9a8,#d9a273'],
+  ['Olive Oil',      '#SD449003', '$35.50', '200 lt',   'Oil',       'On Sale',  'onsale',   '#8a8f3c,#5d6320'],
+  ['Citrus Brust',   '#ER558612', '$9.99',  '1200 pcs', 'Flowers',   'Bouncing', 'bouncing', '#e8d24a,#b9a02c'],
+];
+
+document.getElementById('rows').innerHTML = rows.map(([name, id, price, stock, type, status, kind, hue]) => `
+  <tr>
+    <td class="check"><input type="checkbox" aria-label="Select ${name}" /></td>
+    <td>
+      <span class="cell-name">
+        <span class="thumb" style="background:linear-gradient(145deg, ${hue.split(',')[0]}, ${hue.split(',')[1]})"></span>
+        <span class="name">${name}</span>
+      </span>
+    </td>
+    <td>${id}</td>
+    <td class="price">${price}</td>
+    <td>${stock}</td>
+    <td>${type}</td>
+    <td><span class="pill ${kind}">${status}</span></td>
+    <td class="act">
+      <button class="kebab" aria-label="Actions for ${name}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></svg>
+      </button>
+    </td>
+  </tr>`).join('');
+
+const nums = ['01','02','03','04','…','10','11'];
+document.getElementById('pages').innerHTML = nums.map(n => n === '…'
+  ? '<span class="gap">…</span>'
+  : `<button class="page"${n === '03' ? ' aria-current="page"' : ''}>${n}</button>`).join('');
+</script>
+</body>
+</html>

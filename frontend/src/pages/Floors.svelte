@@ -8,13 +8,17 @@
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import { locale } from '../i18n';
   import { formatNumber } from '../utils/formatters';
+  import { sortRows } from '../utils/sortRows';
   import { getBuildings } from '../services/buildings';
   import { listFloors, createFloor, updateFloor, deleteFloor } from '../services/floors';
 
   let floors = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(floors, sort.key, sort.dir);
   let buildings = [];
   let search = '';
   let buildingId = '';
@@ -150,14 +154,14 @@
     {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
   </svelte:fragment>
   <svelte:fragment slot="content">
-    <DataTable {loading} isEmpty={floors.length === 0} loadingLabel={$locale.floors.loading} emptyLabel={$locale.floors.empty} emptyIcon="bi-layers" minTableWidth="40rem">
-      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th>{$locale.buildings.name}</th><th>{$locale.floors.floorNumber}</th><th>{$locale.floors.name}</th><th>{$locale.floors.apartments}</th><th>{$locale.buildings.actions}</th></tr></thead>
+    <DataTable {loading} isEmpty={floors.length === 0} loadingLabel={$locale.floors.loading} emptyLabel={$locale.floors.empty} emptyIcon="bi-layers" minTableWidth="40rem" sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
+      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th data-sort="building.name">{$locale.buildings.name}</th><th data-sort="floorNumber">{$locale.floors.floorNumber}</th><th data-sort="name">{$locale.floors.name}</th><th data-sort="totalApartments">{$locale.floors.apartments}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
       <tbody>
-        {#each floors as floor (floor.id)}
+        {#each view as floor (floor.id)}
           <tr class:is-selected={selectedIds.has(floor.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(floor.id)} label={$locale.common.selectRow} on:change={() => toggleRow(floor.id)} /></td>
-            <td>{floor.building?.name ?? '—'}</td>
-            <td>{floor.floorNumber}</td>
+            <td class="cell-muted">{floor.building?.name ?? '—'}</td>
+            <td class="cell-muted">{floor.floorNumber}</td>
             <td>
               <button class="table-link" type="button" on:click={() => push(`/floors/${floor.id}`)}>
                 {floor.name}
@@ -172,24 +176,16 @@
               </span>
             </td>
             <td class="actions-cell">
-              <button
-                class="row-action"
-                type="button"
-                aria-label={$locale.floors.edit}
-                on:click={() => openFloor(floor)}
-              >
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                <span>{$locale.floors.edit}</span>
-              </button>
-              <button
-                class="row-action danger"
-                type="button"
-                aria-label={$locale.floors.delete}
-                on:click={() => removeFloor(floor)}
-              >
-                <i class="bi bi-trash3" aria-hidden="true"></i>
-                <span>{$locale.floors.delete}</span>
-              </button>
+              <RowActions label={$locale.buildings.actions}>
+                <button class="row-menu-item" type="button" on:click={() => openFloor(floor)}>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                  {$locale.floors.edit}
+                </button>
+                <button class="row-menu-item danger" type="button" on:click={() => removeFloor(floor)}>
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                  {$locale.floors.delete}
+                </button>
+              </RowActions>
             </td>
           </tr>
         {/each}

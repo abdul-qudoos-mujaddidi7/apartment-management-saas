@@ -14,6 +14,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import ReceivePaymentModal from '../components/payments/ReceivePaymentModal.svelte';
   import { locale, translate } from '../i18n';
@@ -21,6 +22,7 @@
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney, formatShortDate } from '../utils/formatters';
+  import { sortRows } from '../utils/sortRows';
 
   const ITEM_TYPES = ['RENT', 'ELECTRICITY', 'WATER', 'GAS', 'OTHER'];
   const STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED'];
@@ -28,6 +30,8 @@
   const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', leaseId: '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: '', currency: '', notes: '', items: [newItem()] });
 
   let invoices = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(invoices, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let filters = { search: '', buildingId: '', status: '', dateFrom: '', dateTo: '' };
   let selectedIds = createSelection();
@@ -230,26 +234,28 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    <DataTable loading={loading} isEmpty={invoices.length === 0} loadingLabel={$locale.invoices.loading} emptyLabel={$locale.invoices.empty} emptyIcon="bi-receipt" className="invoices-table" minTableWidth="88rem" showFooter={!loading && invoices.length > 0}>
+    <DataTable loading={loading} isEmpty={invoices.length === 0} loadingLabel={$locale.invoices.loading} emptyLabel={$locale.invoices.empty} emptyIcon="bi-receipt" className="invoices-table" minTableWidth="88rem" showFooter={!loading && invoices.length > 0} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
       <button slot="empty-action" class="btn btn-primary" type="button" on:click={openCreate}>{$locale.invoices.add}</button>
       <thead><tr>
         <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-        <th>{$locale.invoices.invoiceNumber}</th><th>{$locale.invoices.invoiceDate}</th><th>{$locale.invoices.dueDate}</th><th>{$locale.invoices.type}</th><th>{$locale.invoices.tenant}</th><th>{$locale.invoices.building}</th><th>{$locale.invoices.apartment}</th><th>{$locale.invoices.contractNumber}</th><th>{$locale.invoices.total}</th><th>{$locale.invoices.paid}</th><th>{$locale.invoices.balance}</th><th>{$locale.invoices.status}</th><th><span class="visually-hidden">{$locale.invoices.view}</span></th>
+        <th data-sort="invoiceNumber">{$locale.invoices.invoiceNumber}</th><th data-sort="invoiceDate">{$locale.invoices.invoiceDate}</th><th data-sort="dueDate">{$locale.invoices.dueDate}</th><th>{$locale.invoices.type}</th><th data-sort="lease.tenant.lastName">{$locale.invoices.tenant}</th><th data-sort="lease.apartment.floor.building.name">{$locale.invoices.building}</th><th data-sort="lease.apartment.apartmentNumber">{$locale.invoices.apartment}</th><th data-sort="lease.contractNumber">{$locale.invoices.contractNumber}</th><th class="amount-cell" data-sort="total">{$locale.invoices.total}</th><th class="amount-cell" data-sort="paidAmount">{$locale.invoices.paid}</th><th class="amount-cell">{$locale.invoices.balance}</th><th data-sort="status">{$locale.invoices.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.invoices.view}</span></th>
       </tr></thead>
-      <tbody>{#each invoices as invoice (invoice.id)}
+      <tbody>{#each view as invoice (invoice.id)}
         <tr class:is-selected={selectedIds.has(invoice.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(invoice.id)} label={$locale.common.selectRow} on:change={() => toggleRow(invoice.id)} /></td>
           <td class="invoice-number">{invoice.invoiceNumber}</td><td class="date-cell">{formatShortDate(invoice.invoiceDate)}</td><td class="date-cell">{formatShortDate(invoice.dueDate)}</td><td class="invoice-types">{invoiceTypes(invoice)}</td><td class="tenant-name">{tenantName(invoice.lease)}</td><td>{invoice.lease.apartment.floor.building.name}</td><td><strong>{invoice.lease.apartment.apartmentNumber}</strong>{#if invoice.lease.apartment.name}<small class="cell-sub">{invoice.lease.apartment.name}</small>{/if}</td><td>{invoice.lease.contractNumber}</td><td class="amount-cell">{formatMoney(invoice.total, invoice.currency)}</td><td class="amount-cell">{formatMoney(invoice.paidAmount, invoice.currency)}</td><td class="amount-cell">{formatMoney(invoice.total - invoice.paidAmount, invoice.currency)}</td><td><StatusBadge label={statusLabel(invoice.status)} tone={statusTone(invoice.status)} /></td>
           <td class="actions-cell">
-            <button class="row-action" type="button" on:click={() => openDetails(invoice)} aria-label={$locale.invoices.view}><i class="bi bi-eye" aria-hidden="true"></i><span>{$locale.common.actions.view}</span></button>
-            {#if invoice.status !== 'PAID' && invoice.status !== 'CANCELLED'}
-              <button class="row-action" type="button" on:click={() => openReceivePayment(invoice)} aria-label={$locale.payments.receivePayment}><i class="bi bi-credit-card-2-front" aria-hidden="true"></i><span>{$locale.common.actions.pay}</span></button>
-            {/if}
-            <button class="row-action" type="button" on:click={() => openEdit(invoice)} aria-label={$locale.invoices.edit} disabled={invoice.status === 'CANCELLED'}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.common.actions.edit}</span></button>
-            {#if invoice.status !== 'CANCELLED'}
-              <button class="row-action warning" type="button" on:click={() => cancelExistingInvoice(invoice)} aria-label={$locale.invoices.cancelInvoice}><i class="bi bi-x-circle" aria-hidden="true"></i><span>{$locale.common.actions.cancel}</span></button>
-            {/if}
-            <button class="row-action danger" type="button" on:click={() => removeInvoice(invoice)} aria-label={$locale.invoices.delete}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.invoices.delete}</span></button>
+            <RowActions label={$locale.invoices.view}>
+              <button class="row-menu-item" type="button" on:click={() => openDetails(invoice)}><i class="bi bi-eye" aria-hidden="true"></i>{$locale.common.actions.view}</button>
+              {#if invoice.status !== 'PAID' && invoice.status !== 'CANCELLED'}
+                <button class="row-menu-item" type="button" on:click={() => openReceivePayment(invoice)}><i class="bi bi-credit-card-2-front" aria-hidden="true"></i>{$locale.payments.receivePayment}</button>
+              {/if}
+              <button class="row-menu-item" type="button" on:click={() => openEdit(invoice)} disabled={invoice.status === 'CANCELLED'}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.common.actions.edit}</button>
+              {#if invoice.status !== 'CANCELLED'}
+                <button class="row-menu-item warning" type="button" on:click={() => cancelExistingInvoice(invoice)}><i class="bi bi-x-circle" aria-hidden="true"></i>{$locale.common.actions.cancel}</button>
+              {/if}
+              <button class="row-menu-item danger" type="button" on:click={() => removeInvoice(invoice)}><i class="bi bi-trash3" aria-hidden="true"></i>{$locale.invoices.delete}</button>
+            </RowActions>
           </td>
         </tr>
       {/each}</tbody>

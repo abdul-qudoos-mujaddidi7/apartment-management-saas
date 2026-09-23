@@ -6,7 +6,9 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import { debounce } from '../utils/debounce';
+  import { sortRows } from '../utils/sortRows';
   import { formatDate } from '../utils/formatters';
   import { push } from 'svelte-spa-router';
   import { api } from '../services/api';
@@ -16,6 +18,8 @@
   export let params = {};
   let buildingId, building, editingId = null;
   let floors = [], search = '', loadingBuilding = false, loadingFloors = false;
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(floors, sort.key, sort.dir);
   let errorMessage = '', noticeMessage = '', modalError = '';
   let modalOpen = false, saving = false, lastSavedFloorNumber = null;
   let formErrors = {}, form = { floorNumber: '', name: '' };
@@ -148,10 +152,10 @@
     <section class="floors-card" aria-labelledby="floors-title">
       <header class="floors-header"><div class="floors-title"><div><h2 id="floors-title">{$locale.floors.title}</h2></div></div><label class="floor-search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">{$locale.floors.search}</span><input type="search" bind:value={search} on:input={handleSearch} placeholder={$locale.floors.search} /></label></header>
 
-      <DataTable loading={loadingFloors} isEmpty={floors.length === 0} loadingLabel={$locale.floors.loading} emptyLabel={$locale.floors.empty} emptyIcon="bi-layers" minTableWidth="46rem" showFooter={!loadingFloors && pagination.total > 0}>
+      <DataTable loading={loadingFloors} isEmpty={floors.length === 0} loadingLabel={$locale.floors.loading} emptyLabel={$locale.floors.empty} emptyIcon="bi-layers" minTableWidth="46rem" showFooter={!loadingFloors && pagination.total > 0} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
         <ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.floors.add} on:click={openAddFloor} />
-        <thead><tr><th>#</th><th>{$locale.floors.name}</th><th>{$locale.apartments.title}</th><th>{$locale.buildings.created}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
-        <tbody>{#each floors as floor (floor.id)}<tr><td class="data-cell">{floor.floorNumber}</td><td><button class="table-link" type="button" on:click={() => openApartments(floor)}>{floor.name}</button></td><td><div class="apartments-link"><span class="data-cell">{floor.totalApartments || 0}</span><button type="button" on:click={() => openApartments(floor)}>{$locale.buildings.view} {$locale.apartments.title}<i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></td><td>{formatDate(floor.createdAt, $language)}</td><td class="actions-cell"><button class="row-action" type="button" on:click={() => openEditFloor(floor)}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.floors.edit}</span></button><button class="row-action danger" type="button" on:click={() => removeFloor(floor)}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.floors.delete}</span></button></td></tr>{/each}</tbody>        <svelte:fragment slot="footer"><Pagination page={pagination.page} totalPages={pagination.totalPages} previousLabel={$locale.floors.previous} nextLabel={$locale.floors.next} label={$locale.floors.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)} summary={resultSummary} onPage={loadFloors} /></svelte:fragment>
+        <thead><tr><th class="cell-muted">#</th><th data-sort="name">{$locale.floors.name}</th><th data-sort="totalApartments">{$locale.apartments.title}</th><th data-sort="createdAt">{$locale.buildings.created}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
+        <tbody>{#each view as floor (floor.id)}<tr><td class="data-cell cell-muted">{floor.floorNumber}</td><td><button class="table-link" type="button" on:click={() => openApartments(floor)}>{floor.name}</button></td><td><div class="apartments-link"><span class="data-cell">{floor.totalApartments || 0}</span><button type="button" on:click={() => openApartments(floor)}>{$locale.buildings.view} {$locale.apartments.title}<i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></td><td class="cell-muted">{formatDate(floor.createdAt, $language)}</td><td class="actions-cell"><RowActions label={$locale.buildings.actions}><button class="row-menu-item" type="button" on:click={() => openEditFloor(floor)}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.floors.edit}</button><button class="row-menu-item danger" type="button" on:click={() => removeFloor(floor)}><i class="bi bi-trash3" aria-hidden="true"></i>{$locale.floors.delete}</button></RowActions></td></tr>{/each}</tbody>        <svelte:fragment slot="footer"><Pagination page={pagination.page} totalPages={pagination.totalPages} previousLabel={$locale.floors.previous} nextLabel={$locale.floors.next} label={$locale.floors.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)} summary={resultSummary} onPage={loadFloors} /></svelte:fragment>
       </DataTable>
     </section>
   {/if}
@@ -164,7 +168,7 @@
 
 <style>
   .details-page{display:flex;flex:1 1 auto;flex-direction:column;min-width:0;min-height:0;gap:var(--space-4)}
-  .breadcrumb-row{display:flex;align-items:center;gap:.55rem;color:var(--text-muted);font-size:var(--text-xs)}.breadcrumb-row button{display:inline-flex;align-items:center;gap:.4rem;padding:0;border:0;color:var(--accent);background:none;font:inherit;font-weight:var(--weight-semibold)}.breadcrumb-row>i{font-size:.58rem}:global([dir='rtl']) .breadcrumb-row>i,:global([dir='rtl']) .apartments-link button i{transform:rotate(180deg)}
+  .breadcrumb-row{display:flex;align-items:center;gap:.55rem;color:var(--text-muted);font-size:var(--text-xs)}.breadcrumb-row button{display:inline-flex;align-items:center;gap:.4rem;padding:0;border:0;color: var(--accent-text);background:none;font:inherit;font-weight:var(--weight-semibold)}.breadcrumb-row>i{font-size:.58rem}:global([dir='rtl']) .breadcrumb-row>i,:global([dir='rtl']) .apartments-link button i{transform:rotate(180deg)}
   .page-loader{display:grid;place-items:center;min-height:22rem}
   /* The page's hero: a light wash of the brand blue over white — brightest at the
      top corner, settling into a cool base — so the card reads as one tinted
@@ -175,6 +179,6 @@
   .floors-card{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-sm)}.floors-header{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4)}.floors-title{display:flex;align-items:flex-start;gap:.7rem;margin-inline-end:auto}.floors-title h2{margin:0;color:var(--text-strong);font-size:var(--text-lg)}.floor-search{display:flex;align-items:center;gap:.5rem;flex:0 1 18rem;width:min(18rem,100%);height:var(--control-height);padding:0 .75rem;border:1px solid var(--border);border-radius:var(--control-radius);background:var(--surface)}.floor-search:focus-within{border-color:var(--accent-border);box-shadow:var(--ring)}.floor-search i{color:var(--text-muted)}.floor-search input{min-width:0;width:100%;padding:0;border:0;outline:0;background:transparent;color:var(--text-strong);font-size:var(--text-sm)}
   /* The table *is* the card: no inner panel chrome, exactly as an index page
      strips it, so the header band and the rows span the card edge to edge. */
-  .floors-card :global(.data-table-panel){flex:1 1 auto;border:0;border-radius:0;background:transparent;box-shadow:none}.apartments-link{display:flex;align-items:center;gap:var(--space-3)}.apartments-link button{display:inline-flex;align-items:center;gap:.45rem;padding:0;border:0;color:var(--accent);background:none;font-size:var(--text-xs);font-weight:var(--weight-semibold)}.actions-cell{display:flex;align-items:center;justify-content:flex-end;gap:.45rem}  @media(max-width:1050px){.building-card{grid-template-columns:6rem 1fr}.building-photo{width:6rem}.building-action{grid-column:1/-1;align-items:center}}
+  .floors-card :global(.data-table-panel){flex:1 1 auto;border:0;border-radius:0;background:transparent;box-shadow:none}.apartments-link{display:flex;align-items:center;gap:var(--space-3)}.apartments-link button{display:inline-flex;align-items:center;gap:.45rem;padding:0;border:0;color: var(--accent-text);background:none;font-size:var(--text-xs);font-weight:var(--weight-semibold)}.actions-cell{display:flex;align-items:center;justify-content:flex-end;gap:.45rem}  @media(max-width:1050px){.building-card{grid-template-columns:6rem 1fr}.building-photo{width:6rem}.building-action{grid-column:1/-1;align-items:center}}
   @media(max-width:650px){.building-card{grid-template-columns:1fr}.building-photo{width:100%;height:9rem}.building-action{align-items:center}.floors-header{align-items:flex-start;flex-direction:column}.floor-search{width:100%}.actions-cell{justify-content:flex-start}}
 </style>

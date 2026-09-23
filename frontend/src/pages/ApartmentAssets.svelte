@@ -814,7 +814,7 @@
     gap: 0.4rem;
     padding: 0;
     border: 0;
-    color: var(--accent);
+    color: var(--accent-text);
     background: none;
     font-size: 0.8rem;
     font-weight: 650;
@@ -856,7 +856,7 @@
     place-items: center;
     flex: 0 0 2.25rem;
     border-radius: 0.6rem;
-    color: var(--accent);
+    color: var(--accent-text);
     background: var(--accent-soft);
     font-size: 1.05rem;
   }
@@ -1014,7 +1014,7 @@
     padding: 0;
     border: 0;
     border-radius: 50%;
-    color: var(--accent);
+    color: var(--accent-text);
     background: none;
     font-size: 1.05rem;
     line-height: 1;
@@ -1084,7 +1084,7 @@
     display: grid;
     place-items: center;
     border-radius: 50%;
-    color: var(--accent);
+    color: var(--accent-text);
     background: var(--accent-soft);
     font-size: 1.2rem;
   }

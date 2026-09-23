@@ -11,10 +11,12 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ApartmentSpacesEditor from '../components/apartments/ApartmentSpacesEditor.svelte';
 
   import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
   import { formatMoney } from '../utils/formatters';
+  import { sortRows } from '../utils/sortRows';
   import { getFloor, listFloors } from '../services/floors';
   import {
     createApartment,
@@ -46,6 +48,8 @@
   let formFloorId = '';
 
   let apartments = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(apartments, sort.key, sort.dir);
 
   let pagination = {
     page: 1,
@@ -429,27 +433,29 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    <DataTable {loading} isEmpty={apartments.length === 0} loadingLabel={$locale.apartments.loading} emptyLabel={$locale.apartments.empty} emptyIcon="bi-door-open" minTableWidth="72rem" showFooter={false}>
-      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th>{$locale.apartments.apartmentNumber}</th><th>{$locale.apartments.name}</th><th>{$locale.apartments.type}</th><th>{$locale.apartments.area}</th><th>{$locale.apartments.bedrooms}</th><th>{$locale.apartments.bathrooms}</th><th class="amount-cell">{$locale.apartments.monthlyRent}</th><th>{$locale.apartments.status}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
+    <DataTable {loading} isEmpty={apartments.length === 0} loadingLabel={$locale.apartments.loading} emptyLabel={$locale.apartments.empty} emptyIcon="bi-door-open" minTableWidth="72rem" showFooter={false} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
+      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th data-sort="apartmentNumber">{$locale.apartments.apartmentNumber}</th><th data-sort="name">{$locale.apartments.name}</th><th data-sort="type">{$locale.apartments.type}</th><th data-sort="area">{$locale.apartments.area}</th><th data-sort="bedrooms">{$locale.apartments.bedrooms}</th><th data-sort="bathrooms">{$locale.apartments.bathrooms}</th><th class="amount-cell" data-sort="monthlyRent">{$locale.apartments.monthlyRent}</th><th data-sort="status">{$locale.apartments.status}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
       <tbody>
-        {#each apartments as apartment (apartment.id)}
+        {#each view as apartment (apartment.id)}
           <tr class:is-selected={selectedIds.has(apartment.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(apartment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(apartment.id)} /></td>
             <td class="data-cell"><button class="table-link" type="button" on:click={() => openDetails(apartment)}>{apartment.apartmentNumber}</button></td>
-            <td>{apartment.name}</td><td>{$locale.apartments.types[apartment.type] || apartment.type}</td><td class="data-cell">{formatArea(apartment.area, $language)}</td><td class="data-cell">{apartment.bedrooms}</td><td class="data-cell">{apartment.bathrooms}</td><td class="amount-cell">{formatMoney(apartment.monthlyRent, apartment.rentCurrency)}</td><td><StatusBadge label={statusLabel(apartment.status)} tone={statusTone(apartment.status)} /></td>
+            <td class="cell-muted">{apartment.name}</td><td class="cell-muted">{$locale.apartments.types[apartment.type] || apartment.type}</td><td class="data-cell cell-muted">{formatArea(apartment.area, $language)}</td><td class="data-cell cell-muted">{apartment.bedrooms}</td><td class="data-cell cell-muted">{apartment.bathrooms}</td><td class="amount-cell">{formatMoney(apartment.monthlyRent, apartment.rentCurrency)}</td><td><StatusBadge label={statusLabel(apartment.status)} tone={statusTone(apartment.status)} /></td>
             <td class="actions-cell">
-              <button class="row-action" type="button" on:click={() => openDetails(apartment)} aria-label={$locale.apartments.spaces.title}>
-                <i class="bi bi-eye" aria-hidden="true"></i>
-                <span>{$locale.common.actions.spaces}</span>
-              </button>
-              <button class="row-action" type="button" on:click={() => openEditApartment(apartment)} aria-label={$locale.apartments.edit}>
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                <span>{$locale.common.actions.edit}</span>
-              </button>
-              <button class="row-action danger" type="button" on:click={() => removeApartment(apartment)} aria-label={$locale.apartments.delete}>
-                <i class="bi bi-trash3" aria-hidden="true"></i>
-                <span>{$locale.apartments.delete}</span>
-              </button>
+              <RowActions label={$locale.buildings.actions}>
+                <button class="row-menu-item" type="button" on:click={() => openDetails(apartment)}>
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                  {$locale.common.actions.spaces}
+                </button>
+                <button class="row-menu-item" type="button" on:click={() => openEditApartment(apartment)}>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                  {$locale.common.actions.edit}
+                </button>
+                <button class="row-menu-item danger" type="button" on:click={() => removeApartment(apartment)}>
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                  {$locale.apartments.delete}
+                </button>
+              </RowActions>
             </td>
           </tr>
         {/each}
@@ -595,7 +601,7 @@
 
 <style>
   .toolbar-back { display: inline-flex; align-items: center; gap: .4rem; min-height: var(--control-height); padding: 0 .75rem; border: 1px solid var(--border); border-radius: var(--control-radius); color: var(--text-secondary); background: var(--surface); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
-  .toolbar-back:hover { color: var(--accent); border-color: var(--accent-soft-border); background: var(--accent-soft); }
+  .toolbar-back:hover { color: var(--accent-text); border-color: var(--accent-soft-border); background: var(--accent-soft); }
   :global([dir='rtl']) .toolbar-back i { transform: rotate(180deg); }
   .panel-loader { min-height: 14rem; display: grid; place-items: center; }
 
@@ -612,7 +618,7 @@
   .details-spaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
   .details-space { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface-subtle); }
   .space-name { display: inline-flex; align-items: center; gap: .5rem; min-width: 0; }
-  .space-name i { color: var(--accent); }
+  .space-name i { color: var(--accent-text); }
   .details-empty { margin: 0; color: var(--text-muted); }
   @media (max-width: 575px) { .details-spaces { grid-template-columns: 1fr; } }
 </style>

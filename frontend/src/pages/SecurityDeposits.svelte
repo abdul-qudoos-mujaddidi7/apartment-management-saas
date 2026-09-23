@@ -6,6 +6,7 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { onMount } from 'svelte';
@@ -19,6 +20,7 @@
   import { listFinancialAccounts } from '../services/financialAccounts';
   import { locale } from '../i18n';
   import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
+  import { sortRows } from '../utils/sortRows';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
 
@@ -37,6 +39,8 @@
   let accounts = [];
 
   let rows = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(rows, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let search = '';
   let loading = false;
@@ -184,22 +188,22 @@
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th>{$locale.securityDeposits.tenant}</th>
-          <th>{$locale.securityDeposits.building}</th>
-          <th>{$locale.securityDeposits.floor}</th>
-          <th>{$locale.securityDeposits.apartment}</th>
-          <th>{$locale.securityDeposits.contractNumber}</th>
-          <th>{$locale.securityDeposits.required}</th>
-          <th>{$locale.securityDeposits.received}</th>
-          <th>{$locale.securityDeposits.deductions}</th>
-          <th>{$locale.securityDeposits.refunded}</th>
-          <th>{$locale.securityDeposits.balance}</th>
-          <th>{$locale.securityDeposits.status}</th>
+          <th data-sort="lease.tenant.lastName">{$locale.securityDeposits.tenant}</th>
+          <th data-sort="lease.apartment.floor.building.name">{$locale.securityDeposits.building}</th>
+          <th data-sort="lease.apartment.floor.name">{$locale.securityDeposits.floor}</th>
+          <th data-sort="lease.apartment.apartmentNumber">{$locale.securityDeposits.apartment}</th>
+          <th data-sort="lease.contractNumber">{$locale.securityDeposits.contractNumber}</th>
+          <th class="money-cell" data-sort="summary.requiredDeposit">{$locale.securityDeposits.required}</th>
+          <th class="money-cell" data-sort="summary.received">{$locale.securityDeposits.received}</th>
+          <th class="money-cell" data-sort="summary.deductions">{$locale.securityDeposits.deductions}</th>
+          <th class="money-cell" data-sort="summary.refunded">{$locale.securityDeposits.refunded}</th>
+          <th class="amount-cell" data-sort="summary.balance">{$locale.securityDeposits.balance}</th>
+          <th data-sort="summary.status">{$locale.securityDeposits.status}</th>
           <th class="actions-heading"><span class="visually-hidden">{$locale.securityDeposits.details}</span></th>
         </tr>
       </thead>
       <tbody>
-        {#each rows as row (row.lease.id)}
+        {#each view as row (row.lease.id)}
           <tr class:is-selected={selectedIds.has(row.lease.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(row.lease.id)} label={$locale.common.selectRow} on:change={() => toggleRow(row.lease.id)} /></td>
             <td class="tenant-name">{row.lease.tenant.firstName} {row.lease.tenant.lastName}</td>
@@ -214,9 +218,12 @@
             <td class="amount-cell">{formatMoney(row.summary.balance)}</td>
             <td><StatusBadge label={statusLabel(row.summary.status)} tone={statusTone(row.summary.status)} /></td>
             <td class="actions-cell">
-              <button class="details-button btn btn-outline-primary btn-sm" type="button" on:click={() => openDetails(row.lease.id)}>
-                {$locale.securityDeposits.details}
-              </button>
+              <RowActions label={$locale.securityDeposits.details}>
+                <button class="row-menu-item" type="button" on:click={() => openDetails(row.lease.id)}>
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                  {$locale.securityDeposits.details}
+                </button>
+              </RowActions>
             </td>
           </tr>
         {/each}

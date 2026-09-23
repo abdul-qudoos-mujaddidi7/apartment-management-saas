@@ -10,14 +10,18 @@
   import Checkbox from '../components/ui/Checkbox.svelte';
   import Pagination from '../components/ui/Pagination.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import BuildingFormModal from '../components/buildings/BuildingFormModal.svelte';
 
   import { getBuildings, deleteBuilding } from '../services/buildings';
   import { locale } from '../i18n';
+  import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
 
   let buildings = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(buildings, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let search = '';
   let loading = false;
@@ -178,6 +182,9 @@
       emptyIcon="bi-buildings"
       minTableWidth="54rem"
       showFooter={!loading && buildings.length > 0}
+      sortKey={sort.key}
+      sortDir={sort.dir}
+      on:sort={(event) => (sort = event.detail)}
     >
       <ActionButton
         slot="empty-action"
@@ -189,17 +196,17 @@
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th>{$locale.buildings.name}</th>
-          <th>{$locale.buildings.code}</th>
-          <th>{$locale.buildings.address}</th>
-          <th>{$locale.buildings.floors}</th>
-          <th>{$locale.buildings.status}</th>
+          <th data-sort="name">{$locale.buildings.name}</th>
+          <th data-sort="code">{$locale.buildings.code}</th>
+          <th data-sort="address">{$locale.buildings.address}</th>
+          <th data-sort="totalFloors">{$locale.buildings.floors}</th>
+          <th data-sort="status">{$locale.buildings.status}</th>
           <th class="actions-heading">{$locale.buildings.actions}</th>
         </tr>
       </thead>
 
       <tbody>
-        {#each buildings as building (building.id)}
+        {#each view as building (building.id)}
           <tr class:is-selected={selectedIds.has(building.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(building.id)} label={$locale.common.selectRow} on:change={() => toggleRow(building.id)} /></td>
             <td class="building-name">
@@ -215,14 +222,16 @@
               <StatusBadge label={statusLabel(building.status)} tone={statusTone(building.status)} />
             </td>
             <td class="actions-cell">
-              <button class="row-action" type="button" on:click={() => openEdit(building)} aria-label={$locale.buildings.edit}>
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                <span>{$locale.buildings.edit}</span>
-              </button>
-              <button class="row-action danger" type="button" on:click={() => confirmDelete(building)} aria-label={$locale.buildings.delete}>
-                <i class="bi bi-trash3" aria-hidden="true"></i>
-                <span>{$locale.buildings.delete}</span>
-              </button>
+              <RowActions label={$locale.buildings.actions}>
+                <button class="row-menu-item" type="button" on:click={() => openEdit(building)}>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                  {$locale.buildings.edit}
+                </button>
+                <button class="row-menu-item danger" type="button" on:click={() => confirmDelete(building)}>
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                  {$locale.buildings.delete}
+                </button>
+              </RowActions>
             </td>
           </tr>
         {/each}

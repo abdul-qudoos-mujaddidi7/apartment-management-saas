@@ -8,8 +8,10 @@
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
+  import { sortRows } from '../utils/sortRows';
   import { onMount } from 'svelte';
 
   import { api } from '../services/api';
@@ -32,6 +34,8 @@
   });
 
   let leases = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(leases, sort.key, sort.dir);
   let tenants = [];
   let buildings = [];
   let floors = [];
@@ -303,26 +307,29 @@
       emptyIcon="bi-file-earmark-text"
       minTableWidth="72rem"
       showFooter={!loading && leases.length > 0}
+      sortKey={sort.key}
+      sortDir={sort.dir}
+      on:sort={(event) => (sort = event.detail)}
     >
       <ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.leases.new} on:click={openNew} />
 
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th>{$locale.leases.contractNumber}</th>
-          <th>{$locale.leases.tenant}</th>
-          <th>{$locale.leases.building}</th>
-          <th>{$locale.leases.floor}</th>
-          <th>{$locale.leases.apartment}</th>
-          <th>{$locale.leases.period}</th>
-          <th>{$locale.leases.monthlyRent}</th>
-          <th>{$locale.leases.status}</th>
+          <th data-sort="contractNumber">{$locale.leases.contractNumber}</th>
+          <th data-sort="tenant.lastName">{$locale.leases.tenant}</th>
+          <th data-sort="apartment.floor.building.name">{$locale.leases.building}</th>
+          <th data-sort="apartment.floor.name">{$locale.leases.floor}</th>
+          <th data-sort="apartment.apartmentNumber">{$locale.leases.apartment}</th>
+          <th data-sort="startDate">{$locale.leases.period}</th>
+          <th data-sort="monthlyRent">{$locale.leases.monthlyRent}</th>
+          <th data-sort="status">{$locale.leases.status}</th>
           <th class="actions-heading"><span class="visually-hidden">{$locale.leases.details}</span></th>
         </tr>
       </thead>
 
       <tbody>
-        {#each leases as lease (lease.id)}
+        {#each view as lease (lease.id)}
           <tr class:is-selected={selectedIds.has(lease.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(lease.id)} label={$locale.common.selectRow} on:change={() => toggleRow(lease.id)} /></td>
             <td class="contract-number">{lease.contractNumber}</td>
@@ -330,34 +337,36 @@
             <td>{lease.apartment.floor.building.name}</td>
             <td>{lease.apartment.floor.name}</td>
             <td class="data-cell">{lease.apartment.apartmentNumber}</td>
-            <td class="date-cell">{formatShortDate(lease.startDate)} – {formatShortDate(lease.endDate)}</td>
-            <td class="money-cell">{formatMoney(lease.monthlyRent, lease.currency)}</td>
+            <td class="date-cell cell-muted">{formatShortDate(lease.startDate)} – {formatShortDate(lease.endDate)}</td>
+            <td class="money-cell cell-muted">{formatMoney(lease.monthlyRent, lease.currency)}</td>
             <td><StatusBadge label={statusLabel(lease.status)} tone={statusTone(lease.status)} /></td>
             <td class="actions-cell">
-              <button class="row-action" type="button" on:click={() => (detail = lease)} aria-label={$locale.leases.details}>
-                <i class="bi bi-eye" aria-hidden="true"></i>
-                <span>{$locale.leases.details}</span>
-              </button>
-              <button class="row-action" type="button" on:click={() => openEdit(lease)} aria-label={$locale.leases.edit}>
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                <span>{$locale.common.actions.edit}</span>
-              </button>
-              {#if lease.status === 'DRAFT'}
-                <button class="row-action success" type="button" on:click={() => changeStatus(lease, 'ACTIVE')} aria-label={$locale.leases.activate}>
-                  <i class="bi bi-check2-circle" aria-hidden="true"></i>
-                  <span>{$locale.leases.activate}</span>
+              <RowActions label={$locale.leases.details}>
+                <button class="row-menu-item" type="button" on:click={() => (detail = lease)}>
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                  {$locale.leases.details}
                 </button>
-              {/if}
-              {#if lease.status === 'ACTIVE'}
-                <button class="row-action warning" type="button" on:click={() => changeStatus(lease, 'TERMINATED')} aria-label={$locale.leases.terminate}>
-                  <i class="bi bi-stop-circle" aria-hidden="true"></i>
-                  <span>{$locale.leases.terminate}</span>
+                <button class="row-menu-item" type="button" on:click={() => openEdit(lease)}>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                  {$locale.common.actions.edit}
                 </button>
-              {/if}
-              <button class="row-action danger" type="button" on:click={() => removeLease(lease)} aria-label={$locale.leases.delete}>
-                <i class="bi bi-trash3" aria-hidden="true"></i>
-                <span>{$locale.leases.delete}</span>
-              </button>
+                {#if lease.status === 'DRAFT'}
+                  <button class="row-menu-item" type="button" on:click={() => changeStatus(lease, 'ACTIVE')}>
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                    {$locale.leases.activate}
+                  </button>
+                {/if}
+                {#if lease.status === 'ACTIVE'}
+                  <button class="row-menu-item warning" type="button" on:click={() => changeStatus(lease, 'TERMINATED')}>
+                    <i class="bi bi-stop-circle" aria-hidden="true"></i>
+                    {$locale.leases.terminate}
+                  </button>
+                {/if}
+                <button class="row-menu-item danger" type="button" on:click={() => removeLease(lease)}>
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                  {$locale.leases.delete}
+                </button>
+              </RowActions>
             </td>
           </tr>
         {/each}
@@ -369,9 +378,9 @@
     <Pagination
       page={pagination.page}
       totalPages={pagination.totalPages}
-      previousLabel={$locale.securityDeposits.previous}
-      nextLabel={$locale.securityDeposits.next}
-      label={$locale.securityDeposits.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)}
+      previousLabel={$locale.leases.previous}
+      nextLabel={$locale.leases.next}
+      label={$locale.leases.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)}
       summary={resultSummary}
       onPage={loadLeases}
     />

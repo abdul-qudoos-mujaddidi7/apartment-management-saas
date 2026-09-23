@@ -27,7 +27,10 @@
   $: startIdx = (page - 1) * perPage;
   $: pagedAccounts = accounts.slice(startIdx, startIdx + perPage);
   $: summary = accounts.length
-    ? `${startIdx + 1}–${Math.min(startIdx + perPage, accounts.length)} of ${accounts.length}`
+    ? $locale.accounts.showing
+        .replace('{from}', startIdx + 1)
+        .replace('{to}', Math.min(startIdx + perPage, accounts.length))
+        .replace('{total}', accounts.length)
     : '';
 
   function handlePageChange(p) { page = p; }
@@ -98,6 +101,9 @@
     <Pagination
       page={page}
       totalPages={totalPages}
+      previousLabel={$locale.common.previous}
+      nextLabel={$locale.common.next}
+      label={$locale.common.page.replace('{page}', page).replace('{totalPages}', totalPages)}
       summary={summary}
       itemsPerPage={perPage}
       perPageOptions={[10, 25, 50, 100]}

@@ -13,10 +13,12 @@
   import Modal from '../components/ui/Modal.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { AFGHAN_MONTHS, gregorianToShamsi } from '../utils/shamsiDate';
   import { locale, translate } from '../i18n';
+  import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
@@ -24,6 +26,8 @@
   const utilities = ['ELECTRICITY', 'WATER', 'GAS'];
   const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', meterId: '', readingDate: new Date().toISOString().slice(0, 10), currentReading: '', notes: '' });
   let readings = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(readings, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let filters = { search: '', buildingId: '', utilityType: '', dateFrom: '', dateTo: '' };
   let buildings = [];
@@ -185,12 +189,12 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    <DataTable loading={loading} isEmpty={readings.length === 0} loadingLabel={$locale.meterReadings.loading} emptyLabel={$locale.meterReadings.empty} emptyIcon="bi-clipboard-data" className="meter-readings-table" minTableWidth="88rem" showFooter={!loading && readings.length > 0}>
+    <DataTable loading={loading} isEmpty={readings.length === 0} loadingLabel={$locale.meterReadings.loading} emptyLabel={$locale.meterReadings.empty} emptyIcon="bi-clipboard-data" className="meter-readings-table" minTableWidth="88rem" showFooter={!loading && readings.length > 0} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
       <thead><tr>
         <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-        <th>{$locale.meterReadings.date}</th><th>{$locale.meterReadings.meterNumber}</th><th>{$locale.meterReadings.utilityType}</th><th>{$locale.meterReadings.building}</th><th>{$locale.meterReadings.floor}</th><th>{$locale.meterReadings.apartment}</th><th>{$locale.meterReadings.previousReading}</th><th>{$locale.meterReadings.currentReading}</th><th>{$locale.meterReadings.consumption}</th><th>{$locale.meterReadings.unitPrice}</th><th>{$locale.meterReadings.amount}</th><th>{$locale.meterReadings.billingStatus}</th><th><span class="visually-hidden">{$locale.meterReadings.edit}</span></th>
+        <th data-sort="readingDate">{$locale.meterReadings.date}</th><th data-sort="meter.meterNumber">{$locale.meterReadings.meterNumber}</th><th data-sort="meter.utilityType">{$locale.meterReadings.utilityType}</th><th data-sort="meter.apartment.floor.building.name">{$locale.meterReadings.building}</th><th data-sort="meter.apartment.floor.name">{$locale.meterReadings.floor}</th><th data-sort="meter.apartment.apartmentNumber">{$locale.meterReadings.apartment}</th><th class="reading-cell" data-sort="previousReading">{$locale.meterReadings.previousReading}</th><th class="reading-cell" data-sort="currentReading">{$locale.meterReadings.currentReading}</th><th class="reading-cell" data-sort="consumption">{$locale.meterReadings.consumption}</th><th class="amount-cell" data-sort="unitPrice">{$locale.meterReadings.unitPrice}</th><th class="amount-cell" data-sort="amount">{$locale.meterReadings.amount}</th><th data-sort="billingStatus">{$locale.meterReadings.billingStatus}</th><th class="actions-heading"><span class="visually-hidden">{$locale.meterReadings.edit}</span></th>
       </tr></thead>
-      <tbody>{#each readings as reading (reading.id)}
+      <tbody>{#each view as reading (reading.id)}
         <tr class:is-selected={selectedIds.has(reading.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(reading.id)} label={$locale.common.selectRow} on:change={() => toggleRow(reading.id)} /></td>
           <td class="date-cell">{formatShortDate(reading.readingDate)}</td>
@@ -206,8 +210,10 @@
           <td class="amount-cell">{formatMoney(reading.amount)}</td>
           <td><StatusBadge label={billingLabel(reading.billingStatus)} tone={billingTone(reading.billingStatus)} /></td>
           <td class="actions-cell">
-            <button class="row-action" type="button" on:click={() => openEdit(reading)} aria-label={$locale.meterReadings.edit} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.edit : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.meterReadings.edit}</span></button>
-            <button class="row-action danger" type="button" on:click={() => removeReading(reading)} aria-label={$locale.meterReadings.delete} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.delete : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.meterReadings.delete}</span></button>
+            <RowActions label={$locale.meterReadings.edit}>
+              <button class="row-menu-item" type="button" on:click={() => openEdit(reading)} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.edit : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.meterReadings.edit}</button>
+              <button class="row-menu-item danger" type="button" on:click={() => removeReading(reading)} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.delete : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-trash3" aria-hidden="true"></i>{$locale.meterReadings.delete}</button>
+            </RowActions>
           </td>
         </tr>
       {/each}</tbody>

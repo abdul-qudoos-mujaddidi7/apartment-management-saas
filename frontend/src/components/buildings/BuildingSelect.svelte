@@ -113,7 +113,7 @@
     padding: 0;
     border: 1px solid var(--border);
     border-radius: var(--control-radius);
-    color: var(--accent);
+    color: var(--accent-text);
     background: var(--surface);
     font-size: 1rem;
     cursor: pointer;

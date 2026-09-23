@@ -1,15 +1,13 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import { replace } from 'svelte-spa-router';
   import LanguageSwitcher from '../LanguageSwitcher.svelte';
-  import { signOut } from '../../stores/auth';
+  import { user } from '../../stores/auth';
   import { locale } from '../../i18n';
   import { moduleKeyForLocation } from '../../navigation';
 
   export let navigationOpen = false;
 
   const dispatch = createEventDispatcher();
-  let loggingOut = false;
 
   // Read the initial hash and keep it in sync via hashchange events.
   let currentPath = window.location.hash.slice(1).split('?')[0] || '/';
@@ -49,18 +47,11 @@
     window.location.hash = '#' + href;
   }
 
-  async function handleLogout() {
-    if (loggingOut) return;
-    loggingOut = true;
-    try {
-      await signOut();
-      await replace('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      loggingOut = false;
-    }
+  /** Who is signed in, for the identity block at the bar's trailing edge. */
+  function initials() {
+    return $user?.firstName?.[0]?.toUpperCase() || $user?.email?.[0]?.toUpperCase() || 'U';
   }
+
 </script>
 
 <header class="app-topbar">
@@ -102,7 +93,6 @@
         >
           {$locale.dashboard.nav.floors || 'Floors'}
         </button>
-        <span class="subnav-divider" aria-hidden="true">|</span>
         <button
           class="subnav-item"
           class:is-active={apartmentsActive}
@@ -144,15 +134,19 @@
 
   <div class="app-topbar-actions">
     <LanguageSwitcher />
-    <button
-      class="logout-button"
-      type="button"
-      on:click={handleLogout}
-      disabled={loggingOut}
-    >
-      <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
-      <span>{loggingOut ? $locale.common.loggingOut : $locale.common.logout}</span>
-    </button>
+
+    <!-- Identity, not a menu: the name and address are the whole point of the
+         block, and signing out lives at the foot of the rail, so a disclosure
+         chevron here would promise a menu that does not exist. -->
+    {#if $user}
+      <span class="app-topbar-user">
+        <span class="app-avatar" aria-hidden="true">{initials()}</span>
+        <span class="app-user">
+          <span class="app-user-name">{$user.firstName || $user.email}</span>
+          <span class="app-user-meta">{$user.email}</span>
+        </span>
+      </span>
+    {/if}
   </div>
 </header>
 
@@ -160,43 +154,65 @@
   .app-topbar-subnav {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    /* The rule under an active tab is the separator now, so the tabs need more
+       air between them than a chip row does and no divider glyph. */
+    gap: var(--space-3);
     margin-inline-start: var(--space-4);
     padding-inline-start: var(--space-4);
     border-inline-start: 1px solid var(--border);
   }
 
+  /* Tabs, not chips. The current one is named in the accent and marked with a
+     2.5px rule under the word, so "where am I" is answered by colour plus a
+     mark, rather than by a fill that has to hold its own against the wash
+     behind the bar. A tab sits on a transparent 2.5px border whether or not it
+     is active, so nothing shifts by a pixel when you move between them. */
   .subnav-item {
-    padding: var(--space-1) var(--space-2);
+    padding: 0.3rem 0.15rem 0.35rem;
     border: 0;
-    border-radius: var(--radius-sm);
-    color: var(--text-strong);
+    border-block-end: 2.5px solid transparent;
+    border-radius: 0;
+    color: var(--text-secondary);
     background: transparent;
     font-size: var(--text-lg);
-    font-weight: var(--weight-heavy);
+    font-weight: var(--weight-semibold);
     letter-spacing: var(--tracking-tight);
     cursor: pointer;
-    transition: color var(--transition), background var(--transition);
+    transition: color var(--transition), border-color var(--transition);
     white-space: nowrap;
   }
 
   .subnav-item:hover {
-    color: var(--text-strong);
-    background: var(--grey-200);
-  }
-
-  .subnav-divider {
-    color: var(--border);
-    font-size: var(--text-lg);
-    user-select: none;
+    color: var(--accent-text);
+    border-block-end-color: var(--accent-border);
   }
 
   .subnav-item.is-active {
-    color: var(--accent);
-    background: var(--accent-highlight);
+    color: var(--accent-text);
+    border-block-end-color: var(--accent-text);
+  }
+
+  /* Identity block: avatar, name, address — the same shape the rail's account
+     card uses, so the two read as one person in two places. */
+  .app-topbar-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding-inline-start: var(--space-2);
+    margin-inline-start: var(--space-1);
+    min-width: 0;
+  }
+
+  .app-topbar-user .app-user { min-width: 0; }
+
+  @media (max-width: 767.98px) {
+    /* Below the shell's breakpoint the address is the first thing to go: the
+       name plus the avatar still identify the account. */
+    .app-topbar-user .app-user-meta { display: none; }
   }
 
   @media (max-width: 575.98px) {
     .subnav-item { font-size: var(--text-lg); }
+    .app-topbar-user .app-user { display: none; }
   }
 </style>

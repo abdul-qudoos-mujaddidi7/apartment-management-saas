@@ -6,7 +6,7 @@
  * another in the chrome.
  */
 export const navigationItems = [
-  { key: 'dashboard', icon: 'bi-grid-1x2-fill', href: '/dashboard' },
+  { key: 'dashboard', icon: 'bi-grid-1x2', href: '/dashboard' },
   { key: 'buildings', icon: 'bi-buildings', href: '/buildings' },
   { key: 'assets', icon: 'bi-box-seam', href: '/assets' },
   { key: 'tenants', icon: 'bi-people', href: '/tenants' },

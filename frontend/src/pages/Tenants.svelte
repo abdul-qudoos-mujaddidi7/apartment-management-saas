@@ -11,6 +11,7 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
 
   import {
     createTenant,
@@ -19,10 +20,13 @@
     updateTenant
   } from '../services/tenants';
   import { locale, translate } from '../i18n';
+  import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
 
   let tenants = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(tenants, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let search = '';
   let loading = false;
@@ -327,17 +331,17 @@
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th>{$locale.tenants.fullName}</th>
-          <th>{$locale.tenants.phone}</th>
-          <th>{$locale.tenants.email}</th>
-          <th>{$locale.tenants.nationalId}</th>
-          <th>{$locale.tenants.status}</th>
+          <th data-sort="lastName">{$locale.tenants.fullName}</th>
+          <th data-sort="phone">{$locale.tenants.phone}</th>
+          <th data-sort="email">{$locale.tenants.email}</th>
+          <th data-sort="nationalId">{$locale.tenants.nationalId}</th>
+          <th data-sort="status">{$locale.tenants.status}</th>
           <th class="actions-heading"><span class="visually-hidden">{$locale.tenants.edit}</span></th>
         </tr>
       </thead>
 
       <tbody>
-        {#each tenants as tenant (tenant.id)}
+        {#each view as tenant (tenant.id)}
           <tr class:is-selected={selectedIds.has(tenant.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(tenant.id)} label={$locale.common.selectRow} on:change={() => toggleRow(tenant.id)} /></td>
             <td class="tenant-name">
@@ -345,25 +349,27 @@
                 {tenant.firstName} {tenant.lastName}
               </button>
             </td>
-            <td class="data-cell">{tenant.phone}</td>
-            <td>{tenant.email || '—'}</td>
-            <td class="data-cell">{tenant.nationalId || '—'}</td>
+            <td class="data-cell cell-muted">{tenant.phone}</td>
+            <td class="cell-muted">{tenant.email || '—'}</td>
+            <td class="data-cell cell-muted">{tenant.nationalId || '—'}</td>
             <td>
               <StatusBadge label={statusLabel(tenant.status)} tone={statusTone(tenant.status)} />
             </td>
             <td class="actions-cell">
-              <button class="row-action" type="button" on:click={() => push(`/tenants/${tenant.id}`)} aria-label={$locale.tenants.profile}>
-                <i class="bi bi-person-vcard" aria-hidden="true"></i>
-                <span>{$locale.common.actions.profile}</span>
-              </button>
-              <button class="row-action" type="button" on:click={() => openEdit(tenant)} aria-label={$locale.tenants.edit}>
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                <span>{$locale.common.actions.edit}</span>
-              </button>
-              <button class="row-action danger" type="button" on:click={() => removeTenant(tenant)} aria-label={$locale.tenants.delete}>
-                <i class="bi bi-trash3" aria-hidden="true"></i>
-                <span>{$locale.tenants.delete}</span>
-              </button>
+              <RowActions label={$locale.tenants.profile}>
+                <button class="row-menu-item" type="button" on:click={() => push(`/tenants/${tenant.id}`)}>
+                  <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                  {$locale.common.actions.profile}
+                </button>
+                <button class="row-menu-item" type="button" on:click={() => openEdit(tenant)}>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                  {$locale.common.actions.edit}
+                </button>
+                <button class="row-menu-item danger" type="button" on:click={() => removeTenant(tenant)}>
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                  {$locale.tenants.delete}
+                </button>
+              </RowActions>
             </td>
           </tr>
         {/each}

@@ -15,14 +15,18 @@
   import PageToolbar from '../components/ui/PageToolbar.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { locale, translate } from '../i18n';
+  import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { formatMoney } from '../utils/formatters';
 
   const today = () => new Date().toISOString().slice(0, 10);
 
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(visibleCurrencies || [], sort.key, sort.dir);
   let loading = false;
   let saving = false;
   let errorMessage = '';
@@ -275,19 +279,22 @@
       emptyLabel={$locale.currencies.empty}
       emptyIcon="bi-cash-coin"
       minTableWidth="52rem"
+      sortKey={sort.key}
+      sortDir={sort.dir}
+      on:sort={(event) => (sort = event.detail)}
     >
       <thead>
         <tr>
-          <th>{$locale.currencies.currency}</th>
-          <th>{$locale.currencies.symbol}</th>
-          <th>{$locale.currencies.rate}</th>
-          <th>{$locale.currencies.rateDate}</th>
-          <th>{$locale.currencies.status}</th>
-          <th><span class="visually-hidden">{$locale.currencies.actions}</span></th>
+          <th data-sort="code">{$locale.currencies.currency}</th>
+          <th data-sort="symbol">{$locale.currencies.symbol}</th>
+          <th data-sort="exchangeRate">{$locale.currencies.rate}</th>
+          <th data-sort="rateUpdatedAt">{$locale.currencies.rateDate}</th>
+          <th data-sort="isActive">{$locale.currencies.status}</th>
+          <th class="actions-heading"><span class="visually-hidden">{$locale.currencies.actions}</span></th>
         </tr>
       </thead>
       <tbody>
-        {#each visibleCurrencies as currency (currency.id)}
+        {#each view as currency (currency.id)}
           <tr>
             <td>
               <strong>{currency.code}</strong>
@@ -304,44 +311,26 @@
               />
             </td>
             <td class="actions-cell">
-              <button
-                class="row-action"
-                type="button"
-                on:click={() => openEdit(currency)}
-                aria-label={$locale.currencies.edit}
-              >
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                <span>{$locale.common.actions.edit}</span>
-              </button>
-              {#if !currency.isBase}
-                <button
-                  class="row-action"
-                  type="button"
-                  on:click={() => openRate(currency)}
-                  aria-label={$locale.currencies.rateHistory}
-                >
-                  <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
-                  <span>{$locale.common.actions.rates}</span>
+              <RowActions label={$locale.currencies.edit}>
+                <button class="row-menu-item" type="button" on:click={() => openEdit(currency)}>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                  {$locale.common.actions.edit}
                 </button>
-                <button
-                  class="row-action"
-                  type="button"
-                  on:click={() => toggleActive(currency)}
-                  aria-label={currency.isActive ? $locale.currencies.deactivate : $locale.currencies.activate}
-                >
-                  <i class={currency.isActive ? 'bi bi-pause-circle' : 'bi bi-play-circle'} aria-hidden="true"></i>
-                  <span>{currency.isActive ? $locale.common.actions.deactivate : $locale.common.actions.activate}</span>
-                </button>
-                <button
-                  class="row-action danger"
-                  type="button"
-                  on:click={() => removeCurrency(currency)}
-                  aria-label={$locale.currencies.delete}
-                >
-                  <i class="bi bi-trash" aria-hidden="true"></i>
-                  <span>{$locale.currencies.delete}</span>
-                </button>
-              {/if}
+                {#if !currency.isBase}
+                  <button class="row-menu-item" type="button" on:click={() => openRate(currency)}>
+                    <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
+                    {$locale.common.actions.rates}
+                  </button>
+                  <button class="row-menu-item" type="button" on:click={() => toggleActive(currency)}>
+                    <i class={currency.isActive ? 'bi bi-pause-circle' : 'bi bi-play-circle'} aria-hidden="true"></i>
+                    {currency.isActive ? $locale.common.actions.deactivate : $locale.common.actions.activate}
+                  </button>
+                  <button class="row-menu-item danger" type="button" on:click={() => removeCurrency(currency)}>
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                    {$locale.currencies.delete}
+                  </button>
+                {/if}
+              </RowActions>
             </td>
           </tr>
         {/each}
@@ -523,7 +512,7 @@
   .base-panel-value { margin: 0.15rem 0 0; font-size: 1.25rem; font-weight: var(--weight-bold); }
   .base-panel-hint { margin: 0.15rem 0 0; color: var(--text-secondary); font-size: 0.8rem; max-inline-size: 42rem; }
   .currency-name { display: block; color: var(--text-secondary); font-size: 0.8rem; }
-  .base-tag { display: inline-block; margin-inline-start: 0.4rem; padding: 0.05rem 0.4rem; border-radius: 999px; background: var(--accent-soft, var(--surface-muted)); color: var(--accent); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+  .base-tag { display: inline-block; margin-inline-start: 0.4rem; padding: 0.05rem 0.4rem; border-radius: 999px; background: var(--accent-soft, var(--surface-muted)); color: var(--accent-text); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
   .symbol-cell { font-size: 1.05rem; }
   /* The code field is a searchable list of currencies: type "po" or "GBP" and
      pick a row to fill the name and symbol in from the API's reference data. */

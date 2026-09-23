@@ -240,7 +240,7 @@
 
   .probe-tab.is-active {
     border-color: var(--accent-soft-border);
-    color: var(--accent);
+    color: var(--accent-text);
     background: var(--accent-soft);
   }
 </style>

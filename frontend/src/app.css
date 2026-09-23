@@ -72,7 +72,7 @@ button, input { font: inherit; }
 .form-panel { position: relative; display: grid; align-items: center; padding: clamp(2rem, 5vw, 4rem); }
 .login-language { position: absolute; z-index: 1; inset-block-start: 1.25rem; inset-inline-end: 1.25rem; }
 .login-form { width: min(100%, 24rem); margin: 0 auto; }
-.form-eyebrow { margin: 0 0 .55rem; color: var(--accent); font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.form-eyebrow { margin: 0 0 .55rem; color: var(--accent-text); font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .form-title { margin: 0; color: #1c2d44; font-size: 1.8rem; font-weight: 700; letter-spacing: -.04em; }
 .form-subtitle { margin: .6rem 0 1.9rem; color: #657890; font-size: .94rem; }
 /* Labels, inputs and checkboxes are owned by the design system (styles/
@@ -86,12 +86,12 @@ button, input { font: inherit; }
 .password-field .form-control { padding-inline-end: 3.25rem; }
 
 .password-toggle { position: absolute; inset-block-start: 50%; inset-inline-end: .25rem; width: 2.5rem; height: 2.3rem; transform: translateY(-50%); border: 0; color: #52718f; background: transparent; }
-.password-toggle:hover { color: var(--accent); }
+.password-toggle:hover { color: var(--accent-text); }
 
-.forgot-link { color: var(--accent); font-size: .82rem; font-weight: 600; text-decoration: none; }
+.forgot-link { color: var(--accent-text); font-size: .82rem; font-weight: 600; text-decoration: none; }
 .forgot-link:hover { color: var(--accent-hover); text-decoration: underline; }
 
-.sign-in-button { min-height: 2.9rem; border: 0; border-radius: .5rem; background: var(--accent); box-shadow: 0 .4rem .8rem rgba(30, 108, 165, .2); font-weight: 600; }
+.sign-in-button { min-height: 2.9rem; border: 0; border-radius: .5rem; background: var(--accent); box-shadow: 0 .4rem .8rem rgba(53, 134, 255, .2); font-weight: 600; }
 .sign-in-button:hover, .sign-in-button:focus { background: var(--accent-hover); }
 .sign-in-button:disabled { background: var(--brand-400); }
 .form-alert { border-radius: .5rem; font-size: .86rem; }

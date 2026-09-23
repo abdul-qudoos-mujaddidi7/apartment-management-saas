@@ -155,22 +155,27 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    /* Grows into the empty part of the row but stops at 24rem, so the chips
-       keep following it at a readable distance instead of drifting away on a
-       wide screen. */
-    flex: 1 1 18rem;
+    /* Sized, not stretched: a fixed 21rem (~294px) on a wide screen, so the
+       field reads as one control in the card head instead of claiming a third
+       of it. It still shrinks when the band is tight — it just cannot grow. */
+    flex: 0 1 21rem;
     min-width: 0;
-    max-width: 24rem;
-    padding: 0 0.875rem;
-    height: 2.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    transition: border-color var(--transition), box-shadow var(--transition);
+    max-width: 21rem;
+    padding: 0 1.05rem;
+    height: 2.75rem;
+    /* No chrome at rest: the magnifier and the placeholder say "search" on
+       their own, and a filled pill in the card head competes with the buttons
+       beside it for attention. Focus is what draws the field — an accent edge
+       and a ring, so the control appears exactly when you are in it. */
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
   }
 
   .search-field:focus-within {
     border-color: var(--accent-border);
+    background: var(--surface);
     box-shadow: var(--ring);
   }
 
@@ -231,9 +236,9 @@
     align-items: center;
     gap: 0.375rem;
     height: 2.5rem;
-    padding: 0 0.75rem;
+    padding: 0 0.8rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--control-radius);
     background: var(--surface);
     color: var(--text-secondary);
     font-size: var(--text-sm);
@@ -261,9 +266,9 @@
     align-items: center;
     gap: 0.4rem;
     height: 2.5rem;
-    padding: 0 0.75rem;
+    padding: 0 0.8rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--control-radius);
     background: var(--surface);
     color: var(--text-secondary);
     font-size: var(--text-sm);
@@ -281,9 +286,9 @@
 
   .filters-button.is-open,
   .filters-button[aria-expanded='true'] {
-    color: var(--accent);
-    border-color: var(--accent-soft-border);
-    background: var(--accent-highlight);
+    color: var(--accent-text);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
   }
 
   .filters-count {
@@ -353,7 +358,7 @@
     gap: 0.375rem;
     height: 2.25rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--control-radius);
     background: var(--surface);
     color: var(--text-secondary);
     font-size: var(--text-sm);
@@ -363,7 +368,7 @@
   }
 
   .filters-clear:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: var(--accent-soft-border);
     background: var(--accent-soft);
   }
@@ -383,11 +388,14 @@
     }
 
     /* `min-width` gives the field a floor, so it drops to its own line instead
-       of being squeezed to a sliver next to the chips and the actions. */
+       of being squeezed to a sliver next to the chips and the actions; the
+       `max-width` keeps it from *growing* to the full width of that line once
+       it has one, which is where a tablet ended up with a search box the width
+       of the card. */
     .search-field {
-      flex: 1 1 18rem;
+      flex: 1 1 16rem;
       min-width: 12rem;
-      max-width: 100%;
+      max-width: 21rem;
     }
 
     .toolbar-tabs {

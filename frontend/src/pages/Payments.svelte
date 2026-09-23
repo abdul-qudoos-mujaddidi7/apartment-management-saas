@@ -8,14 +8,18 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { locale } from '../i18n';
+  import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney, formatShortDate } from '../utils/formatters';
 
   const tenantName = (payment) => `${payment.tenant?.firstName || ''} ${payment.tenant?.lastName || ''}`.trim() || '—';
   let payments = [];
+  let sort = { key: null, dir: 'asc' };
+  $: view = sortRows(payments, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let filters = { search: '', status: '', dateFrom: '', dateTo: '' };
   let loading = false;
@@ -115,17 +119,19 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    <DataTable loading={loading} isEmpty={payments.length === 0} loadingLabel={$locale.payments.loading} emptyLabel={$locale.payments.empty} emptyIcon="bi-credit-card" minTableWidth="72rem" showFooter={!loading && payments.length > 0}>
-      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th>{$locale.payments.paymentNumber}</th><th>{$locale.payments.paymentDate}</th><th>{$locale.payments.tenant}</th><th>{$locale.payments.building}</th><th>{$locale.payments.apartment}</th><th>{$locale.payments.receiveInto}</th><th>{$locale.payments.method}</th><th>{$locale.payments.amount}</th><th>{$locale.payments.allocated}</th><th>{$locale.payments.unallocated}</th><th>{$locale.payments.status}</th><th><span class="visually-hidden">{$locale.payments.actions}</span></th></tr></thead>
-      <tbody>{#each payments as payment (payment.id)}
+    <DataTable loading={loading} isEmpty={payments.length === 0} loadingLabel={$locale.payments.loading} emptyLabel={$locale.payments.empty} emptyIcon="bi-credit-card" minTableWidth="72rem" showFooter={!loading && payments.length > 0} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
+      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th data-sort="paymentNumber">{$locale.payments.paymentNumber}</th><th data-sort="paymentDate">{$locale.payments.paymentDate}</th><th data-sort="lease.tenant.lastName">{$locale.payments.tenant}</th><th data-sort="lease.apartment.floor.building.name">{$locale.payments.building}</th><th data-sort="lease.apartment.apartmentNumber">{$locale.payments.apartment}</th><th data-sort="receiveAccount.name">{$locale.payments.receiveInto}</th><th data-sort="paymentMethod">{$locale.payments.method}</th><th class="amount-cell" data-sort="amount">{$locale.payments.amount}</th><th class="amount-cell" data-sort="allocatedAmount">{$locale.payments.allocated}</th><th class="amount-cell" data-sort="unallocatedAmount">{$locale.payments.unallocated}</th><th data-sort="status">{$locale.payments.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.payments.actions}</span></th></tr></thead>
+      <tbody>{#each view as payment (payment.id)}
         <tr class:is-selected={selectedIds.has(payment.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(payment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(payment.id)} /></td>
           <td><strong>{payment.paymentNumber}</strong></td><td class="date-cell">{formatShortDate(payment.paymentDate)}</td><td>{tenantName(payment)}</td><td>{payment.lease?.apartment?.floor?.building?.name || '—'}</td><td class="data-cell">{payment.lease?.apartment?.apartmentNumber || '—'}</td><td>{payment.receiveAccount.code} — {payment.receiveAccount.name}</td><td>{$locale.paymentMethods[payment.paymentMethod]}</td><td class="amount-cell">{formatMoney(payment.amount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.allocatedAmount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.unallocatedAmount, payment.currency)}</td><td><StatusBadge label={paymentLabel(payment.status)} tone={paymentTone(payment.status)} /></td>
           <td class="actions-cell">
-            <button class="row-action" type="button" on:click={() => openDetails(payment)} aria-label={$locale.payments.view}><i class="bi bi-eye" aria-hidden="true"></i><span>{$locale.common.actions.view}</span></button>
-            {#if payment.status === 'POSTED'}
-              <button class="row-action warning" type="button" on:click={() => requestVoid(payment)} aria-label={$locale.payments.void}><i class="bi bi-x-circle" aria-hidden="true"></i><span>{$locale.common.actions.void}</span></button>
-            {/if}
+            <RowActions label={$locale.payments.actions}>
+              <button class="row-menu-item" type="button" on:click={() => openDetails(payment)}><i class="bi bi-eye" aria-hidden="true"></i>{$locale.common.actions.view}</button>
+              {#if payment.status === 'POSTED'}
+                <button class="row-menu-item warning" type="button" on:click={() => requestVoid(payment)}><i class="bi bi-x-circle" aria-hidden="true"></i>{$locale.common.actions.void}</button>
+              {/if}
+            </RowActions>
           </td>
         </tr>
       {/each}</tbody>

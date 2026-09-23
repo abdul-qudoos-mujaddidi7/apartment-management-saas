@@ -2,11 +2,12 @@
   /**
    * Index/list page shell — one white panel for the whole page.
    *
-   * The panel is the page: one toolbar band on top holding the whole control
-   * row (search, tab chips, filters button, actions through `PageToolbar`),
-   * then the stats / alert bands, then the scrolling content, then the
-   * pagination footer. Hairline dividers separate the bands so the page reads
-   * as a single surface instead of a stack of loose cards.
+ * The panel is the page: the control row (search, tab chips, filters and the
+ * page's own actions, through `PageToolbar`) is the card's *head* — inside the
+ * panel, closed by a hairline — then the stats / alert bands, then the
+ * scrolling content, then the pagination footer. Hairline dividers separate
+ * the bands so the page reads as a single surface instead of a stack of loose
+ * cards, and the header row lines up with the table beneath it.
    *
    * Slots: actions, toolbar, stats, alerts, content, footer
    * A default slot renders into the content area too, so
@@ -34,6 +35,10 @@
   aria-label={ariaLabel || undefined}
 >
   <section class="index-panel">
+    <!-- The control row is the card's head, not a band floating above it: the
+         title, the way to filter and the way to add all sit on the same row as
+         the list they act on, closed by a hairline that doubles as the table's
+         own top rule. -->
     {#if hasActions || $$slots.toolbar}
       <header class="index-toolbar">
         {#if hasActions}
@@ -94,10 +99,10 @@
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    border: 1px solid var(--card-border);
+    border-radius: var(--card-radius);
     background: var(--surface);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.025);
+    box-shadow: var(--card-shadow);
   }
 
   .index-page--fit-content,
@@ -106,12 +111,11 @@
     flex-grow: 0;
   }
 
-  /* --- Toolbar band ----------------------------------------------------- */
+  /* --- Card head (the control row) --------------------------------------- */
 
-  /* The toolbar sits on the panel's own white surface, so the search field,
-     chips and buttons read as controls on the page instead of a separate
-     band; the table's sunken header row is what marks where the list begins.
-     PageToolbar owns everything inside it. */
+  /* Inset by the same gutter as the rows, so the search field lines up with the
+     first column, and closed by a hairline so the head, the table's label strip
+     and the rows read as one sheet. PageToolbar owns everything inside it. */
   .index-toolbar {
     position: relative;
     z-index: 50; /* keeps open filter popovers above the table */
@@ -119,10 +123,22 @@
     align-items: center;
     gap: 0.75rem;
     flex: 0 0 auto;
-    min-height: 3.5rem;
-    padding: 0.625rem var(--index-gutter);
-    overflow: visible;
+    min-height: 4rem;
+    padding: 0.9rem var(--index-gutter);
+    border-block-end: 1px solid var(--card-border);
     background: var(--surface);
+    overflow: visible;
+  }
+
+  /* A page may hand the shell a control row that renders nothing on some tabs —
+     the assets page passes an `actions` slot that only exists on the catalog and
+     category tabs, and every other tab then showed a 56px band with a hairline
+     and no controls in it. The slot existing is not the same as the row having
+     anything in it, so collapse the row when neither wrapper holds an element.
+     `:has()` rather than `:empty`, which whitespace inside the slot would
+     defeat. */
+  .index-toolbar:not(:has(.index-toolbar-actions > *, .index-toolbar-main > *)) {
+    display: none;
   }
 
   .index-toolbar-actions {
@@ -211,13 +227,14 @@
   @media (max-width: 767.98px) {
     /* The panel keeps its own scroll area on small screens too — a table that
        scrolls behind a pinned header beats a page that scrolls the chrome
-       away. Only the toolbar rearranges: page actions above the control row,
+       away. Only the head rearranges: page actions above the control row,
        which wraps into search / chips / buttons. */
     .index-toolbar {
       align-items: stretch;
       flex-direction: column;
       gap: 0.625rem;
       min-height: auto;
+      padding: 0.75rem var(--space-3);
     }
 
     .index-toolbar-actions {

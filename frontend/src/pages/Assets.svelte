@@ -9,6 +9,7 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
+  import RowActions from '../components/ui/RowActions.svelte';
   import TabFilters from '../components/ui/TabFilters.svelte';
 
   import { getBuildings } from '../services/buildings';
@@ -734,14 +735,16 @@
               <td class="amount-cell">{record.unitValue === null ? '—' : formatMoney(record.unitValue)}</td>
               <td>{formatDate(record.updatedAt)}</td>
               <td class="actions-cell">
-                <button class="row-action" type="button" on:click={() => openRecordEdit(record)} aria-label={$locale.assets.edit}>
-                  <i class="bi bi-pencil" aria-hidden="true"></i>
-                  <span>{$locale.assets.edit}</span>
-                </button>
-                <button class="row-action danger" type="button" on:click={() => removeRecord(record)} aria-label={$locale.assets.removeItem}>
-                  <i class="bi bi-trash3" aria-hidden="true"></i>
-                  <span>{$locale.assets.removeItem}</span>
-                </button>
+                <RowActions label={$locale.assets.actions}>
+                  <button class="row-menu-item" type="button" on:click={() => openRecordEdit(record)}>
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                    {$locale.assets.edit}
+                  </button>
+                  <button class="row-menu-item danger" type="button" on:click={() => removeRecord(record)}>
+                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                    {$locale.assets.removeItem}
+                  </button>
+                </RowActions>
               </td>
             </tr>
           {/each}
@@ -805,14 +808,16 @@
               <td>{asset.code || '—'}</td>
               <td class="amount-cell">{formatNumber(asset.usageCount)}</td>
               <td class="actions-cell">
-                <button class="row-action" type="button" on:click={() => openAssetEdit(asset)} aria-label={$locale.assets.edit}>
-                  <i class="bi bi-pencil" aria-hidden="true"></i>
-                  <span>{$locale.assets.edit}</span>
-                </button>
-                <button class="row-action danger" type="button" on:click={() => removeAsset(asset)} aria-label={$locale.assets.removeItem}>
-                  <i class="bi bi-trash3" aria-hidden="true"></i>
-                  <span>{$locale.assets.removeItem}</span>
-                </button>
+                <RowActions label={$locale.assets.actions}>
+                  <button class="row-menu-item" type="button" on:click={() => openAssetEdit(asset)}>
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                    {$locale.assets.edit}
+                  </button>
+                  <button class="row-menu-item danger" type="button" on:click={() => removeAsset(asset)}>
+                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                    {$locale.assets.removeItem}
+                  </button>
+                </RowActions>
               </td>
             </tr>
           {/each}
@@ -857,14 +862,16 @@
               <td>{category.description || '—'}</td>
               <td class="amount-cell">{formatNumber(category.assetCount)}</td>
               <td class="actions-cell">
-                <button class="row-action" type="button" on:click={() => openCategoryEdit(category)} aria-label={$locale.assets.edit}>
-                  <i class="bi bi-pencil" aria-hidden="true"></i>
-                  <span>{$locale.assets.edit}</span>
-                </button>
-                <button class="row-action danger" type="button" on:click={() => removeCategory(category)} aria-label={$locale.assets.removeItem}>
-                  <i class="bi bi-trash3" aria-hidden="true"></i>
-                  <span>{$locale.assets.removeItem}</span>
-                </button>
+                <RowActions label={$locale.assets.actions}>
+                  <button class="row-menu-item" type="button" on:click={() => openCategoryEdit(category)}>
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                    {$locale.assets.edit}
+                  </button>
+                  <button class="row-menu-item danger" type="button" on:click={() => removeCategory(category)}>
+                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                    {$locale.assets.removeItem}
+                  </button>
+                </RowActions>
               </td>
             </tr>
           {/each}

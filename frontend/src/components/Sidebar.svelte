@@ -1,16 +1,19 @@
 <script>
   import { onMount } from 'svelte';
-  import { link } from 'svelte-spa-router';
+  import { link, replace } from 'svelte-spa-router';
   import { locale } from '../i18n';
   import { navigationItems, moduleKeyForLocation } from '../navigation';
+  import { signOut } from '../stores/auth';
 
   export let user = null;
   export let open = false;
 
   const COLLAPSED_KEY = 'apartmentpro.sidebar-collapsed';
   let collapsed = false;
+  let loggingOut = false;
   let currentPath = window.location.hash.slice(1).split('?')[0] || '/';
   $: activeModule = moduleKeyForLocation(currentPath);
+  $: logoutLabel = loggingOut ? $locale.common.loggingOut : $locale.common.logout;
 
   function readCollapsed() {
     try {
@@ -42,12 +45,17 @@
     open = false;
   }
 
-  function organizationName() {
-    return user?.organization?.name || user?.organizations?.[0]?.name || $locale.dashboard.organization;
-  }
-
-  function initials() {
-    return user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U';
+  async function handleLogout() {
+    if (loggingOut) return;
+    loggingOut = true;
+    try {
+      await signOut();
+      await replace('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      loggingOut = false;
+    }
   }
 </script>
 
@@ -108,13 +116,16 @@
     {/each}
   </nav>
 
-  {#if user}
-    <div class="app-sidebar-account">
-      <span class="app-avatar" aria-hidden="true">{initials()}</span>
-      <div class="app-user">
-        <span class="app-user-name">{user.firstName || $locale.dashboard.account}</span>
-        <span class="app-user-meta">{organizationName()}</span>
-      </div>
-    </div>
-  {/if}
+  <div class="app-sidebar-foot">
+    <button
+      type="button"
+      class="app-nav-item app-nav-item--action"
+      on:click={handleLogout}
+      disabled={loggingOut}
+      title={collapsed ? logoutLabel : undefined}
+    >
+      <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+      <span>{logoutLabel}</span>
+    </button>
+  </div>
 </aside>
