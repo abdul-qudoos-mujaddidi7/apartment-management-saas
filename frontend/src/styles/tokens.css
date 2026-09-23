@@ -55,11 +55,11 @@
 
      The canvas is light grey, not white: a white card on a white page can only
      be found by its hairline, and every panel, table and form ends up relying
-     on a 1px border to be seen at all. Against #f2f2f2 the cards are white
+     on a 1px border to be seen at all. Against #f5f5f5 the cards are white
      objects on a grey desk — the border becomes a nicety rather than the thing
      doing the work. The topbar paints from this same token, so the bar and the
      page below it stay one surface. */
-  --canvas: #f2f2f2;
+  --canvas: #f5f5f5;
   --card-border: #eef0f4;
   --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   --card-shadow-raised: 0 2px 8px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
@@ -314,15 +314,15 @@
   --table-head-font-size: 0.79rem;
   --table-head-height: 36px;
   --table-head-bg: #ffffff;
-  /* One hairline colour for the head rule and the row rules: #f2f2f2, the
+  /* One hairline colour for the head rule and the row rules: #f5f5f5, the
      canvas itself. A table on a grey page reads as a white object, so its
      internal rules only need to separate rows from each other — they do it
      without drawing a grid, which is the whole point of the white-sheet table.
      (At 1.1:1 on white this is still a divider you notice when you look for
      it rather than a line you see — the cells carry no vertical rules at all,
      so there is no grid to complete.) */
-  --table-head-line: #f2f2f2;
-  --table-row-line: #f2f2f2;
+  --table-head-line: #f5f5f5;
+  --table-row-line: #f5f5f5;
   --table-muted: var(--ink-500); /* #64748b — 4.8:1; #8a98ab was 2.9:1 */
 
   /* --- Motion ----------------------------------------------------------- */

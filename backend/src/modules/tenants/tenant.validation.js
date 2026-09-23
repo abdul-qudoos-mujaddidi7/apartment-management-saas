@@ -1,5 +1,7 @@
 const { z } = require('zod');
 
+const { uploadUrlSchema } = require('../uploads/upload.validation');
+
 const tenantStatuses = ['ACTIVE', 'INACTIVE'];
 
 // Empty optional form inputs become null in MySQL instead of empty-string values.
@@ -19,6 +21,12 @@ const tenantFields = {
     z.string().trim().email().max(191).nullable().optional(),
   ),
   nationalId: optionalString(64),
+  fatherName: optionalString(191),
+  // Identity documents hold the path of a file this API wrote, never a URL from
+  // anywhere else — see lib/uploads.js.
+  photoUrl: uploadUrlSchema,
+  idCardFrontUrl: uploadUrlSchema,
+  idCardBackUrl: uploadUrlSchema,
   address: optionalString(500),
   emergencyContactName: optionalString(191),
   emergencyContactPhone: optionalString(64),
@@ -37,4 +45,10 @@ const listTenantsSchema = z.object({
   search: z.string().trim().max(100).default(''),
 });
 
-module.exports = { createTenantSchema, listTenantsSchema, tenantStatuses, updateTenantSchema };
+module.exports = {
+  createTenantSchema,
+  listTenantsSchema,
+  tenantDocumentFields: ['photoUrl', 'idCardFrontUrl', 'idCardBackUrl'],
+  tenantStatuses,
+  updateTenantSchema,
+};

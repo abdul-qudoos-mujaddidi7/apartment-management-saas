@@ -12,6 +12,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import ImageUpload from '../components/ui/ImageUpload.svelte';
 
   import {
     createTenant,
@@ -20,6 +21,7 @@
     updateTenant
   } from '../services/tenants';
   import { locale, translate } from '../i18n';
+  import { mediaUrl } from '../utils/media';
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
@@ -58,16 +60,37 @@
     return {
       firstName: '',
       lastName: '',
+      fatherName: '',
       phone: '',
       alternatePhone: '',
       email: '',
       nationalId: '',
+      // Documents are uploaded one at a time; the form only carries the paths
+      // the API handed back.
+      photoUrl: null,
+      idCardFrontUrl: null,
+      idCardBackUrl: null,
       address: '',
       emergencyContactName: '',
       emergencyContactPhone: '',
       notes: '',
       status: 'ACTIVE'
     };
+  }
+
+  // A stored file can go missing — a restore from an older dump, a moved
+  // uploads folder — and a broken image is no way to learn that. Known-bad
+  // paths fall back to the icon, so the list always reads.
+  let brokenPhotos = new Set();
+  const markPhotoBroken = (url) => { brokenPhotos = new Set(brokenPhotos).add(url); };
+
+  // A form cannot be saved while an image is still being uploaded: the record
+  // would store a path that has not been written yet.
+  let uploadsBusy = {};
+  $: uploadsPending = Object.values(uploadsBusy).some(Boolean);
+
+  function markUpload(field, busy) {
+    uploadsBusy = { ...uploadsBusy, [field]: busy };
   }
 
   const debouncedSearch = debounce(() => loadTenants(1), 300);
@@ -169,6 +192,7 @@
       'alternatePhone',
       'email',
       'nationalId',
+      'fatherName',
       'address',
       'emergencyContactName',
       'emergencyContactPhone',
@@ -198,6 +222,11 @@
   }
 
   async function saveTenant() {
+    if (uploadsPending) {
+      modalError = $locale.uploads.uploading;
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
@@ -345,9 +374,27 @@
           <tr class:is-selected={selectedIds.has(tenant.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(tenant.id)} label={$locale.common.selectRow} on:change={() => toggleRow(tenant.id)} /></td>
             <td class="tenant-name">
-              <button class="table-link" type="button" on:click={() => push(`/tenants/${tenant.id}`)}>
-                {tenant.firstName} {tenant.lastName}
-              </button>
+              <span class="cell-identity">
+                <span
+                  class="entity-icon"
+                  class:is-photo={tenant.photoUrl && !brokenPhotos.has(tenant.photoUrl)}
+                  aria-hidden="true"
+                >
+                  {#if tenant.photoUrl && !brokenPhotos.has(tenant.photoUrl)}
+                    <img
+                      src={mediaUrl(tenant.photoUrl)}
+                      alt=""
+                      loading="lazy"
+                      on:error={() => markPhotoBroken(tenant.photoUrl)}
+                    />
+                  {:else}
+                    <i class="bi bi-person"></i>
+                  {/if}
+                </span>
+                <button class="table-link" type="button" on:click={() => push(`/tenants/${tenant.id}`)}>
+                  {tenant.firstName} {tenant.lastName}
+                </button>
+              </span>
             </td>
             <td class="data-cell cell-muted">{tenant.phone}</td>
             <td class="cell-muted">{tenant.email || '—'}</td>
@@ -407,7 +454,7 @@
       <legend class="section-label">{$locale.tenants.fullName}</legend>
 
       <div class="row g-3">
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-first-name">{$locale.tenants.firstName}</label>
           <input
             class:is-invalid={formErrors.firstName}
@@ -421,7 +468,7 @@
           {/if}
         </div>
 
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-last-name">{$locale.tenants.lastName}</label>
           <input
             class:is-invalid={formErrors.lastName}
@@ -433,6 +480,60 @@
           {#if formErrors.lastName}
             <div class="invalid-feedback">{formErrors.lastName}</div>
           {/if}
+        </div>
+
+        <div class="col-sm-4">
+          <label class="form-label" for="tenant-father-name">{$locale.tenants.fatherName}</label>
+          <input
+            class:is-invalid={formErrors.fatherName}
+            class="form-control"
+            id="tenant-father-name"
+            bind:value={form.fatherName}
+          />
+          {#if formErrors.fatherName}
+            <div class="invalid-feedback">{formErrors.fatherName}</div>
+          {/if}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="section-label">{$locale.tenants.identityDocuments}</legend>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <ImageUpload
+            kind="tenant-photo"
+            shape="avatar"
+            label={$locale.tenants.photo}
+            hint={$locale.tenants.photoHint}
+            value={form.photoUrl}
+            disabled={saving}
+            on:change={(event) => (form.photoUrl = event.detail.url)}
+            on:busy={(event) => markUpload('photoUrl', event.detail.busy)}
+          />
+        </div>
+
+        <div class="col-12 col-md-4">
+          <ImageUpload
+            kind="tenant-id-front"
+            label={$locale.tenants.idCardFront}
+            value={form.idCardFrontUrl}
+            disabled={saving}
+            on:change={(event) => (form.idCardFrontUrl = event.detail.url)}
+            on:busy={(event) => markUpload('idCardFrontUrl', event.detail.busy)}
+          />
+        </div>
+
+        <div class="col-12 col-md-4">
+          <ImageUpload
+            kind="tenant-id-back"
+            label={$locale.tenants.idCardBack}
+            value={form.idCardBackUrl}
+            disabled={saving}
+            on:change={(event) => (form.idCardBackUrl = event.detail.url)}
+            on:busy={(event) => markUpload('idCardBackUrl', event.detail.busy)}
+          />
         </div>
       </div>
     </fieldset>
@@ -574,12 +675,44 @@
     <button class="btn btn-light" type="button" on:click={closeModal} disabled={saving}>
       {$locale.tenants.cancel}
     </button>
-    <button class="btn btn-primary" type="submit" form="tenant-form" disabled={saving}>
+    <button class="btn btn-primary" type="submit" form="tenant-form" disabled={saving || uploadsPending}>
       {saving
         ? $locale.tenants.loading
-        : editingId
-          ? $locale.tenants.update
-          : $locale.tenants.save}
+        : uploadsPending
+          ? $locale.uploads.uploading
+          : editingId
+            ? $locale.tenants.update
+            : $locale.tenants.save}
     </button>
   </div>
 </Modal>
+
+<style>
+  /* A thumbnail beside the name, so a face is what identifies the row. The
+     photograph and the fallback icon occupy the same 24px box, which is what
+     keeps the row at its 40px rhythm with or without a picture. */
+  /* A block box, not an inline one. An inline box holding an image has no
+     baseline to sit on, so it falls back to its bottom edge and the row grows
+     by a descender's worth — a photographed tenant was 5px taller than one
+     without. Out of the inline flow there is nothing to align to, and the
+     stated height holds every row on the same rhythm. */
+  .cell-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    min-height: 23px;
+  }
+
+  .entity-icon.is-photo {
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .entity-icon.is-photo img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+</style>

@@ -10,6 +10,7 @@
     "backfill:tenant-accounts": "node scripts/backfill-tenant-accounts.js --apply",
     "backfill:meter-reading-amounts": "node scripts/backfill-meter-reading-amounts.js --apply",
     "check:currency": "node scripts/check-currency-backfill.js",
+    "check:documents": "node scripts/check-document-files.js",
     "repair:settlement": "node scripts/repair-settlement-rounding.js --apply",
     "db:dump": "node scripts/dump-database.js",
     "db:restore": "node scripts/restore-database.js",
@@ -30,6 +31,7 @@
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
     "zod": "^4.6.2"
   },
   "devDependencies": {

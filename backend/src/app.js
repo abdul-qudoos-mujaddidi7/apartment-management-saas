@@ -27,6 +27,9 @@ const accountRoutes = require('./modules/financials/account.routes');
 const journalRoutes = require('./modules/financials/journal.routes');
 const tenantAccountRoutes = require('./modules/tenant-accounts/tenant-account.routes');
 const searchRoutes = require('./modules/search/search.routes');
+const uploadRoutes = require('./modules/uploads/upload.routes');
+
+const { UPLOAD_ROOT, ensureUploadRoot } = require('./lib/uploads');
 
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
@@ -91,6 +94,21 @@ app.use('/api/accounts', accountRoutes);
 app.use('/api/journals', journalRoutes);
 app.use('/api/tenant-accounts', tenantAccountRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/uploads', uploadRoutes);
+
+// Uploaded documents are served from the API's own origin. helmet's default
+// Cross-Origin-Resource-Policy is `same-origin`, which would stop the frontend
+// (on its own port) from drawing them, so it is widened for these files only.
+// Names are unique and never rewritten, so they can be cached for a long time.
+ensureUploadRoot();
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(UPLOAD_ROOT, { immutable: true, index: false, maxAge: '7d' }),
+);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({

@@ -1,9 +1,11 @@
 const prisma = require('../../lib/prisma');
 
 const AppError = require('../../errors/AppError');
+const { removeUpload } = require('../../lib/uploads');
 const { shamsiMonthKey, shamsiMonthLabel } = require('../../lib/shamsi');
 const { getTenantAccount } = require('../tenant-accounts/tenant-account.service');
 const securityDepositService = require('../security-deposits/security-deposit.service');
+const { tenantDocumentFields } = require('./tenant.validation');
 
 const asNumber = (value) => (value === null || value === undefined ? 0 : Number(value));
 
@@ -17,6 +19,10 @@ function tenantSelect() {
     alternatePhone: true,
     email: true,
     nationalId: true,
+    fatherName: true,
+    photoUrl: true,
+    idCardFrontUrl: true,
+    idCardBackUrl: true,
     address: true,
     emergencyContactName: true,
     emergencyContactPhone: true,
@@ -279,6 +285,10 @@ async function createTenant(organizationId, data) {
 }
 
 async function updateTenant(organizationId, tenantId, data) {
+  // Read first, so a document that is being replaced — or cleared — can take
+  // its file with it once the row no longer points at it.
+  const previous = await getTenant(organizationId, tenantId);
+
   // updateMany keeps the tenant and organization constraints in the write itself.
   const result = await prisma.tenant.updateMany({
     where: { id: tenantId, organizationId, deletedAt: null },
@@ -286,7 +296,26 @@ async function updateTenant(organizationId, tenantId, data) {
   });
 
   if (result.count === 0) throw new AppError('Tenant not found.', 404, 'TENANT_NOT_FOUND');
+
+  discardReplacedDocuments(previous, data);
+
   return getTenant(organizationId, tenantId);
+}
+
+/**
+ * Deletes the files of documents this update moved away from, and only those:
+ * a path that is still the stored one is left alone, which is what makes
+ * re-sending an unchanged form safe.
+ */
+function discardReplacedDocuments(previous, data) {
+  for (const field of tenantDocumentFields) {
+    if (!(field in data)) continue;
+
+    const stored = previous[field];
+    if (!stored || stored === data[field]) continue;
+
+    removeUpload(stored);
+  }
 }
 
 async function softDeleteTenant(organizationId, tenantId) {

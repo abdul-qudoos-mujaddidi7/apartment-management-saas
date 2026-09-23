@@ -1,4 +1,19 @@
 const translations = {
+  // Image fields used by any record that attaches a file: a tenant's photograph
+  // and identity card today, whatever comes next.
+  uploads: {
+    choose: 'Choose an image',
+    dropHere: 'or drop it here',
+    replace: 'Replace',
+    view: 'View',
+    remove: 'Remove',
+    uploading: 'Uploading...',
+    hint: 'JPEG, PNG or WebP, up to 5 MB.',
+    failed: 'The image could not be uploaded. Try again.',
+    missing: 'This file is no longer on the server. Choose it again.',
+    tooLarge: 'That image is larger than 5 MB.',
+    wrongType: 'Choose a JPEG, PNG or WebP image.'
+  },
   common: {
     // One short verb per row action. A table row can carry five of them, so these
     // stay terse; the full phrase belongs in the page that owns the action.
@@ -168,7 +183,9 @@ const translations = {
     add: 'Add tenant', edit: 'Edit tenant', save: 'Save tenant', update: 'Update tenant', cancel: 'Cancel', delete: 'Delete',
     search: 'Search by name or phone...', empty: 'No tenants found. Add your first tenant to get started.', loading: 'Loading tenants...',
     confirmDelete: 'Delete this tenant?', saved: 'Tenant saved successfully.', updated: 'Tenant updated successfully.', deleted: 'Tenant deleted successfully.',
-    firstName: 'First name', lastName: 'Last name', fullName: 'Tenant', phone: 'Phone', alternatePhone: 'Alternate phone', email: 'Email', nationalId: 'National ID', address: 'Address',
+    firstName: 'First name', lastName: 'Last name', fatherName: 'Father name', fullName: 'Tenant', phone: 'Phone', alternatePhone: 'Alternate phone', email: 'Email', nationalId: 'National ID', address: 'Address',
+    photo: 'Profile photo', photoHint: 'Shown beside their name in the tenant list.', identityDocuments: 'Identity documents',
+    idCardFront: 'ID card — front', idCardBack: 'ID card — back',
     emergencyContact: 'Emergency contact', emergencyContactName: 'Contact name', emergencyContactPhone: 'Contact phone', notes: 'Notes', status: 'Status', totalTenants: 'Total tenants',
     active: 'Active', inactive: 'Inactive', required: '{field} is required.', invalidEmail: 'Enter a valid email address.', invalidPhone: 'Enter a valid phone number.',
     page: 'Page {page} of {totalPages}', previous: 'Previous', next: 'Next', sessionExpired: 'Your session has expired. Please sign in again.',
@@ -180,9 +197,12 @@ const translations = {
   tenantProfile: {
     title: 'Tenant profile', back: 'Back to tenants', loading: 'Loading tenant file...',
     tenantSince: 'Tenant since',
-    identity: 'Identity and contact', fullName: 'Full name', phone: 'Phone', alternatePhone: 'Alternate phone',
+    identity: 'Identity and contact', fullName: 'Full name', fatherName: 'Father name', phone: 'Phone', alternatePhone: 'Alternate phone',
     email: 'Email', nationalId: 'National ID', address: 'Address', emergencyContact: 'Emergency contact',
     emergencyPhone: 'Emergency phone', notes: 'Notes',
+    documents: 'Identity documents', documentsEmpty: 'No photograph or identity card has been filed for this tenant.',
+    photo: 'Photograph', idCardFront: 'ID card — front', idCardBack: 'ID card — back',    openDocument: 'Open in a new tab',
+    documentMissing: 'The file is not on the server any more. Upload it again.',
     moneyTitle: 'Money', outstanding: 'Outstanding', billed: 'Billed', collected: 'Collected',
     depositHeld: 'Deposit held', openInvoices: 'Open invoices',
     currentTenancy: 'Current tenancy', noLease: 'This tenant holds no lease yet.', building: 'Building',
