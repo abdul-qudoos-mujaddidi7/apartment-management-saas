@@ -1,9 +1,9 @@
 /* ---------------------------------------------------------------------------
    Authentication pages — sign in and create account.
 
-   These two pages face the public, so like the home page they deliberately do
-   NOT use the console's design system: they carry the landing page's palette
-   and type (teal #2f5b6b, terracotta #d98a4b, Space Grotesk over Inter).
+   These two pages face the public but use the same blue accent as the console,
+   so the first authenticated screen feels like a continuation of sign-in.
+   They keep the landing page's display/body type pairing for a warmer welcome.
 
    Everything is `au-` prefixed because Bootstrap (`.btn`, `.card`, `.form-*`)
    and the design system are both global.
@@ -14,16 +14,17 @@
 .au-page {
   --au-ink: #1b2733;
   --au-ink-soft: #51606d;
-  --au-teal: #2f5b6b;
-  --au-teal-deep: #244a58;
-  --au-teal-wash: #e6eef1;
-  --au-terra: #d98a4b;
-  --au-terra-ink: #a75f27;
+  --au-primary: var(--accent);
+  --au-primary-text: var(--accent-text);
+  --au-primary-hover: var(--accent-hover);
+  --au-primary-active: var(--accent-active);
+  --au-primary-soft: var(--accent-soft);
+  --au-primary-on-dark: var(--brand-300);
   --au-danger: #b3261e;
   --au-danger-wash: #fdecea;
   --au-ring: rgba(27, 39, 51, .1);
   --au-ring-strong: rgba(27, 39, 51, .16);
-  --au-shadow: 0 2px 6px rgba(27, 39, 51, .05), 0 34px 70px -40px rgba(47, 91, 107, .5);
+  --au-shadow: 0 2px 6px rgba(27, 39, 51, .05), 0 34px 70px -40px rgba(53, 134, 255, .45);
   --au-display: 'Space Grotesk', var(--font-ui);
   --au-body: 'Inter', var(--font-ui);
 
@@ -34,8 +35,8 @@
   color: var(--au-ink);
   background-color: #f4f2ee;
   background-image:
-    radial-gradient(1100px 720px at 14% -8%, rgba(47, 91, 107, .13), transparent 62%),
-    radial-gradient(940px 640px at 92% 4%, rgba(217, 138, 75, .11), transparent 60%),
+    radial-gradient(1100px 720px at 14% -8%, rgba(53, 134, 255, .14), transparent 62%),
+    radial-gradient(940px 640px at 92% 4%, rgba(37, 112, 230, .09), transparent 60%),
     radial-gradient(1200px 800px at 50% 100%, rgba(255, 255, 255, .75), transparent 70%);
   background-repeat: no-repeat;
   -webkit-font-smoothing: antialiased;
@@ -43,7 +44,7 @@
 
 .au-page :is(h1, h2) { font-family: var(--au-display); font-weight: 700; letter-spacing: -.024em; line-height: 1.1; }
 .au-page :is(button, input) { font-family: inherit; }
-.au-page :focus-visible { outline: 2px solid var(--au-teal); outline-offset: 3px; border-radius: 8px; }
+.au-page :focus-visible { outline: 2px solid var(--au-primary-text); outline-offset: 3px; border-radius: 8px; }
 
 /* ── The photographic side ─────────────────────────────────────────────────── */
 
@@ -69,7 +70,7 @@
   inset: 0;
   background:
     linear-gradient(190deg, rgba(9, 20, 26, .86) 0%, rgba(9, 20, 26, .5) 42%, rgba(9, 20, 26, .8) 100%),
-    radial-gradient(760px 520px at 12% 88%, rgba(36, 74, 88, .6), transparent 70%);
+    radial-gradient(760px 520px at 12% 88%, rgba(20, 63, 133, .62), transparent 70%);
 }
 
 .au-aside-inner {
@@ -90,7 +91,7 @@
   font-weight: 600;
   letter-spacing: .17em;
   text-transform: uppercase;
-  color: #eaa878;
+  color: var(--au-primary-on-dark);
 }
 
 .au-aside-title {
@@ -124,7 +125,7 @@
   color: rgba(255, 255, 255, .9);
 }
 
-.au-points i { margin-top: 2px; color: #eaa878; font-size: 1.05rem; }
+.au-points i { margin-top: 2px; color: var(--au-primary-on-dark); font-size: 1.05rem; }
 
 .au-aside-foot {
   margin: 26px 0 0;
@@ -166,7 +167,7 @@
 
 /* the brand only needs to appear inside the panel once the photo side is gone */
 .au-brand-form { display: none; color: var(--au-ink); }
-.au-brand-form .au-mark { border-color: rgba(255, 255, 255, .9); background: var(--au-teal); color: #fff; }
+.au-brand-form .au-mark { border-color: rgba(255, 255, 255, .9); background: var(--au-primary); color: #fff; }
 
 /* ── The form side ─────────────────────────────────────────────────────────── */
 
@@ -225,7 +226,7 @@
   font-weight: 600;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: var(--au-terra-ink);
+  color: var(--au-primary-text);
 }
 
 .au-title { margin: 0; font-size: clamp(1.5rem, 2vw, 1.85rem); }
@@ -267,9 +268,9 @@
 
 .au-input:focus {
   outline: none;
-  border-color: var(--au-teal);
+  border-color: var(--au-primary);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(47, 91, 107, .16);
+  box-shadow: 0 0 0 3px rgba(53, 134, 255, .18);
 }
 
 .au-input[aria-invalid='true'] { border-color: var(--au-danger); }
@@ -296,7 +297,7 @@
   transition: background-color .16s ease, color .16s ease;
 }
 
-.au-toggle:hover { background: var(--au-teal-wash); color: var(--au-teal); }
+.au-toggle:hover { background: var(--au-primary-soft); color: var(--au-primary-text); }
 
 .au-error {
   display: flex;
@@ -321,7 +322,7 @@
   line-height: 1.5;
 }
 
-.au-alert-info { border-color: rgba(47, 91, 107, .2); background: var(--au-teal-wash); color: var(--au-teal-deep); }
+.au-alert-info { border-color: var(--accent-soft-border); background: var(--au-primary-soft); color: var(--au-primary-active); }
 .au-alert i { margin-top: 2px; }
 
 .au-row {
@@ -342,13 +343,13 @@
   cursor: pointer;
 }
 
-.au-check input { width: 17px; height: 17px; accent-color: var(--au-teal); cursor: pointer; }
+.au-check input { width: 17px; height: 17px; accent-color: var(--au-primary); cursor: pointer; }
 
 .au-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--au-teal);
+  color: var(--au-primary-text);
   font-size: .99rem;
   font-weight: 600;
   text-decoration: none;
@@ -366,17 +367,17 @@
   padding: 0 22px;
   border: 0;
   border-radius: 999px;
-  background: var(--au-teal);
+  background: var(--au-primary);
   color: #fff;
   font-size: 1.09rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(27, 39, 51, .1), 0 20px 34px -22px rgba(47, 91, 107, .95);
+  box-shadow: 0 1px 2px rgba(27, 39, 51, .1), 0 20px 34px -22px rgba(53, 134, 255, .9);
   transition: background-color .18s ease, transform .18s ease;
 }
 
-.au-submit:hover:not(:disabled) { background: var(--au-teal-deep); transform: translateY(-1px); }
-.au-submit:active:not(:disabled) { transform: translateY(0); }
+.au-submit:hover:not(:disabled) { background: var(--au-primary-hover); transform: translateY(-1px); }
+.au-submit:active:not(:disabled) { background: var(--au-primary-active); transform: translateY(0); }
 .au-submit:disabled { opacity: .68; cursor: not-allowed; }
 
 .au-divider {
@@ -409,7 +410,7 @@
   transition: border-color .16s ease, background-color .16s ease, transform .18s ease;
 }
 
-.au-google:hover { border-color: rgba(47, 91, 107, .5); background: #fbfcfd; transform: translateY(-1px); }
+.au-google:hover { border-color: var(--accent-border); background: #fbfcfd; transform: translateY(-1px); }
 .au-google-mark { flex: none; }
 
 .au-switch {
@@ -445,8 +446,8 @@
   height: 60px;
   margin: 0 auto 20px;
   border-radius: 20px;
-  background: var(--au-teal-wash);
-  color: var(--au-teal);
+  background: var(--au-primary-soft);
+  color: var(--au-primary-text);
   font-size: 1.6rem;
 }
 

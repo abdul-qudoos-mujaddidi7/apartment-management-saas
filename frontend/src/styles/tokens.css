@@ -12,8 +12,8 @@
      3.5:1, and as *text* on white it is the same 3.5:1 — both short of AA for
      body copy. So the 600 is for fills and icons, and anything that has to be
      read as words on a light surface takes the 700 (4.6:1) or the 800 (6.7:1)
-     instead — see `--accent-text` below. The public sign-in and landing pages
-     keep their own teal, outside the console palette. */
+     instead — see `--accent-text` below. Sign-in and registration use this
+     same ramp; the marketing landing page keeps its public-facing palette. */
   --brand-50: #f0f7ff;  /* --accent-soft — badge and soft fills            */
   --brand-100: #e5f1ff; /* --accent-tint — selected rows, chart bars       */
   --brand-200: #cfe4ff; /* --accent-soft-border                            */
