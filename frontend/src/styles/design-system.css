@@ -440,6 +440,16 @@ html hr {
   min-height: 0;
 }
 
+/* Record pages that stack a summary above a list — building details today — get
+   the same shell: as a column the page hands its leftover height to the list
+   card, which is what makes that card reach the bottom instead of stopping
+   short after the last row. */
+.app-page:has(> .details-page) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* ==========================================================================
    5. Topbar — minimal
    ========================================================================== */

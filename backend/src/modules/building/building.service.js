@@ -70,7 +70,13 @@ async function getBuilding(organizationId, buildingId) {
     throw new AppError('Building not found.', 404, 'BUILDING_NOT_FOUND');
   }
 
-  return formatBuilding(building);
+  // Apartment counts are aggregated here rather than derived from the floors
+  // list, which the client pages through: a page of floors is not the building.
+  const totalApartments = await prisma.apartment.count({
+    where: { deletedAt: null, floor: { buildingId, deletedAt: null } },
+  });
+
+  return { ...formatBuilding(building), totalApartments };
 }
 
 async function createBuilding(organizationId, data) {

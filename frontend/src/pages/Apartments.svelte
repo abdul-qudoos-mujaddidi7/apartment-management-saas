@@ -3,7 +3,6 @@
   import { push } from 'svelte-spa-router';
 
   import PageLayout from '../components/ui/PageLayout.svelte';
-  import ActionButton from '../components/ui/ActionButton.svelte';
   import PageToolbar from '../components/ui/PageToolbar.svelte';
   import DataTable from '../components/ui/DataTable.svelte';
   import Checkbox from '../components/ui/Checkbox.svelte';
@@ -16,7 +15,7 @@
 
   import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
   import { formatMoney } from '../utils/formatters';
-  import { getFloor } from '../services/floors';
+  import { getFloor, listFloors } from '../services/floors';
   import {
     createApartment,
     deleteApartment,
@@ -40,6 +39,11 @@
   let routeReady = false;
   let floor = null;
   let loadingFloor = false;
+  /* Every floor in the workspace. The create form needs a floor, so on the
+     all-apartments list — where the route names none — the form has to ask. */
+  let floors = [];
+  let loadingFloors = false;
+  let formFloorId = '';
 
   let apartments = [];
 
@@ -115,8 +119,25 @@
       await Promise.all([loadFloor(), loadApartments(1)]);
     } else {
       loadingFloor = false;
-      await loadApartments(1);
+      await Promise.all([loadFloorOptions(), loadApartments(1)]);
     }
+  }
+
+  async function loadFloorOptions() {
+    loadingFloors = true;
+    try {
+      const collected = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const response = await listFloors({ page, pageSize: 100 });
+        collected.push(...response.items);
+        totalPages = response.pagination.totalPages;
+        page += 1;
+      } while (page <= totalPages);
+      floors = collected;
+    } catch { floors = []; }
+    finally { loadingFloors = false; }
   }
 
   function formatNumber(value, currentLanguage) {
@@ -157,10 +178,14 @@
     } finally { loading = false; }
   }
 
-  function nextApartmentNumber() {
-    if (!floor) return '';
-    const prefix = Number(floor.floorNumber) * 100;
-    const used = new Set(apartments.map((a) => Number(a.apartmentNumber)).filter((v) => Number.isInteger(v)));
+  /* Numbers are suggested from the floor's own prefix (floor 3 → 300, 301…).
+     Only the apartments currently loaded can be checked for collisions, which
+     is exactly the page you are on; from the all-apartments list the server is
+     what refuses a number already taken on that floor. */
+  function nextApartmentNumber(targetFloor = floor) {
+    if (!targetFloor) return '';
+    const prefix = Number(targetFloor.floorNumber) * 100;
+    const used = new Set((floorId ? apartments : []).map((a) => Number(a.apartmentNumber)).filter((v) => Number.isInteger(v)));
     let suffix = 1;
     while (used.has(prefix + suffix)) { suffix += 1; }
     return String(prefix + suffix);
@@ -168,6 +193,7 @@
 
   function validateForm() {
     formErrors = {};
+    if (!editingId && !floorId && !formFloorId) formErrors.floorId = translate('apartments.required', { field: $locale.apartments.floor });
     if (!form.apartmentNumber.trim()) formErrors.apartmentNumber = translate('apartments.required', { field: $locale.apartments.apartmentNumber });
     if (!form.name.trim()) formErrors.name = translate('apartments.required', { field: $locale.apartments.name });
     if (!form.type) formErrors.type = translate('apartments.required', { field: $locale.apartments.type });
@@ -189,13 +215,21 @@
   }
 
   function openAddApartment() {
-    if (!floorId || !floor) return;
     editingId = null;
     lastSavedApartmentNumber = null;
     modalError = '';
     formErrors = {};
-    form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(), rentCurrency: $baseCurrency };
+    formFloorId = floorId || '';
+    form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(floor), rentCurrency: $baseCurrency };
     modalOpen = true;
+    // Re-read the floors so a floor added in another tab shows up in the picker.
+    if (!floorId) void loadFloorOptions();
+  }
+
+  function handleFloorChoice(event) {
+    formFloorId = event.currentTarget.value;
+    const chosen = floors.find((option) => option.id === formFloorId) || null;
+    if (chosen) form = { ...form, apartmentNumber: nextApartmentNumber(chosen) };
   }
 
   function openEditApartment(apartment) {
@@ -311,12 +345,13 @@
         closeModal();
         await loadApartments(pagination.page);
       } else {
-        if (!floorId) { modalError = $locale.apartments.notFound; return; }
-        const response = await createApartment({ floorId, ...payload });
+        const targetFloorId = floorId || formFloorId;
+        if (!targetFloorId) { modalError = translate('apartments.required', { field: $locale.apartments.floor }); return; }
+        const response = await createApartment({ floorId: targetFloorId, ...payload });
         noticeMessage = $locale.apartments.saved;
         lastSavedApartmentNumber = response.apartment.apartmentNumber;
         await loadApartments(1);
-        form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(), rentCurrency: payload.rentCurrency };
+        form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(floor ?? floors.find((option) => option.id === formFloorId) ?? null), rentCurrency: payload.rentCurrency };
       }
     } catch (error) {
       applyModalError(error);
@@ -379,7 +414,7 @@
 
 <PageLayout>
   <svelte:fragment slot="toolbar">
-    <PageToolbar bind:search searchPlaceholder={$locale.apartments.search} onSearch={() => loadApartments(1)} showAdd={Boolean(floorId)} addLabel={$locale.apartments.add} onAdd={openAddApartment}>
+    <PageToolbar bind:search searchPlaceholder={$locale.apartments.search} onSearch={() => loadApartments(1)} addLabel={$locale.apartments.add} onAdd={openAddApartment}>
       <svelte:fragment slot="tabs"><TabFilters tabs={statusTabs} active={statusFilter} on:select={handleStatusChange} /></svelte:fragment>
       <svelte:fragment slot="actions">{#if floor?.building?.id}<button class="toolbar-back" type="button" on:click={goBackToBuilding}><i class="bi bi-arrow-left" aria-hidden="true"></i><span>{$locale.apartments.back}</span></button>{/if}</svelte:fragment>
     </PageToolbar>
@@ -392,7 +427,6 @@
 
   <svelte:fragment slot="content">
     <DataTable {loading} isEmpty={apartments.length === 0} loadingLabel={$locale.apartments.loading} emptyLabel={$locale.apartments.empty} emptyIcon="bi-door-open" minTableWidth="72rem" showFooter={false}>
-      {#if floorId}<ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.apartments.add} on:click={openAddApartment} />{/if}
       <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th>{$locale.apartments.apartmentNumber}</th><th>{$locale.apartments.name}</th><th>{$locale.apartments.type}</th><th>{$locale.apartments.area}</th><th>{$locale.apartments.bedrooms}</th><th>{$locale.apartments.bathrooms}</th><th class="amount-cell">{$locale.apartments.monthlyRent}</th><th>{$locale.apartments.status}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
       <tbody>
         {#each apartments as apartment (apartment.id)}
@@ -430,6 +464,20 @@
     {/if}
 
     <div class="row g-3">
+      {#if !editingId && !floorId}
+        <!-- Creating from the all-apartments list: a new apartment has to land on
+             some floor, so the form asks which one. -->
+        <div class="col-12">
+          <label class="form-label" for="apartment-floor">{$locale.apartments.floor}</label>
+          <select class:is-invalid={formErrors.floorId} class="form-select" id="apartment-floor" bind:value={formFloorId} on:change={handleFloorChoice} disabled={loadingFloors}>
+            <option value="">{$locale.apartments.chooseFloor}</option>
+            {#each floors as option (option.id)}
+              <option value={option.id}>{option.building?.name ? `${option.building.name} · ${option.name}` : option.name}</option>
+            {/each}
+          </select>
+          {#if formErrors.floorId}<div class="invalid-feedback">{formErrors.floorId}</div>{/if}
+        </div>
+      {/if}
       <div class="col-sm-6">
         <label class="form-label" for="apartment-number">{$locale.apartments.apartmentNumber}</label>
         <input class:is-invalid={formErrors.apartmentNumber} class="form-control" id="apartment-number" bind:value={form.apartmentNumber} />
