@@ -305,41 +305,41 @@
             </td>
             <td class="actions-cell">
               <button
-                class="icon-button"
+                class="row-action"
                 type="button"
                 on:click={() => openEdit(currency)}
                 aria-label={$locale.currencies.edit}
-                title={$locale.currencies.edit}
               >
                 <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span>{$locale.common.actions.edit}</span>
               </button>
               {#if !currency.isBase}
                 <button
-                  class="icon-button"
+                  class="row-action"
                   type="button"
                   on:click={() => openRate(currency)}
                   aria-label={$locale.currencies.rateHistory}
-                  title={$locale.currencies.rateHistory}
                 >
                   <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
+                  <span>{$locale.common.actions.rates}</span>
                 </button>
                 <button
-                  class="icon-button"
+                  class="row-action"
                   type="button"
                   on:click={() => toggleActive(currency)}
                   aria-label={currency.isActive ? $locale.currencies.deactivate : $locale.currencies.activate}
-                  title={currency.isActive ? $locale.currencies.deactivate : $locale.currencies.activate}
                 >
                   <i class={currency.isActive ? 'bi bi-pause-circle' : 'bi bi-play-circle'} aria-hidden="true"></i>
+                  <span>{currency.isActive ? $locale.common.actions.deactivate : $locale.common.actions.activate}</span>
                 </button>
                 <button
-                  class="icon-button danger"
+                  class="row-action danger"
                   type="button"
                   on:click={() => removeCurrency(currency)}
                   aria-label={$locale.currencies.delete}
-                  title={$locale.currencies.delete}
                 >
                   <i class="bi bi-trash" aria-hidden="true"></i>
+                  <span>{$locale.currencies.delete}</span>
                 </button>
               {/if}
             </td>
@@ -527,7 +527,5 @@
   .symbol-cell { font-size: 1.05rem; }
   /* The code field is a searchable list of currencies: type "po" or "GBP" and
      pick a row to fill the name and symbol in from the API's reference data. */
-  .icon-button.danger { color: var(--danger); }
-  .icon-button.danger:hover { border-color: var(--danger-border, var(--danger)); }
   @media (max-width: 767px) { .base-panel { flex-direction: column; align-items: stretch; } }
 </style>

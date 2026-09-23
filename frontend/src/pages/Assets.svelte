@@ -96,7 +96,7 @@
   }
 
   function emptyCategoryForm() {
-    return { name: '', code: '', description: '' };
+    return { name: '', description: '' };
   }
 
   onMount(async () => {
@@ -465,7 +465,6 @@
     categoryErrors = {};
     categoryForm = {
       name: category.name,
-      code: category.code || '',
       description: category.description || ''
     };
     categoryModalOpen = true;
@@ -492,7 +491,6 @@
 
     const payload = {
       name: categoryForm.name.trim(),
-      code: categoryForm.code.trim() || null,
       description: categoryForm.description.trim() || null
     };
 
@@ -504,7 +502,10 @@
       }
 
       noticeMessage = $locale.assets.categorySaved;
-      closeCategoryModal();
+      // Closed directly: closeCategoryModal() refuses while `saving` is still set,
+      // which is exactly the state the save leaves behind.
+      categoryModalOpen = false;
+      categoryEditingId = null;
       await loadCategories();
     } catch (error) {
       categoryError = error.message;
@@ -733,11 +734,13 @@
               <td class="amount-cell">{record.unitValue === null ? '—' : formatMoney(record.unitValue)}</td>
               <td>{formatDate(record.updatedAt)}</td>
               <td class="actions-cell">
-                <button class="icon-button" type="button" on:click={() => openRecordEdit(record)} aria-label={$locale.assets.edit}>
+                <button class="row-action" type="button" on:click={() => openRecordEdit(record)} aria-label={$locale.assets.edit}>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
+                  <span>{$locale.assets.edit}</span>
                 </button>
-                <button class="icon-button danger" type="button" on:click={() => removeRecord(record)} aria-label={$locale.assets.removeItem}>
+                <button class="row-action danger" type="button" on:click={() => removeRecord(record)} aria-label={$locale.assets.removeItem}>
                   <i class="bi bi-trash3" aria-hidden="true"></i>
+                  <span>{$locale.assets.removeItem}</span>
                 </button>
               </td>
             </tr>
@@ -802,11 +805,13 @@
               <td>{asset.code || '—'}</td>
               <td class="amount-cell">{formatNumber(asset.usageCount)}</td>
               <td class="actions-cell">
-                <button class="icon-button" type="button" on:click={() => openAssetEdit(asset)} aria-label={$locale.assets.edit}>
+                <button class="row-action" type="button" on:click={() => openAssetEdit(asset)} aria-label={$locale.assets.edit}>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
+                  <span>{$locale.assets.edit}</span>
                 </button>
-                <button class="icon-button danger" type="button" on:click={() => removeAsset(asset)} aria-label={$locale.assets.removeItem}>
+                <button class="row-action danger" type="button" on:click={() => removeAsset(asset)} aria-label={$locale.assets.removeItem}>
                   <i class="bi bi-trash3" aria-hidden="true"></i>
+                  <span>{$locale.assets.removeItem}</span>
                 </button>
               </td>
             </tr>
@@ -839,7 +844,6 @@
         <thead>
           <tr>
             <th>{$locale.assets.name}</th>
-            <th>{$locale.assets.code}</th>
             <th>{$locale.assets.description}</th>
             <th class="amount-cell">{$locale.assets.usageCount}</th>
             <th class="actions-heading"><span class="visually-hidden">{$locale.assets.actions}</span></th>
@@ -850,15 +854,16 @@
           {#each categories.filter((category) => !search.trim() || category.name.toLowerCase().includes(search.trim().toLowerCase())) as category (category.id)}
             <tr>
               <td>{category.name}</td>
-              <td>{category.code || '—'}</td>
               <td>{category.description || '—'}</td>
               <td class="amount-cell">{formatNumber(category.assetCount)}</td>
               <td class="actions-cell">
-                <button class="icon-button" type="button" on:click={() => openCategoryEdit(category)} aria-label={$locale.assets.edit}>
+                <button class="row-action" type="button" on:click={() => openCategoryEdit(category)} aria-label={$locale.assets.edit}>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
+                  <span>{$locale.assets.edit}</span>
                 </button>
-                <button class="icon-button danger" type="button" on:click={() => removeCategory(category)} aria-label={$locale.assets.removeItem}>
+                <button class="row-action danger" type="button" on:click={() => removeCategory(category)} aria-label={$locale.assets.removeItem}>
                   <i class="bi bi-trash3" aria-hidden="true"></i>
+                  <span>{$locale.assets.removeItem}</span>
                 </button>
               </td>
             </tr>
@@ -1010,14 +1015,10 @@
     {/if}
 
     <div class="row g-3">
-      <div class="col-sm-6">
+      <div class="col-12">
         <label class="form-label" for="category-name">{$locale.assets.name}</label>
         <input class:is-invalid={categoryErrors.name} class="form-control" id="category-name" bind:value={categoryForm.name} />
         {#if categoryErrors.name}<div class="invalid-feedback">{categoryErrors.name}</div>{/if}
-      </div>
-      <div class="col-sm-6">
-        <label class="form-label" for="category-code">{$locale.assets.code}</label>
-        <input class="form-control" id="category-code" bind:value={categoryForm.code} />
       </div>
       <div class="col-12">
         <label class="form-label" for="category-description">{$locale.assets.description}</label>

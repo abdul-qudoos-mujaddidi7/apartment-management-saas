@@ -130,7 +130,8 @@ CREATE TABLE `Building` (
 CREATE TABLE `Floor` (
     `id` VARCHAR(191) NOT NULL,
     `buildingId` VARCHAR(191) NOT NULL,
-    `floorNumber` INTEGER NOT NULL,
+    `floorNumber` VARCHAR(32) NOT NULL,
+    `sortIndex` INTEGER NOT NULL DEFAULT 0,
     `name` VARCHAR(191) NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,

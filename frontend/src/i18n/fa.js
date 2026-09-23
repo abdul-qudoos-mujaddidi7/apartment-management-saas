@@ -2,7 +2,7 @@ import en from './en';
 
 const translations = {
   ...en,
-  common: { ...en.common, language: 'زبان', signIn: 'ورود', getStarted: 'شروع کنید', logout: 'خروج', loggingOut: 'در حال خروج...', close: 'بستن', skipToContent: 'رفتن به محتوا', filters: 'فیلترها', all: 'همه', clearFilters: 'پاک کردن فیلترها', selectAll: 'انتخاب همه سطرها', selectRow: 'انتخاب سطر', selectedCount: '{count} انتخاب‌شده', required: 'الزامی' },
+  common: { ...en.common, actions: { view: 'مشاهده', edit: 'ویرایش', delete: 'حذف', cancel: 'لغو', remove: 'برداشتن', pay: 'پرداخت', void: 'ابطال', activate: 'فعال‌سازی', deactivate: 'غیرفعال‌سازی', terminate: 'ختم', details: 'جزئیات', profile: 'پروفایل', spaces: 'فضاها', rates: 'نرخ‌ها' }, language: 'زبان', signIn: 'ورود', getStarted: 'شروع کنید', logout: 'خروج', loggingOut: 'در حال خروج...', close: 'بستن', skipToContent: 'رفتن به محتوا', filters: 'فیلترها', all: 'همه', clearFilters: 'پاک کردن فیلترها', selectAll: 'انتخاب همه سطرها', selectRow: 'انتخاب سطر', selectedCount: '{count} انتخاب‌شده', required: 'الزامی' },
   languageNames: { en: 'English', fa: 'دری', ps: 'پښتو' },
   home: {
     ...en.home,

@@ -1,5 +1,23 @@
 const translations = {
   common: {
+    // One short verb per row action. A table row can carry five of them, so these
+    // stay terse; the full phrase belongs in the page that owns the action.
+    actions: {
+      view: 'View',
+      edit: 'Edit',
+      delete: 'Delete',
+      cancel: 'Cancel',
+      remove: 'Remove',
+      pay: 'Pay',
+      void: 'Void',
+      activate: 'Activate',
+      deactivate: 'Deactivate',
+      terminate: 'Terminate',
+      details: 'Details',
+      profile: 'Profile',
+      spaces: 'Spaces',
+      rates: 'Rates'
+    },
     language: 'Language',
     apartmentPro: 'ApartmentPro',
     signIn: 'Sign In',

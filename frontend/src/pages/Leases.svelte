@@ -334,24 +334,29 @@
             <td class="money-cell">{formatMoney(lease.monthlyRent, lease.currency)}</td>
             <td><StatusBadge label={statusLabel(lease.status)} tone={statusTone(lease.status)} /></td>
             <td class="actions-cell">
-              <button class="icon-button" type="button" on:click={() => (detail = lease)} aria-label={$locale.leases.details} title={$locale.leases.details}>
+              <button class="row-action" type="button" on:click={() => (detail = lease)} aria-label={$locale.leases.details}>
                 <i class="bi bi-eye" aria-hidden="true"></i>
+                <span>{$locale.leases.details}</span>
               </button>
-              <button class="icon-button" type="button" on:click={() => openEdit(lease)} aria-label={$locale.leases.edit} title={$locale.leases.edit}>
+              <button class="row-action" type="button" on:click={() => openEdit(lease)} aria-label={$locale.leases.edit}>
                 <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span>{$locale.common.actions.edit}</span>
               </button>
               {#if lease.status === 'DRAFT'}
-                <button class="icon-button success" type="button" on:click={() => changeStatus(lease, 'ACTIVE')} aria-label={$locale.leases.activate} title={$locale.leases.activate}>
+                <button class="row-action success" type="button" on:click={() => changeStatus(lease, 'ACTIVE')} aria-label={$locale.leases.activate}>
                   <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                  <span>{$locale.leases.activate}</span>
                 </button>
               {/if}
               {#if lease.status === 'ACTIVE'}
-                <button class="icon-button warning" type="button" on:click={() => changeStatus(lease, 'TERMINATED')} aria-label={$locale.leases.terminate} title={$locale.leases.terminate}>
+                <button class="row-action warning" type="button" on:click={() => changeStatus(lease, 'TERMINATED')} aria-label={$locale.leases.terminate}>
                   <i class="bi bi-stop-circle" aria-hidden="true"></i>
+                  <span>{$locale.leases.terminate}</span>
                 </button>
               {/if}
-              <button class="icon-button danger" type="button" on:click={() => removeLease(lease)} aria-label={$locale.leases.delete} title={$locale.leases.delete}>
+              <button class="row-action danger" type="button" on:click={() => removeLease(lease)} aria-label={$locale.leases.delete}>
                 <i class="bi bi-trash3" aria-hidden="true"></i>
+                <span>{$locale.leases.delete}</span>
               </button>
             </td>
           </tr>
@@ -509,8 +514,6 @@
 </Modal>
 
 <style>
-  .icon-button.success { color: var(--success); }
-  .icon-button.warning { color: var(--warning); }
   .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
   .detail-item { padding: 0.85rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface-muted); }
   .detail-item > span, .detail-notes > span { display: block; margin-bottom: 0.25rem; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }

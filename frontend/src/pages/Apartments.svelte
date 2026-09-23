@@ -178,14 +178,17 @@
     } finally { loading = false; }
   }
 
-  /* Numbers are suggested from the floor's own prefix (floor 3 → 300, 301…).
+  /* Numbers are suggested from the floor's own number (floor 3 → 300, 301…).
+     A floor labelled with a name — "Ground", "B1" — has no prefix to borrow, so
+     the suggestion falls back to the first free number on that floor.
      Only the apartments currently loaded can be checked for collisions, which
      is exactly the page you are on; from the all-apartments list the server is
      what refuses a number already taken on that floor. */
   function nextApartmentNumber(targetFloor = floor) {
     if (!targetFloor) return '';
-    const prefix = Number(targetFloor.floorNumber) * 100;
     const used = new Set((floorId ? apartments : []).map((a) => Number(a.apartmentNumber)).filter((v) => Number.isInteger(v)));
+    const floorLabel = Number(String(targetFloor.floorNumber).trim());
+    const prefix = Number.isInteger(floorLabel) ? floorLabel * 100 : 0;
     let suffix = 1;
     while (used.has(prefix + suffix)) { suffix += 1; }
     return String(prefix + suffix);
@@ -434,7 +437,20 @@
             <td class="select-column"><Checkbox checked={selectedIds.has(apartment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(apartment.id)} /></td>
             <td class="data-cell"><button class="table-link" type="button" on:click={() => openDetails(apartment)}>{apartment.apartmentNumber}</button></td>
             <td>{apartment.name}</td><td>{$locale.apartments.types[apartment.type] || apartment.type}</td><td class="data-cell">{formatArea(apartment.area, $language)}</td><td class="data-cell">{apartment.bedrooms}</td><td class="data-cell">{apartment.bathrooms}</td><td class="amount-cell">{formatMoney(apartment.monthlyRent, apartment.rentCurrency)}</td><td><StatusBadge label={statusLabel(apartment.status)} tone={statusTone(apartment.status)} /></td>
-            <td class="actions-cell"><button class="icon-button" type="button" on:click={() => openDetails(apartment)} aria-label={$locale.apartments.spaces.title}><i class="bi bi-eye" aria-hidden="true"></i></button><button class="icon-button" type="button" on:click={() => openEditApartment(apartment)} aria-label={$locale.apartments.edit}><i class="bi bi-pencil" aria-hidden="true"></i></button><button class="icon-button danger" type="button" on:click={() => removeApartment(apartment)} aria-label={$locale.apartments.delete}><i class="bi bi-trash3" aria-hidden="true"></i></button></td>
+            <td class="actions-cell">
+              <button class="row-action" type="button" on:click={() => openDetails(apartment)} aria-label={$locale.apartments.spaces.title}>
+                <i class="bi bi-eye" aria-hidden="true"></i>
+                <span>{$locale.common.actions.spaces}</span>
+              </button>
+              <button class="row-action" type="button" on:click={() => openEditApartment(apartment)} aria-label={$locale.apartments.edit}>
+                <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span>{$locale.common.actions.edit}</span>
+              </button>
+              <button class="row-action danger" type="button" on:click={() => removeApartment(apartment)} aria-label={$locale.apartments.delete}>
+                <i class="bi bi-trash3" aria-hidden="true"></i>
+                <span>{$locale.apartments.delete}</span>
+              </button>
+            </td>
           </tr>
         {/each}
       </tbody>

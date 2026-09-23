@@ -10,6 +10,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import { locale } from '../i18n';
+  import { formatNumber } from '../utils/formatters';
   import { getBuildings } from '../services/buildings';
   import { listFloors, createFloor, updateFloor, deleteFloor } from '../services/floors';
 
@@ -26,7 +27,7 @@
   let editingId = null;
   let saving = false;
   let modalError = '';
-  let form = { buildingId: '', floorNumber: 1, name: '' };
+  let form = { buildingId: '', floorNumber: '', name: '' };
 
   onMount(() => {
     void loadFloors();
@@ -68,7 +69,7 @@
 
   function openFloor(floor = null) {
     editingId = floor?.id ?? null;
-    form = { buildingId: floor?.buildingId ?? buildingId, floorNumber: floor?.floorNumber ?? 1, name: floor?.name ?? '' };
+    form = { buildingId: floor?.buildingId ?? buildingId, floorNumber: floor ? String(floor.floorNumber) : '', name: floor?.name ?? '' };
     modalError = '';
     modalOpen = true;
   }
@@ -79,7 +80,7 @@
     modalError = '';
     noticeMessage = '';
     try {
-      const payload = { buildingId: form.buildingId, floorNumber: Number(form.floorNumber), name: form.name.trim() };
+      const payload = { buildingId: form.buildingId, floorNumber: String(form.floorNumber).trim(), name: form.name.trim() };
       if (editingId) await updateFloor(editingId, payload);
       else await createFloor(payload);
       noticeMessage = editingId ? $locale.floors.updated : $locale.floors.saved;
@@ -157,11 +158,38 @@
             <td class="select-column"><Checkbox checked={selectedIds.has(floor.id)} label={$locale.common.selectRow} on:change={() => toggleRow(floor.id)} /></td>
             <td>{floor.building?.name ?? '—'}</td>
             <td>{floor.floorNumber}</td>
-            <td><button class="link-button" type="button" on:click={() => push(`/floors/${floor.id}`)}>{floor.name}</button></td>
-            <td><button class="link-button" type="button" on:click={() => push(`/floors/${floor.id}`)}>{$locale.apartments.title}</button></td>
+            <td>
+              <button class="table-link" type="button" on:click={() => push(`/floors/${floor.id}`)}>
+                {floor.name}
+              </button>
+            </td>
+            <td>
+              <span class="apartments-link">
+                <span class="apartments-count">{formatNumber(floor.totalApartments ?? 0)}</span>
+                <button class="table-link" type="button" on:click={() => push(`/floors/${floor.id}`)}>
+                  {$locale.apartments.title}
+                </button>
+              </span>
+            </td>
             <td class="actions-cell">
-              <button class="icon-button" type="button" aria-label={$locale.floors.edit} on:click={() => openFloor(floor)}><i class="bi bi-pencil" aria-hidden="true"></i></button>
-              <button class="icon-button danger" type="button" aria-label={$locale.floors.delete} on:click={() => removeFloor(floor)}><i class="bi bi-trash3" aria-hidden="true"></i></button>
+              <button
+                class="row-action"
+                type="button"
+                aria-label={$locale.floors.edit}
+                on:click={() => openFloor(floor)}
+              >
+                <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span>{$locale.floors.edit}</span>
+              </button>
+              <button
+                class="row-action danger"
+                type="button"
+                aria-label={$locale.floors.delete}
+                on:click={() => removeFloor(floor)}
+              >
+                <i class="bi bi-trash3" aria-hidden="true"></i>
+                <span>{$locale.floors.delete}</span>
+              </button>
             </td>
           </tr>
         {/each}
@@ -187,7 +215,7 @@
         disabled={saving || Boolean(editingId)}
       />
     </div>
-    <div class="mb-3"><label class="form-label" for="floor-number">{$locale.floors.floorNumber}</label><input id="floor-number" class="form-control" type="number" min="1" max="200" step="1" required bind:value={form.floorNumber} disabled={saving} /></div>
+    <div class="mb-3"><label class="form-label" for="floor-number">{$locale.floors.floorNumber}</label><input id="floor-number" class="form-control" type="text" maxlength="32" required pattern=".*\S.*" bind:value={form.floorNumber} disabled={saving} /></div>
     <div class="mb-3"><label class="form-label" for="floor-name">{$locale.floors.name}</label><input id="floor-name" class="form-control" required pattern=".*\S.*" maxlength="191" bind:value={form.name} disabled={saving} /></div>
   </form>
   <div slot="footer">
@@ -195,3 +223,27 @@
     <button class="btn btn-primary" type="submit" form="floors-form" disabled={saving}>{saving ? $locale.floors.loading : editingId ? $locale.floors.update : $locale.floors.save}</button>
   </div>
 </Modal>
+
+<style>
+  /* The apartments column reads as a figure and a way in: the count first, in the
+     same quiet chip the building page uses, then the link to the floor's own
+     apartment list. */
+  .apartments-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .apartments-count {
+    min-width: 1.6rem;
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    background: var(--surface-sunken);
+    font-family: var(--font-data);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    text-align: center;
+  }
+</style>

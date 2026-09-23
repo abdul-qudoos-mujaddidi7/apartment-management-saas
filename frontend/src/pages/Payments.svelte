@@ -121,7 +121,12 @@
         <tr class:is-selected={selectedIds.has(payment.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(payment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(payment.id)} /></td>
           <td><strong>{payment.paymentNumber}</strong></td><td class="date-cell">{formatShortDate(payment.paymentDate)}</td><td>{tenantName(payment)}</td><td>{payment.lease?.apartment?.floor?.building?.name || '—'}</td><td class="data-cell">{payment.lease?.apartment?.apartmentNumber || '—'}</td><td>{payment.receiveAccount.code} — {payment.receiveAccount.name}</td><td>{$locale.paymentMethods[payment.paymentMethod]}</td><td class="amount-cell">{formatMoney(payment.amount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.allocatedAmount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.unallocatedAmount, payment.currency)}</td><td><StatusBadge label={paymentLabel(payment.status)} tone={paymentTone(payment.status)} /></td>
-          <td class="actions-cell"><button class="icon-button" type="button" on:click={() => openDetails(payment)} aria-label={$locale.payments.view}><i class="bi bi-eye" aria-hidden="true"></i></button>{#if payment.status === 'POSTED'}<button class="icon-button warning" type="button" on:click={() => requestVoid(payment)} aria-label={$locale.payments.void}><i class="bi bi-x-circle" aria-hidden="true"></i></button>{/if}</td>
+          <td class="actions-cell">
+            <button class="row-action" type="button" on:click={() => openDetails(payment)} aria-label={$locale.payments.view}><i class="bi bi-eye" aria-hidden="true"></i><span>{$locale.common.actions.view}</span></button>
+            {#if payment.status === 'POSTED'}
+              <button class="row-action warning" type="button" on:click={() => requestVoid(payment)} aria-label={$locale.payments.void}><i class="bi bi-x-circle" aria-hidden="true"></i><span>{$locale.common.actions.void}</span></button>
+            {/if}
+          </td>
         </tr>
       {/each}</tbody>
     </DataTable>
@@ -159,8 +164,6 @@
 </Modal>
 
 <style>
-  .icon-button.warning { color: var(--warning); }
-  .icon-button.warning:hover { border-color: var(--warning-border); background: var(--warning-soft); }
   .payment-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .payment-details dt { color: var(--text-muted); font-size: .8rem; }
   .payment-details dd { margin: .25rem 0 0; font-weight: 600; }

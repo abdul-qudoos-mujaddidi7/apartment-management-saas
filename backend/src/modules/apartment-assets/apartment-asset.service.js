@@ -457,6 +457,16 @@ function compareStrings(a, b) {
 }
 
 /**
+ * Floors in the order the Floors list shows them: by the ordering key the floor
+ * carries (numbers by value, named floors first), then by the label itself. A
+ * floor number is free text, so comparing the labels directly would put "10"
+ * before "2" and a "Ground" in wherever G happens to fall.
+ */
+function compareFloors(a, b) {
+  return (a.sortIndex ?? 0) - (b.sortIndex ?? 0) || compareStrings(a.floorNumber, b.floorNumber);
+}
+
+/**
  * The next apartment in real property order.
  *
  * Order is building (creation order), then floor number, then apartment number —
@@ -474,6 +484,7 @@ async function findNextApartment(organizationId, currentApartmentId) {
       floor: {
         select: {
           floorNumber: true,
+          sortIndex: true,
           building: { select: { id: true, createdAt: true } },
         },
       },
@@ -498,6 +509,7 @@ async function findNextApartment(organizationId, currentApartmentId) {
         select: {
           id: true,
           floorNumber: true,
+          sortIndex: true,
           name: true,
           building: { select: { id: true, name: true, code: true, createdAt: true } },
         },
@@ -514,7 +526,7 @@ async function findNextApartment(organizationId, currentApartmentId) {
       (a, b) =>
         a.builtAt - b.builtAt ||
         compareStrings(a.apartment.floor.building.id, b.apartment.floor.building.id) ||
-        a.apartment.floor.floorNumber - b.apartment.floor.floorNumber ||
+        compareFloors(a.apartment.floor, b.apartment.floor) ||
         compareStrings(a.apartment.apartmentNumber, b.apartment.apartmentNumber) ||
         compareStrings(a.apartment.id, b.apartment.id),
     );
@@ -522,25 +534,24 @@ async function findNextApartment(organizationId, currentApartmentId) {
   const currentKey = {
     builtAt: current.floor.building.createdAt.getTime(),
     buildingId: current.floor.building.id,
-    floorNumber: current.floor.floorNumber,
+    floor: current.floor,
     apartmentNumber: current.apartmentNumber,
     id: current.id,
   };
 
   const next =
-    ordered.find(
-      (entry) =>
+    ordered.find((entry) => {
+      const floorOrder = compareFloors(entry.apartment.floor, currentKey.floor);
+      const sameBuilding = entry.apartment.floor.building.id === currentKey.buildingId;
+      return (
         entry.builtAt > currentKey.builtAt ||
         (entry.builtAt === currentKey.builtAt &&
           compareStrings(entry.apartment.floor.building.id, currentKey.buildingId) > 0) ||
-        (entry.builtAt === currentKey.builtAt &&
-          entry.apartment.floor.building.id === currentKey.buildingId &&
-          entry.apartment.floor.floorNumber > currentKey.floorNumber) ||
-        (entry.builtAt === currentKey.builtAt &&
-          entry.apartment.floor.building.id === currentKey.buildingId &&
-          entry.apartment.floor.floorNumber === currentKey.floorNumber &&
-          compareStrings(entry.apartment.apartmentNumber, currentKey.apartmentNumber) > 0),
-    )?.apartment ?? null;
+        (entry.builtAt === currentKey.builtAt && sameBuilding && floorOrder > 0) ||
+        (entry.builtAt === currentKey.builtAt && sameBuilding && floorOrder === 0 &&
+          compareStrings(entry.apartment.apartmentNumber, currentKey.apartmentNumber) > 0)
+      );
+    })?.apartment ?? null;
 
   if (!next) return null;
 

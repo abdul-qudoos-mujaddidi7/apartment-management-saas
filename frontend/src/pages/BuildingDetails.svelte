@@ -18,7 +18,7 @@
   let floors = [], search = '', loadingBuilding = false, loadingFloors = false;
   let errorMessage = '', noticeMessage = '', modalError = '';
   let modalOpen = false, saving = false, lastSavedFloorNumber = null;
-  let formErrors = {}, form = { floorNumber: 1, name: '' };
+  let formErrors = {}, form = { floorNumber: '', name: '' };
   /* The list is paged by the server, so this page holds one page of floors and
      every building-wide figure below comes from the building record instead. */
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
@@ -64,12 +64,23 @@
       if (token === requestToken) loadingFloors = false;
     }
   }
-  function highestLoadedFloor() { return floors.reduce((highest, floor) => Math.max(highest, floor.floorNumber), 0); }
-  function nextFloorNumber() { return highestLoadedFloor() + 1; }
+  /* Floor labels are free text, so the suggestion is only made when the floors
+     so far are numbers — "2" after "1". A building that names its floors
+     ("Ground", "B1") gets an empty field to fill in itself. */
+  function highestNumberedFloor() {
+    return floors.reduce((highest, floor) => {
+      const value = Number(String(floor.floorNumber).trim());
+      return Number.isInteger(value) && value > highest ? value : highest;
+    }, 0);
+  }
+  function nextFloorNumber() {
+    const highest = highestNumberedFloor();
+    return highest ? String(highest + 1) : '';
+  }
   function validateForm() {
     formErrors = {};
     if (!form.name.trim()) formErrors.name = translate('floors.required', { field: $locale.floors.name });
-    if (!Number.isInteger(Number(form.floorNumber)) || Number(form.floorNumber) < 1) formErrors.floorNumber = translate('floors.numberRequired', { field: $locale.floors.floorNumber });
+    if (!String(form.floorNumber).trim()) formErrors.floorNumber = translate('floors.required', { field: $locale.floors.floorNumber });
     return !Object.keys(formErrors).length;
   }
   function openApartments(floor) { push(`/floors/${floor.id}`); }
@@ -85,18 +96,21 @@
     try {
       const response = await listFloors({ page: Math.max(pagination.totalPages, 1), pageSize: pagination.pageSize, buildingId: id });
       if (id !== buildingId || !modalOpen || editingId !== null) return;
-      const highest = response.items.reduce((max, floor) => Math.max(max, floor.floorNumber), 0);
-      if (highest + 1 > form.floorNumber) form.floorNumber = highest + 1;
+      const highest = response.items.reduce((max, floor) => {
+        const value = Number(String(floor.floorNumber).trim());
+        return Number.isInteger(value) && value > max ? value : max;
+      }, 0);
+      if (highest && highest + 1 > Number(form.floorNumber)) form.floorNumber = String(highest + 1);
     } catch {
       /* Keep the suggestion; the server still refuses a number already in use. */
     }
   }
-  function openEditFloor(floor) { editingId = floor.id; lastSavedFloorNumber = null; modalError = ''; formErrors = {}; form = { floorNumber: floor.floorNumber, name: floor.name }; modalOpen = true; }
+  function openEditFloor(floor) { editingId = floor.id; lastSavedFloorNumber = null; modalError = ''; formErrors = {}; form = { floorNumber: String(floor.floorNumber), name: floor.name }; modalOpen = true; }
   function closeModal() { if (saving) return; modalOpen = false; editingId = null; lastSavedFloorNumber = null; modalError = ''; formErrors = {}; }
   async function saveFloor() {
     if (!validateForm()) return;
     saving = true; modalError = ''; errorMessage = ''; noticeMessage = '';
-    const payload = { floorNumber: Number(form.floorNumber), name: form.name.trim() };
+    const payload = { floorNumber: String(form.floorNumber).trim(), name: form.name.trim() };
     try {
       if (editingId) { await updateFloor(editingId, payload); noticeMessage = $locale.floors.updated; closeModal(); await refresh(); }
       else { const response = await createFloor({ buildingId, ...payload }); noticeMessage = $locale.floors.saved; lastSavedFloorNumber = response.floor.floorNumber; await refresh(); form = { floorNumber: nextFloorNumber(), name: '' }; }
@@ -137,14 +151,14 @@
       <DataTable loading={loadingFloors} isEmpty={floors.length === 0} loadingLabel={$locale.floors.loading} emptyLabel={$locale.floors.empty} emptyIcon="bi-layers" minTableWidth="46rem" showFooter={!loadingFloors && pagination.total > 0}>
         <ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.floors.add} on:click={openAddFloor} />
         <thead><tr><th>#</th><th>{$locale.floors.name}</th><th>{$locale.apartments.title}</th><th>{$locale.buildings.created}</th><th class="actions-heading">{$locale.buildings.actions}</th></tr></thead>
-        <tbody>{#each floors as floor (floor.id)}<tr><td class="data-cell">{floor.floorNumber}</td><td><button class="table-link" type="button" on:click={() => openApartments(floor)}>{floor.name}</button></td><td><div class="apartments-link"><span class="data-cell">{floor.totalApartments || 0}</span><button type="button" on:click={() => openApartments(floor)}>{$locale.buildings.view} {$locale.apartments.title}<i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></td><td>{formatDate(floor.createdAt, $language)}</td><td class="actions-cell"><button class="row-action" type="button" on:click={() => openEditFloor(floor)}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.floors.edit}</span></button><button class="row-action delete" type="button" on:click={() => removeFloor(floor)}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.floors.delete}</span></button></td></tr>{/each}</tbody>        <svelte:fragment slot="footer"><Pagination page={pagination.page} totalPages={pagination.totalPages} previousLabel={$locale.floors.previous} nextLabel={$locale.floors.next} label={$locale.floors.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)} summary={resultSummary} onPage={loadFloors} /></svelte:fragment>
+        <tbody>{#each floors as floor (floor.id)}<tr><td class="data-cell">{floor.floorNumber}</td><td><button class="table-link" type="button" on:click={() => openApartments(floor)}>{floor.name}</button></td><td><div class="apartments-link"><span class="data-cell">{floor.totalApartments || 0}</span><button type="button" on:click={() => openApartments(floor)}>{$locale.buildings.view} {$locale.apartments.title}<i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></td><td>{formatDate(floor.createdAt, $language)}</td><td class="actions-cell"><button class="row-action" type="button" on:click={() => openEditFloor(floor)}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.floors.edit}</span></button><button class="row-action danger" type="button" on:click={() => removeFloor(floor)}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.floors.delete}</span></button></td></tr>{/each}</tbody>        <svelte:fragment slot="footer"><Pagination page={pagination.page} totalPages={pagination.totalPages} previousLabel={$locale.floors.previous} nextLabel={$locale.floors.next} label={$locale.floors.page.replace('{page}', pagination.page).replace('{totalPages}', pagination.totalPages)} summary={resultSummary} onPage={loadFloors} /></svelte:fragment>
       </DataTable>
     </section>
   {/if}
 </div>
 
 <Modal bind:open={modalOpen} title={editingId ? $locale.floors.edit : $locale.floors.add} busy={saving} closeLabel={$locale.floors.cancel} on:close={closeModal}>
-  <form id="floor-form" on:submit|preventDefault={saveFloor} novalidate>{#if lastSavedFloorNumber !== null}<div class="alert alert-success" role="status">{translate('floors.savedAnother', { number: lastSavedFloorNumber })}</div>{/if}{#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}<div class="mb-3"><label class="form-label" for="floor-number">{$locale.floors.floorNumber}</label><input class:is-invalid={formErrors.floorNumber} class="form-control" id="floor-number" type="number" min="1" bind:value={form.floorNumber} />{#if formErrors.floorNumber}<div class="invalid-feedback">{formErrors.floorNumber}</div>{/if}</div><div class="mb-3"><label class="form-label" for="floor-name">{$locale.floors.name}</label><input class:is-invalid={formErrors.name} class="form-control" id="floor-name" bind:value={form.name} />{#if formErrors.name}<div class="invalid-feedback">{formErrors.name}</div>{/if}</div></form>
+  <form id="floor-form" on:submit|preventDefault={saveFloor} novalidate>{#if lastSavedFloorNumber !== null}<div class="alert alert-success" role="status">{translate('floors.savedAnother', { number: lastSavedFloorNumber })}</div>{/if}{#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}<div class="mb-3"><label class="form-label" for="floor-number">{$locale.floors.floorNumber}</label><input class:is-invalid={formErrors.floorNumber} class="form-control" id="floor-number" type="text" maxlength="32" bind:value={form.floorNumber} />{#if formErrors.floorNumber}<div class="invalid-feedback">{formErrors.floorNumber}</div>{/if}</div><div class="mb-3"><label class="form-label" for="floor-name">{$locale.floors.name}</label><input class:is-invalid={formErrors.name} class="form-control" id="floor-name" bind:value={form.name} />{#if formErrors.name}<div class="invalid-feedback">{formErrors.name}</div>{/if}</div></form>
   <div slot="footer"><button class="btn btn-light" type="button" on:click={closeModal}>{lastSavedFloorNumber !== null ? $locale.floors.done : $locale.floors.cancel}</button><button class="btn btn-primary" type="submit" form="floor-form" disabled={saving}>{saving ? $locale.floors.loading : editingId ? $locale.floors.update : lastSavedFloorNumber !== null ? $locale.floors.another : $locale.floors.save}</button></div>
 </Modal>
 
@@ -161,6 +175,6 @@
   .floors-card{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-sm)}.floors-header{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4)}.floors-title{display:flex;align-items:flex-start;gap:.7rem;margin-inline-end:auto}.floors-title h2{margin:0;color:var(--text-strong);font-size:var(--text-lg)}.floor-search{display:flex;align-items:center;gap:.5rem;flex:0 1 18rem;width:min(18rem,100%);height:var(--control-height);padding:0 .75rem;border:1px solid var(--border);border-radius:var(--control-radius);background:var(--surface)}.floor-search:focus-within{border-color:var(--accent-border);box-shadow:var(--ring)}.floor-search i{color:var(--text-muted)}.floor-search input{min-width:0;width:100%;padding:0;border:0;outline:0;background:transparent;color:var(--text-strong);font-size:var(--text-sm)}
   /* The table *is* the card: no inner panel chrome, exactly as an index page
      strips it, so the header band and the rows span the card edge to edge. */
-  .floors-card :global(.data-table-panel){flex:1 1 auto;border:0;border-radius:0;background:transparent;box-shadow:none}.apartments-link{display:flex;align-items:center;gap:var(--space-3)}.apartments-link button{display:inline-flex;align-items:center;gap:.45rem;padding:0;border:0;color:var(--accent);background:none;font-size:var(--text-xs);font-weight:var(--weight-semibold)}.actions-cell{display:flex;align-items:center;justify-content:flex-end;gap:.45rem}.row-action{display:inline-flex;align-items:center;gap:.4rem;min-height:var(--control-height);padding:0 .7rem;border:1px solid var(--border);border-radius:var(--control-radius);color:var(--text-secondary);background:var(--surface);font-size:var(--text-xs);font-weight:var(--weight-semibold)}.row-action:hover{color:var(--accent);border-color:var(--accent-soft-border);background:var(--accent-soft)}.row-action.delete{color:var(--danger);border-color:var(--danger-border);background:var(--danger-soft)}  @media(max-width:1050px){.building-card{grid-template-columns:6rem 1fr}.building-photo{width:6rem}.building-action{grid-column:1/-1;align-items:center}}
-  @media(max-width:650px){.building-card{grid-template-columns:1fr}.building-photo{width:100%;height:9rem}.building-action{align-items:center}.floors-header{align-items:flex-start;flex-direction:column}.floor-search{width:100%}.actions-cell{justify-content:flex-start}.row-action span{display:none}.row-action{width:var(--control-height);padding:0;justify-content:center}}
+  .floors-card :global(.data-table-panel){flex:1 1 auto;border:0;border-radius:0;background:transparent;box-shadow:none}.apartments-link{display:flex;align-items:center;gap:var(--space-3)}.apartments-link button{display:inline-flex;align-items:center;gap:.45rem;padding:0;border:0;color:var(--accent);background:none;font-size:var(--text-xs);font-weight:var(--weight-semibold)}.actions-cell{display:flex;align-items:center;justify-content:flex-end;gap:.45rem}  @media(max-width:1050px){.building-card{grid-template-columns:6rem 1fr}.building-photo{width:6rem}.building-action{grid-column:1/-1;align-items:center}}
+  @media(max-width:650px){.building-card{grid-template-columns:1fr}.building-photo{width:100%;height:9rem}.building-action{align-items:center}.floors-header{align-items:flex-start;flex-direction:column}.floor-search{width:100%}.actions-cell{justify-content:flex-start}}
 </style>

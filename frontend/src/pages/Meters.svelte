@@ -253,9 +253,9 @@
           <td class="date-cell">{formatShortDate(meter.installationDate)}</td>
           <td><StatusBadge label={statusLabel(meter.status)} tone={meterStatusTone(meter.status)} /></td>
           <td class="actions-cell">
-            <button class="icon-button success" type="button" on:click={() => openReadingModal(meter)} aria-label={$locale.meters.addReading} title={$locale.meters.addReading} disabled={meter.status !== 'ACTIVE'}><i class="bi bi-clipboard-plus" aria-hidden="true"></i></button>
-            <button class="icon-button" type="button" on:click={() => openEdit(meter)} aria-label={$locale.meters.edit}><i class="bi bi-pencil" aria-hidden="true"></i></button>
-            <button class="icon-button danger" type="button" on:click={() => removeMeter(meter)} aria-label={$locale.meters.delete}><i class="bi bi-trash3" aria-hidden="true"></i></button>
+            <button class="row-action success" type="button" on:click={() => openReadingModal(meter)} aria-label={$locale.meters.addReading} disabled={meter.status !== 'ACTIVE'}><i class="bi bi-clipboard-plus" aria-hidden="true"></i><span>{$locale.meters.addReading}</span></button>
+            <button class="row-action" type="button" on:click={() => openEdit(meter)} aria-label={$locale.meters.edit}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.common.actions.edit}</span></button>
+            <button class="row-action danger" type="button" on:click={() => removeMeter(meter)} aria-label={$locale.meters.delete}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.meters.delete}</span></button>
           </td>
         </tr>
       {/each}</tbody>
@@ -331,8 +331,6 @@
   .utility-cell { display: inline-flex; align-items: center; gap: 0.4rem; }
   .utility-cell i { color: var(--text-muted); font-size: 0.95rem; }
   .cell-sub { display: block; color: var(--text-muted); font-size: var(--text-xs); }
-  .icon-button.success { color: var(--success); }
-  .icon-button.success:hover:not(:disabled) { border-color: var(--success-border); background: var(--success-soft); }
   .quick-reading-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem 1rem; margin: 0 0 1.25rem; padding: 0.85rem; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--surface-muted); }
   .quick-reading-context div { min-inline-size: 0; }
   .quick-reading-context dt { color: var(--text-muted); font-size: var(--text-xs); font-weight: var(--weight-heavy); }

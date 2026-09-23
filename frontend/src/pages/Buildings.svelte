@@ -215,11 +215,13 @@
               <StatusBadge label={statusLabel(building.status)} tone={statusTone(building.status)} />
             </td>
             <td class="actions-cell">
-              <button class="icon-button" type="button" on:click={() => openEdit(building)} aria-label={$locale.buildings.edit}>
+              <button class="row-action" type="button" on:click={() => openEdit(building)} aria-label={$locale.buildings.edit}>
                 <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span>{$locale.buildings.edit}</span>
               </button>
-              <button class="icon-button danger" type="button" on:click={() => confirmDelete(building)} aria-label={$locale.buildings.delete}>
+              <button class="row-action danger" type="button" on:click={() => confirmDelete(building)} aria-label={$locale.buildings.delete}>
                 <i class="bi bi-trash3" aria-hidden="true"></i>
+                <span>{$locale.buildings.delete}</span>
               </button>
             </td>
           </tr>

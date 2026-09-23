@@ -262,7 +262,12 @@ model Building {
 model Floor {
   id          String    @id @default(cuid())
   buildingId  String
-  floorNumber Int
+  // What the floor is called on the plan: "1", "2", "B1", "Ground" — free text,
+  // so a building can number its floors the way its own signage does.
+  floorNumber String    @db.VarChar(32)
+  // Ordering key derived from `floorNumber` on every write, because text does not
+  // sort the way floors do: numbers keep their value, named floors lead.
+  sortIndex   Int       @default(0)
   name        String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

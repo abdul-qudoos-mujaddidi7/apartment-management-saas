@@ -404,10 +404,10 @@
             <td class="amount-cell">{formatMoney(entry.creditTotal, entry.currency)}</td>
             <td><StatusBadge label={statusLabel(entry.status)} tone={statusTone(entry.status)} /></td>
             <td class="actions-cell">
-              <button class="icon-button" type="button" on:click={() => openDetails(entry)} aria-label={$locale.journals.view}><i class="bi bi-eye" aria-hidden="true"></i></button>
+              <button class="row-action" type="button" on:click={() => openDetails(entry)} aria-label={$locale.journals.view}><i class="bi bi-eye" aria-hidden="true"></i><span>{$locale.common.actions.view}</span></button>
               {#if editable(entry)}
-                <button class="icon-button" type="button" on:click={() => openEdit(entry)} aria-label={$locale.journals.edit}><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                <button class="icon-button warning" type="button" on:click={() => requestVoid(entry)} aria-label={$locale.journals.void}><i class="bi bi-x-circle" aria-hidden="true"></i></button>
+                <button class="row-action" type="button" on:click={() => openEdit(entry)} aria-label={$locale.journals.edit}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.common.actions.edit}</span></button>
+                <button class="row-action warning" type="button" on:click={() => requestVoid(entry)} aria-label={$locale.journals.void}><i class="bi bi-x-circle" aria-hidden="true"></i><span>{$locale.common.actions.void}</span></button>
               {/if}
             </td>
           </tr>
@@ -589,8 +589,6 @@
 </Modal>
 
 <style>
-  .icon-button.warning { color: var(--warning); }
-  .icon-button.warning:hover { border-color: var(--warning-border); background: var(--warning-soft); }
   .description-cell { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; }
   .journal-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0; }
   .journal-details dt { color: var(--text-muted); font-size: 0.8rem; }

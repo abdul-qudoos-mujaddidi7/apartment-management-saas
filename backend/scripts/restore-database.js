@@ -97,6 +97,10 @@ function coerce(value, fieldType) {
       return BigInt(value);
     case 'Bytes':
       return Buffer.from(value.$binary, 'base64');
+    case 'String':
+      // A column that changed from a number to text (a floor label, say) still
+      // holds a number in an older dump; Prisma would refuse it, so stringify.
+      return typeof value === 'string' ? value : String(value);
     default:
       return value;
   }

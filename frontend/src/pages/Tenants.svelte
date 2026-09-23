@@ -352,14 +352,17 @@
               <StatusBadge label={statusLabel(tenant.status)} tone={statusTone(tenant.status)} />
             </td>
             <td class="actions-cell">
-              <button class="icon-button" type="button" on:click={() => push(`/tenants/${tenant.id}`)} aria-label={$locale.tenants.profile}>
+              <button class="row-action" type="button" on:click={() => push(`/tenants/${tenant.id}`)} aria-label={$locale.tenants.profile}>
                 <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                <span>{$locale.common.actions.profile}</span>
               </button>
-              <button class="icon-button" type="button" on:click={() => openEdit(tenant)} aria-label={$locale.tenants.edit}>
+              <button class="row-action" type="button" on:click={() => openEdit(tenant)} aria-label={$locale.tenants.edit}>
                 <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span>{$locale.common.actions.edit}</span>
               </button>
-              <button class="icon-button danger" type="button" on:click={() => removeTenant(tenant)} aria-label={$locale.tenants.delete}>
+              <button class="row-action danger" type="button" on:click={() => removeTenant(tenant)} aria-label={$locale.tenants.delete}>
                 <i class="bi bi-trash3" aria-hidden="true"></i>
+                <span>{$locale.tenants.delete}</span>
               </button>
             </td>
           </tr>

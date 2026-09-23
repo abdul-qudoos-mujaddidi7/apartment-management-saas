@@ -2,7 +2,8 @@ const { z } = require('zod');
 
 const floorFields = {
   buildingId: z.string().trim().min(1),
-  floorNumber: z.coerce.number().int().min(1).max(200),
+  // Free text on purpose: buildings number their floors "1", "B1", "Ground"…
+  floorNumber: z.string().trim().min(1).max(32),
   name: z.string().trim().min(1).max(191),
 };
 

@@ -2,7 +2,7 @@ import en from './en';
 
 const translations = {
   ...en,
-  common: { ...en.common, language: 'ژبه', signIn: 'ننوتل', getStarted: 'پیل وکړئ', logout: 'وتل', loggingOut: 'د وتلو په حال کې...', close: 'بندول', skipToContent: 'منځپانګې ته لاړ شئ', filters: 'فلټرونه', all: 'ټول', clearFilters: 'فلټرونه پاک کړئ', selectAll: 'ټولې کرښې وټاکئ', selectRow: 'کرښه وټاکئ', selectedCount: '{count} ټاکل شوي', required: 'اړین' },
+  common: { ...en.common, actions: { view: 'کتل', edit: 'سمول', delete: 'حذف', cancel: 'لغوه', remove: 'لرې کول', pay: 'تادیه', void: 'باطل', activate: 'فعالول', deactivate: 'غیر فعالول', terminate: 'ختمول', details: 'تفصیلات', profile: 'پروفایل', spaces: 'ځایونه', rates: 'نرخونه' }, language: 'ژبه', signIn: 'ننوتل', getStarted: 'پیل وکړئ', logout: 'وتل', loggingOut: 'د وتلو په حال کې...', close: 'بندول', skipToContent: 'منځپانګې ته لاړ شئ', filters: 'فلټرونه', all: 'ټول', clearFilters: 'فلټرونه پاک کړئ', selectAll: 'ټولې کرښې وټاکئ', selectRow: 'کرښه وټاکئ', selectedCount: '{count} ټاکل شوي', required: 'اړین' },
   languageNames: { en: 'English', fa: 'دری', ps: 'پښتو' },
   home: {
     ...en.home,

@@ -240,7 +240,17 @@
         <tr class:is-selected={selectedIds.has(invoice.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(invoice.id)} label={$locale.common.selectRow} on:change={() => toggleRow(invoice.id)} /></td>
           <td class="invoice-number">{invoice.invoiceNumber}</td><td class="date-cell">{formatShortDate(invoice.invoiceDate)}</td><td class="date-cell">{formatShortDate(invoice.dueDate)}</td><td class="invoice-types">{invoiceTypes(invoice)}</td><td class="tenant-name">{tenantName(invoice.lease)}</td><td>{invoice.lease.apartment.floor.building.name}</td><td><strong>{invoice.lease.apartment.apartmentNumber}</strong>{#if invoice.lease.apartment.name}<small class="cell-sub">{invoice.lease.apartment.name}</small>{/if}</td><td>{invoice.lease.contractNumber}</td><td class="amount-cell">{formatMoney(invoice.total, invoice.currency)}</td><td class="amount-cell">{formatMoney(invoice.paidAmount, invoice.currency)}</td><td class="amount-cell">{formatMoney(invoice.total - invoice.paidAmount, invoice.currency)}</td><td><StatusBadge label={statusLabel(invoice.status)} tone={statusTone(invoice.status)} /></td>
-          <td class="actions-cell"><button class="icon-button" type="button" on:click={() => openDetails(invoice)} aria-label={$locale.invoices.view}><i class="bi bi-eye" aria-hidden="true"></i></button>{#if invoice.status !== 'PAID' && invoice.status !== 'CANCELLED'}<button class="icon-button" type="button" on:click={() => openReceivePayment(invoice)} aria-label={$locale.payments.receivePayment}><i class="bi bi-credit-card-2-front" aria-hidden="true"></i></button>{/if}<button class="icon-button" type="button" on:click={() => openEdit(invoice)} aria-label={$locale.invoices.edit} disabled={invoice.status === 'CANCELLED'}><i class="bi bi-pencil" aria-hidden="true"></i></button>{#if invoice.status !== 'CANCELLED'}<button class="icon-button warning" type="button" on:click={() => cancelExistingInvoice(invoice)} aria-label={$locale.invoices.cancelInvoice}><i class="bi bi-x-circle" aria-hidden="true"></i></button>{/if}<button class="icon-button danger" type="button" on:click={() => removeInvoice(invoice)} aria-label={$locale.invoices.delete}><i class="bi bi-trash3" aria-hidden="true"></i></button></td>
+          <td class="actions-cell">
+            <button class="row-action" type="button" on:click={() => openDetails(invoice)} aria-label={$locale.invoices.view}><i class="bi bi-eye" aria-hidden="true"></i><span>{$locale.common.actions.view}</span></button>
+            {#if invoice.status !== 'PAID' && invoice.status !== 'CANCELLED'}
+              <button class="row-action" type="button" on:click={() => openReceivePayment(invoice)} aria-label={$locale.payments.receivePayment}><i class="bi bi-credit-card-2-front" aria-hidden="true"></i><span>{$locale.common.actions.pay}</span></button>
+            {/if}
+            <button class="row-action" type="button" on:click={() => openEdit(invoice)} aria-label={$locale.invoices.edit} disabled={invoice.status === 'CANCELLED'}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.common.actions.edit}</span></button>
+            {#if invoice.status !== 'CANCELLED'}
+              <button class="row-action warning" type="button" on:click={() => cancelExistingInvoice(invoice)} aria-label={$locale.invoices.cancelInvoice}><i class="bi bi-x-circle" aria-hidden="true"></i><span>{$locale.common.actions.cancel}</span></button>
+            {/if}
+            <button class="row-action danger" type="button" on:click={() => removeInvoice(invoice)} aria-label={$locale.invoices.delete}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.invoices.delete}</span></button>
+          </td>
         </tr>
       {/each}</tbody>
     </DataTable>
@@ -307,8 +317,6 @@
   .tenant-name { color: var(--text-strong); font-weight: var(--weight-bold); }
   .invoice-types { max-inline-size: 15rem; white-space: normal; }
   .invoice-number { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-weight: var(--weight-bold); color: var(--text-strong); }
-  .icon-button.warning { color: var(--warning); }
-  .icon-button.warning:hover { border-color: var(--warning-border); background: var(--warning-soft); }
   .items-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-block-end: 0.5rem; }
   .items-heading .section-label { margin: 0; }
   .items-table { min-inline-size: 50rem; }

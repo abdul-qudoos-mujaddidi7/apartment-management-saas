@@ -988,7 +988,52 @@ textarea.form-control {
 
 .actions-cell { white-space: nowrap; text-align: end; }
 .actions-heading { text-align: end; }
-.actions-cell .icon-button { margin-inline-start: 6px; }
+.actions-cell .icon-button,
+.actions-cell .row-action { margin-inline-start: 6px; }
+
+/* What a row can do, said out loud: the icon rides with its label so a table
+   reads without hovering (the building page's floor actions). Each button keeps
+   its own accessible name, because the label is hidden on narrow tables. */
+.row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--control-height);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row-action:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent-soft-border);
+  background: var(--accent-soft);
+}
+
+.row-action:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.row-action.danger { color: var(--danger); border-color: var(--danger-border); background: var(--danger-soft); }
+.row-action.danger:hover:not(:disabled) { color: #b02b40; border-color: var(--danger); background: var(--danger-soft); }
+
+.row-action.warning { color: var(--warning); border-color: var(--warning-border); background: var(--warning-soft); }
+.row-action.warning:hover:not(:disabled) { color: var(--warning); border-color: var(--warning); background: var(--warning-soft); }
+
+.row-action.success { color: var(--success); border-color: var(--success-border); background: var(--success-soft); }
+.row-action.success:hover:not(:disabled) { color: var(--success); border-color: var(--success); background: var(--success-soft); }
+
+/* Not enough width for words: the labels go and the buttons square up, which is
+   also what keeps a five-action row usable on a tablet. */
+@media (max-width: 1023.98px) {
+  .row-action > span { display: none; }
+  .row-action { width: var(--control-height); padding: 0; }
+}
 
 .table-responsive { border-radius: inherit; }
 

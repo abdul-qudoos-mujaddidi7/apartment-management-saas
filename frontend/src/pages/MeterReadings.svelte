@@ -206,8 +206,8 @@
           <td class="amount-cell">{formatMoney(reading.amount)}</td>
           <td><StatusBadge label={billingLabel(reading.billingStatus)} tone={billingTone(reading.billingStatus)} /></td>
           <td class="actions-cell">
-            <button class="icon-button" type="button" on:click={() => openEdit(reading)} aria-label={$locale.meterReadings.edit} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.edit : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-pencil" aria-hidden="true"></i></button>
-            <button class="icon-button danger" type="button" on:click={() => removeReading(reading)} aria-label={$locale.meterReadings.delete} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.delete : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-trash3" aria-hidden="true"></i></button>
+            <button class="row-action" type="button" on:click={() => openEdit(reading)} aria-label={$locale.meterReadings.edit} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.edit : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-pencil" aria-hidden="true"></i><span>{$locale.meterReadings.edit}</span></button>
+            <button class="row-action danger" type="button" on:click={() => removeReading(reading)} aria-label={$locale.meterReadings.delete} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.delete : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-trash3" aria-hidden="true"></i><span>{$locale.meterReadings.delete}</span></button>
           </td>
         </tr>
       {/each}</tbody>
