@@ -687,6 +687,7 @@
 
 <Modal
   bind:open={quickCreateOpen}
+  icon="bi-box-seam"
   title={$locale.assets.newAsset}
   busy={quickCreateSaving}
   closeLabel={$locale.assets.cancel}
@@ -764,6 +765,7 @@
 <!-- Create a category without leaving the asset being typed. Opens over the dialog above. -->
 <Modal
   bind:open={quickCategoryOpen}
+  icon="bi-tags"
   title={$locale.assets.newCategory}
   busy={quickCategorySaving}
   closeLabel={$locale.assets.cancel}

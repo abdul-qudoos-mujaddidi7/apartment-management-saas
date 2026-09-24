@@ -468,6 +468,7 @@
 
 <Modal
   bind:open={modalOpen}
+  icon="bi-door-open"
   title={editingId ? $locale.apartments.edit : $locale.apartments.add}
   busy={saving}
   size="modal-lg"

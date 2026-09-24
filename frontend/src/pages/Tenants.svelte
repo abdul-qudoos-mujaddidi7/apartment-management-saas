@@ -439,6 +439,7 @@
 
 <Modal
   bind:open={modalOpen}
+  icon="bi-person-plus"
   title={editingId ? $locale.tenants.edit : $locale.tenants.add}
   busy={saving}
   size="modal-lg"

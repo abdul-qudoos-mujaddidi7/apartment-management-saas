@@ -342,6 +342,7 @@
 <!-- Add / edit currency -->
 <Modal
   bind:open={currencyOpen}
+  icon="bi-currency-exchange"
   title={editing ? $locale.currencies.editTitle : $locale.currencies.addTitle}
   description={editing ? editing.code : $locale.currencies.addHint}
   busy={saving}
@@ -407,6 +408,7 @@
 <!-- Rate book -->
 <Modal
   bind:open={rateOpen}
+  icon="bi-graph-up"
   title={rateTarget ? $locale.currencies.rateHistoryTitle.replace('{code}', rateTarget.code) : ''}
   description={rateTarget ? $locale.currencies.rateHistoryHint.replace('{base}', $baseCurrency) : ''}
   size="modal-lg"
@@ -469,6 +471,7 @@
 <!-- Reporting currency -->
 <Modal
   bind:open={baseOpen}
+  icon="bi-sliders"
   title={$locale.currencies.changeBase}
   description={$locale.currencies.changeBaseHint}
   busy={saving}

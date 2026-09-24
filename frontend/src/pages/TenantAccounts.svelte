@@ -110,6 +110,7 @@
 
 <Modal
   bind:open={ledgerOpen}
+  icon="bi-journal-bookmark"
   title={selected ? tenantName(selected) : ''}
   size="modal-xl"
   closeLabel={$locale.common.close}

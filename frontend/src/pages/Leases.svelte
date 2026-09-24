@@ -390,6 +390,7 @@
 <!-- Edit/Create Modal -->
 <Modal
   bind:open={modalOpen}
+  icon="bi-file-earmark-text"
   title={editing ? $locale.leases.edit : $locale.leases.new}
   busy={saving}
   size="modal-lg"

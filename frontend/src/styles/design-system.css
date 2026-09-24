@@ -811,7 +811,7 @@ html hr {
   border: 1px solid var(--border);
   border-radius: var(--control-radius);
   color: var(--ink-700);
-  background-color: var(--surface);
+  background-color: var(--field-fill);
   font-size: var(--control-font);
   font-weight: var(--weight-medium);
   transition: border-color var(--transition), box-shadow var(--transition);
@@ -829,7 +829,10 @@ textarea.form-control {
 .form-select:focus {
   border-color: var(--accent-border);
   outline: 0;
-  background-color: var(--surface);
+  /* The fill holds in every state — a field that turns white the moment you
+     click it flickers, and the ring plus the darker border already say where
+     the cursor is. */
+  background-color: var(--field-fill);
   box-shadow: var(--ring);
 }
 
@@ -899,15 +902,6 @@ textarea.form-control {
 }
 
 .field-grid > .field { margin-block-start: 0; }
-
-/* A white card floating on the sunken modal body, so a dialog form mirrors
-   the page shell: sunken working area, white surfaces on top of it. */
-.form-card {
-  padding: var(--space-5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-}
 
 .form-error-list {
   margin: 6px 0 0;
@@ -1268,55 +1262,188 @@ textarea.form-control {
    otherwise the parent stays undimmed and looks like it is on top. */
 .modal-backdrop {
   z-index: calc(1050 + var(--modal-depth, 0) * 10);
+  background: var(--modal-backdrop);
+  /* Bootstrap's `--bs-backdrop-opacity` is 0.5 and multiplies the colour, so
+     the scrim lands at a quarter strength — the page behind stays fully
+     legible and the sheet reads as floating over it rather than in front of
+     it. The colour above already carries its own alpha, so the knob goes to
+     1 and the fade still runs from 0 to it. */
+  --bs-backdrop-opacity: 1;
 }
 
 .modal.d-block {
   z-index: calc(1055 + var(--modal-depth, 0) * 10);
+  /* The sheet sits in a gutter and the *body* scrolls, not the dialog.
+     Bootstrap scrolls the whole dialog, which walks the heading off the top of
+     a long form and parks the buttons below the fold — the two things a dialog
+     exists to keep in reach. */
+  padding: var(--modal-gutter);
+  overflow: hidden;
 }
 
+/* Bootstrap centres a dialog by stretching it to the viewport and centring its
+   content inside; the same trick, measured against the gutter instead. The
+   `min-height`/`max-height` pair is what caps the sheet, so a long form stops
+   at the viewport and scrolls its body rather than growing past it.
+
+   `.modal.d-block` beats Bootstrap's own `.modal-dialog` (including its
+   small-screen margins) on specificity, which is why the gutter can live on
+   the dialog's parent alone. */
+.modal.d-block .modal-dialog {
+  max-width: var(--modal-width);
+  /* A definite height, not a `min-height`: the sheet caps itself from a
+     percentage, and a percentage only resolves against a parent whose height
+     is definite. With `min-height` alone the cap is ignored and a tall dialog
+     overflows the viewport at both ends — the heading above the top and the
+     buttons below the bottom. `min-height: 0` drops Bootstrap's own. */
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0 auto;
+}
+
+.modal.d-block .modal-dialog.modal-lg { max-width: var(--modal-width-lg); }
+.modal.d-block .modal-dialog.modal-xl { max-width: var(--modal-width-xl); }
+
+/* One white sheet: the header, body and footer are separated by hairlines, not
+   by bands of a second colour. Bootstrap's boxed-in look — a tinted head and
+   foot around a tinted body holding a white card — nests a surface inside a
+   surface, so a four-field form reads as three stacked panels. */
+/* The sheet is white. Bootstrap derives its own `--bs-modal-bg` from the page
+   background, and this app's page background is the grey canvas — so without
+   this the dialog inherits the desk it is lying on and only its head and foot
+   (which set their own colour) come out white. */
 .modal-content {
-  border: 1px solid var(--border);
+  max-height: 100%;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--modal-shadow);
+  overflow: hidden;
+  animation: modal-sheet-in 0.18s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes modal-sheet-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: none; }
 }
 
 .modal-header {
-  padding: var(--space-4);
-  border-block-end: 1px solid var(--grey-200);
-  background: var(--surface-muted);
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-block-end: 1px solid var(--card-border);
+  background: var(--surface);
 }
 
-.modal-heading { min-width: 0; }
+/* The optional icon chip: a soft accent tile that names the dialog's subject
+   without a second heading. `is-danger` and friends recolor it for a
+   confirmation, so the header carries the warning instead of a red button
+   doing all the talking. */
+.modal-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-lg);
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  font-size: 1rem;
+}
+
+.modal-icon.is-success { color: var(--success); background: var(--success-soft); }
+.modal-icon.is-warning { color: var(--warning); background: var(--warning-soft); }
+.modal-icon.is-danger { color: var(--danger); background: var(--danger-soft); }
+
+.modal-heading {
+  min-width: 0;
+  flex: 1 1 auto;
+}
 
 .modal-title {
+  margin: 0;
   color: var(--text-strong);
   font-size: var(--text-xl);
-  font-weight: var(--weight-heavy);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.3;
 }
 
 .modal-description {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--text-muted);
-  font-size: var(--text-md);
-  line-height: 1.45;
+  font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
-.modal-body { padding: var(--space-4); }
+/* Bootstrap's close button is a bare glyph with a padded hit area. As a target
+   in a header it should look like one: a fixed square that picks up a grey
+   wash on hover, so it is findable before it is aimed at. */
+.modal-header .btn-close {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 1.875rem;
+  height: 1.875rem;
+  padding: 0;
+  margin: 0;
+  background-size: 0.8rem;
+  border-radius: var(--radius-md);
+  opacity: 0.55;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
 
-/* Body variant for dialog forms: the form sits in a white .form-card. */
-.modal-body.modal-body-form {
-  padding: var(--space-4);
-  background: var(--surface-sunken);
+.modal-header .btn-close:hover,
+.modal-header .btn-close:focus-visible {
+  background-color: var(--grey-100);
+  opacity: 1;
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-5);
+  overflow-y: auto;
+  /* A dialog body that reaches its end should not hand the scroll on to the
+     page behind it. */
+  overscroll-behavior: contain;
 }
 
 .modal-footer {
-  padding: var(--space-3) var(--space-4);
-  border-block-start: 1px solid var(--grey-200);
-  background: var(--surface-muted);
+  flex: 0 0 auto;
+  align-items: center;
   gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-block-start: 1px solid var(--card-border);
+  background: var(--surface);
 }
 
 .modal-footer > * { margin: 0; }
+
+/* A footer is a band only when it holds something. A dialog that offers no
+   actions (a read-only detail sheet) would otherwise end on an empty strip
+   with a hairline over it and no controls. */
+.modal-footer:not(:has(> .modal-footer-note > *, > *:not(.modal-footer-note))) {
+  display: none;
+}
+
+/* Leading helper on the footer — a hint or a keyboard cue — pushed to the far
+   edge so the actions keep their corner. */
+.modal-footer-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-end: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.modal-footer-note:not(:has(> *)) { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-content { animation: none; }
+}
 
 /* ==========================================================================
    16. Utilities

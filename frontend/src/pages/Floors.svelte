@@ -197,7 +197,7 @@
   </svelte:fragment>
 </PageLayout>
 
-<Modal bind:open={modalOpen} title={editingId ? $locale.floors.edit : $locale.floors.add} busy={saving} closeLabel={$locale.floors.cancel} on:close={() => { if (!saving) modalOpen = false; }}>
+<Modal bind:open={modalOpen} title={editingId ? $locale.floors.edit : $locale.floors.add} busy={saving} icon="bi-layers" closeLabel={$locale.floors.cancel} on:close={() => { if (!saving) modalOpen = false; }}>
   <form id="floors-form" on:submit|preventDefault={saveFloor}>
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
     <div class="mb-3">

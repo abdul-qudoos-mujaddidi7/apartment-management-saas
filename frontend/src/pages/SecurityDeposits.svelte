@@ -236,7 +236,7 @@
   </svelte:fragment>
 </PageLayout>
 
-<Modal bind:open={detailOpen} title={$locale.securityDeposits.title} busy={savingTransaction || Boolean(voidingId)} size="modal-xl" closeLabel={$locale.securityDeposits.close} on:close={closeDetails}>
+<Modal bind:open={detailOpen} title={$locale.securityDeposits.title} busy={savingTransaction || Boolean(voidingId)} size="modal-xl" icon="bi-shield-check" closeLabel={$locale.securityDeposits.close} on:close={closeDetails}>
   {#if detailLoading && !detail}
     <div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">{$locale.securityDeposits.loading}</span></div></div>
   {:else if detail}

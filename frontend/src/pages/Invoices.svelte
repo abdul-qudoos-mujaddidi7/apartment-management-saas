@@ -268,7 +268,7 @@
 </PageLayout>
 
 <!-- Create/Edit Modal -->
-<Modal bind:open={modalOpen} title={editingId ? $locale.invoices.edit : $locale.invoices.add} busy={saving} size="modal-xl" closeLabel={$locale.invoices.cancel} on:close={closeModal}>
+<Modal bind:open={modalOpen} title={editingId ? $locale.invoices.edit : $locale.invoices.add} busy={saving} size="modal-xl" icon="bi-receipt" closeLabel={$locale.invoices.cancel} on:close={closeModal}>
   <form id="invoice-form" on:submit|preventDefault={saveInvoice} novalidate>
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
     <fieldset><legend class="section-label">{$locale.invoices.location}</legend><div class="row g-3">

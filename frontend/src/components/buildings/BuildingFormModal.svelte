@@ -131,11 +131,11 @@
   description={$locale.buildings.detailsHint}
   busy={saving}
   size="modal-lg"
-  bodyClass="modal-body-form"
+  icon="bi-building"
   closeLabel={$locale.common.close}
   on:close={close}
 >
-  <form class="form-card" id="building-form" on:submit|preventDefault={submit} novalidate>
+  <form id="building-form" on:submit|preventDefault={submit} novalidate>
     {#if formError}
       <div class="alert alert-danger" role="alert" tabindex="-1" bind:this={summaryElement}>
         <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>

@@ -89,9 +89,17 @@
   --surface-sunken: #ffffff;
   --surface-muted: #ffffff; /* same as --surface-sunken: one white surface */
   --surface-hover: #fafbfd;
-  /* Retired: the toolbar's search box is unfilled at rest, so nothing reads
-     this. Kept out rather than left dangling — a token with no referent is the
-     kind of thing the next person deletes twice. */
+  /* A text field is a shallow well in the surface it sits on, not a white box
+     drawn on it: the fill is the page's own grey, so the field reads as cut
+     into the card and only the hairline around it has to do any work. It is
+     deliberately the same value as `--canvas` — the field on a white card and
+     the gutter around the card are then the same grey, which is what makes the
+     whole console feel like one surface with things pressed into it.
+
+     Note the one place this cannot show: a field on something already painted
+     `--canvas` (the toolbar's search box, which is unfilled on purpose) would
+     fill itself with its own background. */
+  --field-fill: #f5f5f5;
   --border: #e9edf2;
   --border-strong: #d3d9e0;
 
@@ -267,6 +275,28 @@
   --shadow-accent: 0 8px 16px -8px rgba(53, 134, 255, 0.75);
   --ring: 0 0 0 3px rgba(53, 134, 255, 0.18);
   --ring-danger: 0 0 0 3px rgba(201, 59, 59, 0.15);
+
+  /* --- Dialogs -----------------------------------------------------------
+     A dialog is a white sheet on a dimmed page. Bootstrap's own scale is
+     roomy — its large dialog is 800px and its extra-large 1140px — which is
+     wider than a four-field form can hold a line across, and wide enough at
+     the top end to make a form look like a page. These are one step down each
+     and tunable in one place.
+
+     The shadow is what lifts the sheet: `--shadow-lg` is a single soft blur,
+     which reads as a smudge under a large surface. Two stacked shadows — a
+     wide, very soft ambient one and a tighter one for the edge — is what
+     gives a sheet an edge without a hard line around it. The gutter is the
+     space between the sheet and the viewport, and it is also what caps the
+     sheet's height, so it appears in both the width and the height sums. */
+  --modal-gutter: clamp(0.75rem, 2vw, 1.5rem);
+  --modal-width: 560px;
+  --modal-width-lg: 760px;
+  --modal-width-xl: 1040px;
+  --modal-backdrop: rgba(17, 24, 39, 0.55);
+  --modal-shadow:
+    0 24px 60px -12px rgba(16, 24, 40, 0.3),
+    0 8px 20px -8px rgba(16, 24, 40, 0.14);
 
   /* --- Density & layout ------------------------------------------------- */
   --page-max: 1400px;

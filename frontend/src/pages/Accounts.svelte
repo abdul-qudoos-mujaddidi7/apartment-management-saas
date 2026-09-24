@@ -116,6 +116,7 @@
 
 <Modal
   bind:open={ledgerOpen}
+  icon="bi-journal-bookmark"
   title={selectedAccount ? `${selectedAccount.code} — ${selectedAccount.name}` : ''}
   size="modal-xl"
   closeLabel={$locale.common.close}

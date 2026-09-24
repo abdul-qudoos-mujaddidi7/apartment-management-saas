@@ -225,7 +225,7 @@
   </svelte:fragment>
 </PageLayout>
 
-<Modal bind:open={modalOpen} title={editingId ? $locale.meterReadings.edit : $locale.meterReadings.add} busy={saving} size="modal-lg" closeLabel={$locale.meterReadings.cancel} on:close={closeModal}>
+<Modal bind:open={modalOpen} title={editingId ? $locale.meterReadings.edit : $locale.meterReadings.add} busy={saving} size="modal-lg" icon="bi-speedometer" closeLabel={$locale.meterReadings.cancel} on:close={closeModal}>
   <form id="meter-reading-form" on:submit|preventDefault={saveReading} novalidate>
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
     <fieldset><legend class="section-label">{$locale.meterReadings.location}</legend><div class="row g-3">

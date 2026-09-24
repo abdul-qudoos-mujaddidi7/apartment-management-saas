@@ -877,6 +877,7 @@
 
 <Modal
   bind:open={invoiceModalOpen}
+  icon="bi-receipt"
   title={$locale.invoices.quickCreate}
   busy={invoiceSaving}
   size="modal-xl"

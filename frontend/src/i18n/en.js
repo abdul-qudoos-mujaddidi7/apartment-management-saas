@@ -61,6 +61,9 @@ const translations = {
     selectRow: 'Select row',
     selectedCount: '{count} selected',
     required: 'required',
+    // Sits on the leading edge of a confirmation's footer: the entry keeps its
+    // place in the ledger, but nothing in the books can walk this back.
+    irreversible: 'This cannot be undone.',
   },
   languageNames: { en: 'English', fa: 'دری', ps: 'پښتو' },
   home: {

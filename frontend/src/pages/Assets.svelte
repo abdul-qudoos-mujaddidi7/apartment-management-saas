@@ -884,6 +884,7 @@
 <!-- Edit a registered apartment asset -->
 <Modal
   bind:open={recordModalOpen}
+  icon="bi-box-seam"
   title={$locale.assets.edit}
   busy={saving}
   closeLabel={$locale.assets.cancel}
@@ -958,6 +959,7 @@
 <!-- Create / edit a master asset -->
 <Modal
   bind:open={assetModalOpen}
+  icon="bi-box-seam"
   title={assetEditingId ? $locale.assets.edit : $locale.assets.newAsset}
   busy={saving}
   closeLabel={$locale.assets.cancel}
@@ -1011,6 +1013,7 @@
 <!-- Create / edit an asset category -->
 <Modal
   bind:open={categoryModalOpen}
+  icon="bi-tags"
   title={categoryEditingId ? $locale.assets.edit : $locale.assets.newCategory}
   busy={saving}
   closeLabel={$locale.assets.cancel}

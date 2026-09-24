@@ -274,7 +274,7 @@
 </PageLayout>
 
 <!-- Quick Reading Modal -->
-<Modal bind:open={readingModalOpen} title={$locale.meterReadings.quickAdd} busy={readingSaving} closeLabel={$locale.meterReadings.cancel} on:close={() => closeReadingModal()}>
+<Modal bind:open={readingModalOpen} title={$locale.meterReadings.quickAdd} busy={readingSaving} icon="bi-speedometer" closeLabel={$locale.meterReadings.cancel} on:close={() => closeReadingModal()}>
   {#if selectedMeter}
     <form id="quick-reading-form" on:submit|preventDefault={saveQuickReading} novalidate>
       {#if readingModalError}<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>{readingModalError}</span></div>{/if}
@@ -302,7 +302,7 @@
 </Modal>
 
 <!-- Meter Create/Edit Modal -->
-<Modal bind:open={modalOpen} title={editingId ? $locale.meters.edit : $locale.meters.add} busy={saving} size="modal-lg" closeLabel={$locale.meters.cancel} on:close={closeModal}>
+<Modal bind:open={modalOpen} title={editingId ? $locale.meters.edit : $locale.meters.add} busy={saving} size="modal-lg" icon="bi-speedometer2" closeLabel={$locale.meters.cancel} on:close={closeModal}>
   <form id="meter-form" on:submit|preventDefault={saveMeter} novalidate>
     {#if modalError}<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>{modalError}</span></div>{/if}
     <fieldset>

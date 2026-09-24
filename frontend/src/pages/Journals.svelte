@@ -477,7 +477,7 @@
 </Modal>
 
 <!-- Create / edit entry -->
-<Modal bind:open={formOpen} title={form.id ? $locale.journals.editEntry : $locale.journals.newEntry} size="modal-xl" busy={saving} closeLabel={$locale.common.close} on:close={closeForm}>
+<Modal bind:open={formOpen} title={form.id ? $locale.journals.editEntry : $locale.journals.newEntry} size="modal-xl" busy={saving} icon="bi-journal-text" closeLabel={$locale.common.close} on:close={closeForm}>
   <form id="journal-entry-form" on:submit|preventDefault={submitForm} novalidate>
     {#if formError}<div class="alert alert-danger" role="alert">{formError}</div>{/if}
 
@@ -581,13 +581,14 @@
 </Modal>
 
 <!-- Void -->
-<Modal bind:open={voidOpen} title={$locale.journals.void} busy={saving} closeLabel={$locale.journals.cancel} on:close={closeVoid}>
+<Modal bind:open={voidOpen} title={$locale.journals.void} busy={saving} icon="bi-x-octagon" tone="danger" closeLabel={$locale.journals.cancel} on:close={closeVoid}>
   <form id="void-journal-form" on:submit|preventDefault={submitVoid} novalidate>
     {#if voidError}<div class="alert alert-danger" role="alert">{voidError}</div>{/if}
     <p>{$locale.journals.confirmVoid}</p>
     <label class="form-label" for="void-journal-reason">{$locale.journals.voidReason}</label>
     <textarea id="void-journal-reason" class="form-control" rows="3" bind:value={voidReason}></textarea>
   </form>
+  <div slot="footer-note">{$locale.common.irreversible}</div>
   <div slot="footer">
     <button class="btn btn-light" type="button" on:click={closeVoid} disabled={saving}>{$locale.journals.cancel}</button>
     <button class="btn btn-danger" type="submit" form="void-journal-form" disabled={saving}>{saving ? $locale.journals.voiding : $locale.journals.void}</button>

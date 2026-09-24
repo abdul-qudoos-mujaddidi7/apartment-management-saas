@@ -156,13 +156,14 @@
 </Modal>
 
 <!-- Void Modal -->
-<Modal bind:open={voidOpen} title={$locale.payments.void} busy={saving} closeLabel={$locale.payments.cancel} on:close={closeVoid}>
+<Modal bind:open={voidOpen} title={$locale.payments.void} busy={saving} icon="bi-x-octagon" tone="danger" closeLabel={$locale.payments.cancel} on:close={closeVoid}>
   <form id="void-payment-form" on:submit|preventDefault={submitVoid} novalidate>
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
     <p>{$locale.payments.confirmVoid}</p>
     <label class="form-label" for="void-reason">{$locale.payments.voidReason}</label>
     <textarea id="void-reason" class="form-control" rows="3" bind:value={voidReason}></textarea>
   </form>
+  <div slot="footer-note">{$locale.common.irreversible}</div>
   <div slot="footer">
     <button class="btn btn-light" type="button" on:click={closeVoid} disabled={saving}>{$locale.payments.cancel}</button>
     <button class="btn btn-danger" type="submit" form="void-payment-form" disabled={saving}>{saving ? $locale.payments.voiding : $locale.payments.void}</button>

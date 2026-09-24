@@ -8,8 +8,18 @@
   export let description = ''; // one-line subtitle shown under the title
   export let busy = false;
   export let size = ''; // '' | 'modal-lg' | 'modal-xl'
-  export let bodyClass = ''; // extra classes for .modal-body (e.g. a sunken backdrop)
+  export let bodyClass = ''; // extra classes for .modal-body
   export let closeLabel = 'Close';
+  /**
+   * Bootstrap icon class for the header chip, e.g. 'bi-building'. Optional:
+   * a detail sheet leads with its title, a form usually earns the chip.
+   */
+  export let icon = '';
+  /**
+   * Colour of the header chip only. A destructive confirmation says so in its
+   * header rather than only in the colour of the button that ends it.
+   */
+  export let tone = 'accent'; // 'accent' | 'success' | 'warning' | 'danger'
 
   const dispatch = createEventDispatcher();
 
@@ -122,6 +132,12 @@
         <div class="modal-content">
 
           <div class="modal-header">
+            {#if icon}
+              <span class="modal-icon is-{tone}" aria-hidden="true">
+                <i class="bi {icon}"></i>
+              </span>
+            {/if}
+
             {#if title || description}
               <div class="modal-heading">
                 {#if title}
@@ -149,6 +165,7 @@
           </div>
 
           <div class="modal-footer">
+            <div class="modal-footer-note"><slot name="footer-note" /></div>
             <slot name="footer" />
           </div>
 
