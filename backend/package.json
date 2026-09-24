@@ -15,7 +15,7 @@
     "db:dump": "node scripts/dump-database.js",
     "db:restore": "node scripts/restore-database.js",
     "db:rebuild": "npm run db:dump && prisma migrate reset --force --skip-seed && node scripts/restore-database.js --apply",
-    "test": "node --test src/modules/apartments/apartment.validation.test.js src/modules/meter-readings/meter-reading.period.test.js",
+    "test": "node --test src/modules/apartments/apartment.validation.test.js src/modules/auth/auth.service.test.js src/modules/meter-readings/meter-reading.period.test.js",
     "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],

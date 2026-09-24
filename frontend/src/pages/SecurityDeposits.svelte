@@ -87,7 +87,7 @@
       // the currency the deposit was agreed in — the lease's own currency. The
       // summary above is stated in the reporting currency and anything entered
       // here is converted to it on save.
-      const leaseCurrency = detail.lease.currency || $baseCurrency;
+      const leaseCurrency = detail.lease.securityDepositCurrency || detail.lease.currency || $baseCurrency;
       transaction = { ...blankTransaction(), currency: leaseCurrency };
       voidReasons = {};
     } catch (error) { errorMessage = error.message; detailOpen = false; }

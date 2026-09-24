@@ -449,10 +449,11 @@ model Lease {
   monthlyRent     Decimal     @db.Decimal(12, 2)
   securityDeposit Decimal     @default(0) @db.Decimal(12, 2)
 
-  /// The currency the rent and deposit are agreed in. A lease carries no rate:
-  /// rent is billed monthly, so each invoice is priced at the rate in force on
-  /// its own date and freezes that rate onto itself.
+  /// The currency the rent is agreed in. Rent invoices inherit this currency.
   currency        String      @default("AFN") @db.VarChar(3)
+
+  /// The security deposit may be agreed in a different currency from rent.
+  securityDepositCurrency String @default("AFN") @db.VarChar(3)
 
   paymentDueDay   Int
   status          LeaseStatus @default(DRAFT)

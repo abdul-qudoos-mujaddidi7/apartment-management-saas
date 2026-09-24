@@ -6,9 +6,13 @@ const currencyService = require('../currency/currency.service');
 
 function createSlug(value) {
   const slug = value
+    .normalize('NFKC')
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+    // Keep letters and numbers from every writing system. The previous ASCII-
+    // only expression removed an entire Dari/Pashto name, making every such
+    // organization fall back to the same `organization` slug.
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '');
 
   return slug || 'organization';
@@ -176,6 +180,7 @@ async function getCurrentUser(userId) {
 
 module.exports = {
   authenticateUser,
+  createSlug,
   createAccessToken,
   getCurrentUser,
   registerOrganizationAdmin,

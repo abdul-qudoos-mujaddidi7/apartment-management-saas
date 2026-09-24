@@ -10,11 +10,13 @@ function authRateLimit(req, res, next) {
   const current = requestWindows.get(key);
 
   if (!current || now - current.startedAt >= WINDOW_MS) {
-    requestWindows.set(key, { startedAt: now, count: 1 });
-    return next();
+    requestWindows.set(key, { startedAt: now, count: 0 });
   }
 
-  if (current.count >= MAX_ATTEMPTS) {
+  const active = requestWindows.get(key);
+  if (active.count >= MAX_ATTEMPTS) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((WINDOW_MS - (now - active.startedAt)) / 1000));
+    res.set('Retry-After', String(retryAfterSeconds));
     return res.status(429).json({
       success: false,
       code: 'AUTH_RATE_LIMITED',
@@ -22,7 +24,17 @@ function authRateLimit(req, res, next) {
     });
   }
 
-  current.count += 1;
+  // Only an invalid login credential response consumes an attempt. Registration
+  // validation/conflict errors no longer lock somebody out, and a successful
+  // login clears previous failures immediately.
+  res.once('finish', () => {
+    if (req.path !== '/login') return;
+    const window = requestWindows.get(key);
+    if (!window) return;
+    if (res.statusCode === 401) window.count += 1;
+    else if (res.statusCode >= 200 && res.statusCode < 300) requestWindows.delete(key);
+  });
+
   return next();
 }
 

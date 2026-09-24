@@ -232,7 +232,7 @@
             <div><dt>{$locale.tenantProfile.contractNumber}</dt><dd class="data-value">{profile.currentLease.contractNumber}</dd></div>
             <div class="fact-wide"><dt>{$locale.tenantProfile.period}</dt><dd>{formatShortDate(profile.currentLease.startDate)} → {formatShortDate(profile.currentLease.endDate)}</dd></div>
             <div><dt>{$locale.tenantProfile.monthlyRent}</dt><dd class="money-value">{formatMoney(profile.currentLease.monthlyRent, profile.currentLease.currency)}</dd></div>
-            <div><dt>{$locale.tenantProfile.requiredDeposit}</dt><dd class="money-value">{formatMoney(profile.currentLease.securityDeposit, profile.currentLease.currency)}</dd></div>
+            <div><dt>{$locale.tenantProfile.requiredDeposit}</dt><dd class="money-value">{formatMoney(profile.currentLease.securityDeposit, profile.currentLease.securityDepositCurrency || profile.currentLease.currency)}</dd></div>
             <div><dt>{$locale.tenantProfile.paymentDueDay}</dt><dd>{profile.currentLease.paymentDueDay}</dd></div>
           </dl>
         {:else}

@@ -27,9 +27,8 @@
     tenantId: '', buildingId: '', floorId: '', apartmentId: '',
     contractNumber: '', startDate: '', endDate: '',
     monthlyRent: '', securityDeposit: '0', paymentDueDay: '1',
-    /* The currency the rent is stated in. Empty means the reporting currency,
-       which is what every lease agreed before this field existed is in. */
-    currency: '',
+    /* Rent and deposit can be agreed in different currencies. */
+    currency: '', securityDepositCurrency: '',
     status: 'DRAFT', notes: ''
   });
 
@@ -62,6 +61,7 @@
 
   // The code the rent is read in, for the amount fields and the list.
   $: formCurrency = form.currency || $baseCurrency;
+  $: formSecurityDepositCurrency = form.securityDepositCurrency || $baseCurrency;
 
   async function loadLeases(page = pagination.page) {
     loading = true;
@@ -126,13 +126,15 @@
    */
   function apartmentChanged() {
     const apartment = apartments.find((entry) => entry.id === form.apartmentId);
-    if (apartment?.rentCurrency) form = { ...form, currency: apartment.rentCurrency };
+    if (apartment?.rentCurrency) {
+      form = { ...form, currency: apartment.rentCurrency, securityDepositCurrency: apartment.rentCurrency };
+    }
   }
 
   function openNew() {
     editing = null;
     // A new lease starts in the reporting currency, which is the common case.
-    form = { ...blankForm(), currency: $baseCurrency };
+    form = { ...blankForm(), currency: $baseCurrency, securityDepositCurrency: $baseCurrency };
     floors = [];
     apartments = [];
     modalError = '';
@@ -159,6 +161,7 @@
       monthlyRent: lease.monthlyRent,
       securityDeposit: lease.securityDeposit,
       currency: lease.currency || '',
+      securityDepositCurrency: lease.securityDepositCurrency || lease.currency || '',
       paymentDueDay: String(lease.paymentDueDay),
       status: lease.status,
       notes: lease.notes || ''
@@ -210,6 +213,7 @@
       monthlyRent: Number(form.monthlyRent),
       securityDeposit: Number(form.securityDeposit),
       currency: formCurrency,
+      securityDepositCurrency: formSecurityDepositCurrency,
       paymentDueDay: Number(form.paymentDueDay),
       status: form.status,
       notes: form.notes.trim() || null
@@ -455,22 +459,29 @@
         <label class="form-label" for="lease-end-date">{$locale.leases.endDate}</label>
         <ShamsiDatePicker id="lease-end-date" bind:value={form.endDate} required />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <label class="form-label" for="lease-monthly-rent">{$locale.leases.monthlyRent}</label>
-        <input class="form-control" id="lease-monthly-rent" type="number" min="0.01" step="0.01" bind:value={form.monthlyRent} required />
+        <div class="input-group money-input">
+          <input class="form-control" id="lease-monthly-rent" type="number" min="0.01" step="0.01" bind:value={form.monthlyRent} required />
+          <select class="form-select currency-select" bind:value={form.currency} aria-label={$locale.leases.rentCurrency}>
+            {#each $activeCurrencies as currency (currency.id)}
+              <option value={currency.code}>{currency.code}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="form-text">{$locale.leases.rentCurrencyHint}</div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <label class="form-label" for="lease-security-deposit">{$locale.leases.securityDeposit}</label>
-        <input class="form-control" id="lease-security-deposit" type="number" min="0" step="0.01" bind:value={form.securityDeposit} required />
-      </div>
-      <div class="col-md-4">
-        <label class="form-label" for="lease-currency">{$locale.currencies.currency}</label>
-        <select class="form-select" id="lease-currency" bind:value={form.currency}>
-          {#each $activeCurrencies as currency (currency.id)}
-            <option value={currency.code}>{currency.code} — {currency.name}</option>
-          {/each}
-        </select>
-        <div class="form-text">{$locale.leases.currencyHint}</div>
+        <div class="input-group money-input">
+          <input class="form-control" id="lease-security-deposit" type="number" min="0" step="0.01" bind:value={form.securityDeposit} required />
+          <select class="form-select currency-select" bind:value={form.securityDepositCurrency} aria-label={$locale.leases.depositCurrency}>
+            {#each $activeCurrencies as currency (currency.id)}
+              <option value={currency.code}>{currency.code}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="form-text">{$locale.leases.depositCurrencyHint}</div>
       </div>
       <div class="col-md-6">
         <label class="form-label" for="lease-payment-due-day">{$locale.leases.paymentDueDay}</label>
@@ -510,9 +521,8 @@
       <div class="detail-item"><span>{$locale.leases.status}</span><StatusBadge label={statusLabel(detail.status)} tone={statusTone(detail.status)} /></div>
       <div class="detail-item"><span>{$locale.leases.startDate}</span><strong>{formatShortDate(detail.startDate)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.endDate}</span><strong>{formatShortDate(detail.endDate)}</strong></div>
-      <div class="detail-item"><span>{$locale.leases.currency}</span><strong>{detail.currency}</strong></div>
       <div class="detail-item"><span>{$locale.leases.monthlyRent}</span><strong>{formatMoney(detail.monthlyRent, detail.currency)}</strong></div>
-      <div class="detail-item"><span>{$locale.leases.securityDeposit}</span><strong>{formatMoney(detail.securityDeposit, detail.currency)}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.securityDeposit}</span><strong>{formatMoney(detail.securityDeposit, detail.securityDepositCurrency || detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.paymentDueDay}</span><strong>{detail.paymentDueDay}</strong></div>
     </div>
     <div class="detail-notes"><span>{$locale.leases.notes}</span><p>{detail.notes || '—'}</p></div>
@@ -524,6 +534,7 @@
 </Modal>
 
 <style>
+  .money-input .currency-select { flex: 0 0 6.75rem; max-width: 6.75rem; font-weight: var(--weight-semibold); }
   .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
   .detail-item { padding: 0.85rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface-muted); }
   .detail-item > span, .detail-notes > span { display: block; margin-bottom: 0.25rem; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }

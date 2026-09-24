@@ -98,7 +98,7 @@ async function getTenantProfile(organizationId, tenantId) {
       where: { organizationId, tenantId, deletedAt: null },
       select: {
         id: true, contractNumber: true, startDate: true, endDate: true,
-        monthlyRent: true, securityDeposit: true, currency: true,
+        monthlyRent: true, securityDeposit: true, currency: true, securityDepositCurrency: true,
         paymentDueDay: true, status: true, notes: true,
         apartment: {
           select: {

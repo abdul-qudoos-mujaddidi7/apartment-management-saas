@@ -38,6 +38,7 @@ const leaseSelect = {
   startDate: true,
   securityDeposit: true,
   currency: true,
+  securityDepositCurrency: true,
   tenant: {
     select: {
       id: true,
@@ -186,7 +187,7 @@ async function latestTransactionDate(client, organizationId, leaseId) {
  * Deposit status is judged in the organization's base currency, because that is
  * the currency the liability is carried in.
  *
- * `Lease.securityDeposit` is quoted in the *lease's* currency, so it is
+ * `Lease.securityDeposit` is quoted in its own selected currency, so it is
  * converted before it is compared with anything. Comparing the two directly is
  * what made a 500 USD deposit read as a 500 AFN requirement and refuse the
  * first real receipt as an overpayment.
@@ -210,7 +211,7 @@ async function getSummary(organizationId, lease, client = prisma, options = {}) 
   );
 
   const baseCurrency = await baseCurrencyOf(client, organizationId);
-  const leaseCurrency = lease.currency || baseCurrency;
+  const leaseCurrency = lease.securityDepositCurrency || lease.currency || baseCurrency;
   const quotedDeposit = new Decimal(lease.securityDeposit);
 
   const referenceDate = options.referenceDate
