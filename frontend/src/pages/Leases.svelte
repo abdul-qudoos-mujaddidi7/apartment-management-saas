@@ -27,9 +27,10 @@
   const blankForm = () => ({
     tenantId: '', buildingId: '', floorId: '', apartmentId: '',
     contractNumber: '', startDate: '', endDate: '',
-    monthlyRent: '', securityDeposit: '0', paymentDueDay: '1',
-    /* Rent and deposit can be agreed in different currencies. */
-    currency: '', securityDepositCurrency: '',
+    monthlyRent: '', securityDeposit: '0', serviceFee: '0', paymentDueDay: '1',
+    /* Rent, deposit and the service fee can each be agreed in their own
+       currency: a deposit or a fee is routinely quoted in another one. */
+    currency: '', securityDepositCurrency: '', serviceFeeCurrency: '',
     status: 'DRAFT', notes: ''
   });
 
@@ -62,6 +63,7 @@
   // The code the rent is read in, for the amount fields and the list.
   $: formCurrency = form.currency || $baseCurrency;
   $: formSecurityDepositCurrency = form.securityDepositCurrency || $baseCurrency;
+  $: formServiceFeeCurrency = form.serviceFeeCurrency || $baseCurrency;
 
   async function loadLeases(page = pagination.page) {
     loading = true;
@@ -120,25 +122,32 @@
 
   /*
    * Picking the apartment is what the rent is being agreed for, so the lease
-   * adopts the terms that apartment was registered with: the currency its rent
-   * is stated in — the apartment was let at 1,200 USD, so its lease is in USD —
-   * and the deposit it is let against, with the currency that deposit is quoted
-   * in. Both stay normal fields afterwards: a lease can be agreed on different
-   * terms, and the deposit is where a negotiation usually shows up.
+   * adopts the terms that apartment was registered with: the rent it is let at
+   * and the currency that rent is stated in — the apartment was let at 1,200
+   * USD, so its lease is in USD — the deposit it is let against, and the
+   * recurring service fee it carries, each with the currency it is quoted in.
+   * All of them stay normal fields afterwards: a lease can be agreed on
+   * different terms, and the deposit is where a negotiation usually shows up.
    */
   function apartmentChanged() {
     const apartment = apartments.find((entry) => entry.id === form.apartmentId);
     if (!apartment) return;
     const rentCurrency = apartment.rentCurrency || form.currency;
     const depositCurrency = apartment.securityDepositCurrency || rentCurrency;
+    const feeCurrency = apartment.serviceFeeCurrency || rentCurrency;
+    const adoptsRent = Number(apartment.monthlyRent) > 0;
     const adoptsDeposit = Number(apartment.securityDeposit) > 0;
+    const adoptsFee = Number(apartment.serviceFee) > 0;
     form = {
       ...form,
       currency: rentCurrency,
-      // An apartment that states no deposit leaves whatever is already typed
-      // alone, rather than wiping it back to zero.
+      // An apartment that states no rent, no deposit or no fee leaves whatever
+      // is already typed alone, rather than wiping it back to zero.
+      ...(adoptsRent ? { monthlyRent: apartment.monthlyRent } : {}),
       ...(adoptsDeposit ? { securityDeposit: apartment.securityDeposit } : {}),
       securityDepositCurrency: adoptsDeposit ? depositCurrency : form.securityDepositCurrency || depositCurrency,
+      ...(adoptsFee ? { serviceFee: apartment.serviceFee } : {}),
+      serviceFeeCurrency: adoptsFee ? feeCurrency : form.serviceFeeCurrency || feeCurrency,
     };
   }
 
@@ -169,8 +178,10 @@
       endDate: lease.endDate.slice(0, 10),
       monthlyRent: lease.monthlyRent,
       securityDeposit: lease.securityDeposit,
+      serviceFee: lease.serviceFee ?? 0,
       currency: lease.currency || '',
       securityDepositCurrency: lease.securityDepositCurrency || lease.currency || '',
+      serviceFeeCurrency: lease.serviceFeeCurrency || lease.currency || '',
       paymentDueDay: String(lease.paymentDueDay),
       status: lease.status,
       notes: lease.notes || ''
@@ -201,6 +212,7 @@
     if (new Date(form.startDate) >= new Date(form.endDate)) return 'End date must be after start date.';
     if (!Number.isFinite(Number(form.monthlyRent)) || Number(form.monthlyRent) <= 0) return $locale.leases.monthlyRent;
     if (!Number.isFinite(Number(form.securityDeposit)) || Number(form.securityDeposit) < 0) return $locale.leases.securityDeposit;
+    if (!Number.isFinite(Number(form.serviceFee)) || Number(form.serviceFee) < 0) return $locale.leases.serviceFee;
     const dueDay = Number(form.paymentDueDay);
     if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 28) return $locale.leases.paymentDueDay;
     return '';
@@ -220,8 +232,10 @@
       endDate: form.endDate,
       monthlyRent: Number(form.monthlyRent),
       securityDeposit: Number(form.securityDeposit),
+      serviceFee: Number(form.serviceFee),
       currency: formCurrency,
       securityDepositCurrency: formSecurityDepositCurrency,
+      serviceFeeCurrency: formServiceFeeCurrency,
       paymentDueDay: Number(form.paymentDueDay),
       status: form.status,
       notes: form.notes.trim() || null
@@ -523,6 +537,21 @@
         <p class="field-hint">{$locale.leases.depositCurrencyHint}</p>
       </div>
       <div class="field">
+        <label class="field-label" for="lease-service-fee">{$locale.leases.serviceFee}</label>
+        <div class="field-control">
+          <i class="bi bi-tools" aria-hidden="true"></i>
+          <div class="money-control">
+            <input class="form-control" id="lease-service-fee" type="number" min="0" step="0.01" bind:value={form.serviceFee} required />
+            <select class="form-select currency-select" bind:value={form.serviceFeeCurrency} aria-label={$locale.leases.serviceFeeCurrency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+        <p class="field-hint">{$locale.leases.serviceFeeHint}</p>
+      </div>
+      <div class="field">
         <label class="field-label" for="lease-payment-due-day">{$locale.leases.paymentDueDay}</label>
         <div class="field-control">
           <i class="bi bi-calendar3" aria-hidden="true"></i>
@@ -568,6 +597,7 @@
       <div class="detail-item"><span>{$locale.leases.endDate}</span><strong>{formatShortDate(detail.endDate)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.monthlyRent}</span><strong>{formatMoney(detail.monthlyRent, detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.securityDeposit}</span><strong>{formatMoney(detail.securityDeposit, detail.securityDepositCurrency || detail.currency)}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.serviceFee}</span><strong>{formatMoney(detail.serviceFee, detail.serviceFeeCurrency || detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.paymentDueDay}</span><strong>{detail.paymentDueDay}</strong></div>
     </div>
     <div class="detail-notes"><span>{$locale.leases.notes}</span><p>{detail.notes || '—'}</p></div>

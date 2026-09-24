@@ -47,12 +47,15 @@
    * charge is that charge's balance converted into the same units. The server
    * converts back when it applies the amount to the invoice.
    */
-  function balanceInPaymentCurrency(item, group) {
-    return convertAmount(item.balance, group.currency || $baseCurrency, form.currency, $activeCurrencies, $baseCurrency);
+  function balanceInPaymentCurrency(item) {
+    // The invoice froze this line's base value when it was created. Convert
+    // that remaining base balance into the receipt currency, rather than using
+    // today's rate to reinterpret (for example) an old USD rent amount.
+    return convertAmount(item.baseBalance, $baseCurrency, form.currency, $activeCurrencies, $baseCurrency);
   }
 
-  function crossCurrency(group) {
-    return (group.currency || $baseCurrency) !== form.currency;
+  function crossCurrency(item) {
+    return (item.currency || $baseCurrency) !== form.currency;
   }
 
   function contextLease() {
@@ -83,9 +86,12 @@
       const cashAccount = accounts.find((account) => account.code === '1000');
       form = { ...form, receiveAccountId: cashAccount?.id || accounts[0]?.id || '' };
       invoiceGroups = itemsResponse.items || [];
-      // Open on the invoice's currency when the receipt relates to one invoice,
-      // which is the common case and needs no conversion at all.
-      const soleCurrency = invoiceGroups.length === 1 ? invoiceGroups[0].currency : null;
+      // An invoice may contain lines in different currencies. Use the line
+      // currency only when every open charge shares it; otherwise receive in
+      // the organization's base currency so the combined total is meaningful.
+      const itemCurrencies = [...new Set(invoiceGroups.flatMap((group) =>
+        group.items.map((item) => item.currency || $baseCurrency)))];
+      const soleCurrency = itemCurrencies.length === 1 ? itemCurrencies[0] : null;
       if (soleCurrency) form = { ...form, currency: soleCurrency };
 
       // Initialize allocations to empty
@@ -99,10 +105,11 @@
       if (invoice) {
         const matchingGroup = invoiceGroups.find((group) => group.id === invoice.id);
         if (matchingGroup) {
-          const totalBalance = matchingGroup.items.reduce((sum, item) => sum + item.balance, 0);
+          const totalBalance = matchingGroup.items.reduce((sum, item) =>
+            sum + convertAmount(item.baseBalance, $baseCurrency, form.currency, $activeCurrencies, $baseCurrency), 0);
           form = { ...form, amount: totalBalance };
           for (const item of matchingGroup.items) {
-            allocations[item.id] = item.balance;
+            allocations[item.id] = convertAmount(item.baseBalance, $baseCurrency, form.currency, $activeCurrencies, $baseCurrency);
           }
         }
       }
@@ -131,12 +138,12 @@
       for (const item of group.items) {
         const entered = Number(currentAllocations[item.id]) || 0;
         if (entered <= 0) continue;
-        const appliedInInvoiceCurrency = convertAmount(entered, paymentCurrency, group.currency || $baseCurrency, $activeCurrencies, $baseCurrency);
-        if (appliedInInvoiceCurrency < item.balance - 0.005) continue;
+        const paymentBalance = convertAmount(item.baseBalance, $baseCurrency, paymentCurrency, $activeCurrencies, $baseCurrency);
+        if (entered < paymentBalance - 0.005) continue;
         // The item's remaining base value is what a closing allocation applies;
         // the converted balance would agree with the money handed over by
         // construction and would never reveal the difference.
-        const settlesWith = item.baseBalance ?? convertAmount(item.balance, group.currency || $baseCurrency, $baseCurrency, $activeCurrencies, $baseCurrency);
+        const settlesWith = item.baseBalance;
         const handedOver = convertAmount(entered, paymentCurrency, $baseCurrency, $activeCurrencies, $baseCurrency);
         const difference = settlesWith - handedOver;
         if (Math.abs(difference) >= 0.005) {
@@ -154,7 +161,23 @@
   // once and never see an allocation change.
   $: roundingAdjustments = roundingNotes(allocations, form.currency, invoiceGroups);
   $: outstandingBalance = invoiceGroups.reduce((total, group) =>
-    total + group.items.reduce((sum, item) => sum + item.balance, 0), 0);
+    total + group.items.reduce((sum, item) =>
+      sum + convertAmount(item.baseBalance, $baseCurrency, form.currency, $activeCurrencies, $baseCurrency), 0), 0);
+
+  function currencyChanged(nextCurrency) {
+    const previousCurrency = form.currency;
+    if (!nextCurrency || nextCurrency === previousCurrency) return;
+    const convertedAllocations = Object.fromEntries(Object.entries(allocations).map(([id, value]) => [
+      id,
+      value === '' ? '' : convertAmount(value, previousCurrency, nextCurrency, $activeCurrencies, $baseCurrency),
+    ]));
+    form = {
+      ...form,
+      currency: nextCurrency,
+      amount: form.amount === '' ? '' : convertAmount(form.amount, previousCurrency, nextCurrency, $activeCurrencies, $baseCurrency),
+    };
+    allocations = convertedAllocations;
+  }
 
   function close() {
     if (saving) return;
@@ -173,7 +196,7 @@
     const newAllocations = {};
     for (const group of invoiceGroups) {
       for (const item of group.items) {
-        const limit = balanceInPaymentCurrency(item, group);
+        const limit = balanceInPaymentCurrency(item);
         const allocation = Math.min(remaining, limit);
         newAllocations[item.id] = Number(allocation.toFixed(2)) || '';
         remaining -= allocation;
@@ -193,7 +216,7 @@
     for (const group of invoiceGroups) {
       for (const item of group.items) {
         const alloc = Number(allocations[item.id] || 0);
-        if (alloc < 0 || alloc > balanceInPaymentCurrency(item, group) + 0.005) {
+        if (alloc < 0 || alloc > balanceInPaymentCurrency(item) + 0.005) {
           errors[`allocation-${item.id}`] = $locale.payments.allocationExceedsBalance;
         }
       }
@@ -273,7 +296,7 @@
                   <dt>{$locale.payments.outstandingBalance}</dt>
                   <dd class="amount-cell">
                     {#if invoiceGroups.length > 0}
-                      {money(outstandingBalance, invoiceGroups[0].currency)}
+                      {money(outstandingBalance, form.currency)}
                     {:else}—{/if}
                   </dd>
                 </div>
@@ -282,7 +305,7 @@
             <fieldset><legend class="section-label">{$locale.payments.paymentDetails}</legend>
               <div class="row g-3">
                 <div class="col-md-4"><label class="form-label" for="payment-date">{$locale.payments.paymentDate}</label><ShamsiDatePicker id="payment-date" invalid={Boolean(formErrors.paymentDate)} bind:value={form.paymentDate}/>{#if formErrors.paymentDate}<div class="invalid-feedback">{formErrors.paymentDate}</div>{/if}</div>
-                <div class="col-md-4"><label class="form-label" for="payment-currency">{$locale.currencies.currency}</label><div class="field-control"><i class="bi bi-currency-exchange" aria-hidden="true"></i><select id="payment-currency" class="form-select" bind:value={form.currency}>{#each $activeCurrencies as item (item.id)}<option value={item.code}>{item.code} — {item.name}</option>{/each}</select></div>{#if form.currency !== $baseCurrency}<div class="form-text">1 {form.currency} = {money(convertAmount(1, form.currency, $baseCurrency, $activeCurrencies, $baseCurrency))}</div>{/if}</div>
+                <div class="col-md-4"><label class="form-label" for="payment-currency">{$locale.currencies.currency}</label><div class="field-control"><i class="bi bi-currency-exchange" aria-hidden="true"></i><select id="payment-currency" class="form-select" value={form.currency} on:change={(event) => currencyChanged(event.currentTarget.value)}>{#each $activeCurrencies as item (item.id)}<option value={item.code}>{item.code} — {item.name}</option>{/each}</select></div>{#if form.currency !== $baseCurrency}<div class="form-text">1 {form.currency} = {money(convertAmount(1, form.currency, $baseCurrency, $activeCurrencies, $baseCurrency))}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="receive-account">{$locale.payments.receiveInto}</label><div class="field-control"><i class="bi bi-journal-bookmark" aria-hidden="true"></i><select id="receive-account" class:is-invalid={formErrors.receiveAccountId} class="form-select" bind:value={form.receiveAccountId}><option value="">{$locale.payments.selectAccount}</option>{#each accounts as account (account.id)}<option value={account.id}>{account.code} — {account.name}</option>{/each}</select></div>{#if formErrors.receiveAccountId}<div class="invalid-feedback">{formErrors.receiveAccountId}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="payment-method">{$locale.payments.method}</label><div class="field-control"><i class="bi bi-credit-card-2-front" aria-hidden="true"></i><select id="payment-method" class="form-select" bind:value={form.paymentMethod}>{#each paymentMethods as method (method)}<option value={method}>{$locale.paymentMethods[method]}</option>{/each}</select></div></div>
                 <div class="col-md-4"><label class="form-label" for="payment-amount">{$locale.payments.amount}</label><div class="field-control"><i class="bi bi-currency-dollar" aria-hidden="true"></i><input id="payment-amount" class:is-invalid={formErrors.amount} class="form-control" type="number" min="0.01" step="0.01" bind:value={form.amount}/></div>{#if formErrors.amount}<div class="invalid-feedback">{formErrors.amount}</div>{/if}</div>
@@ -308,18 +331,18 @@
                         <td>{#if idx === 0}<strong>{group.invoiceNumber}</strong>{:else}<span class="text-muted">—</span>{/if}</td>
                         <td>
                           {item.description || itemTypeLabel(item.type)}
-                          {#if idx === 0 && crossCurrency(group)}
+                          {#if crossCurrency(item)}
                             <small class="row-hint">
-                              {$locale.payments.invoiceCurrency.replace('{code}', group.currency)} ·
+                              {$locale.payments.invoiceCurrency.replace('{code}', item.currency || $baseCurrency)} ·
                               {$locale.payments.allocateIn.replace('{code}', form.currency)}
                             </small>
                           {/if}
                         </td>
-                        <td class="amount-cell text-end">{money(item.amount, group.currency)}</td>
-                        <td class="amount-cell text-end">{money(item.paidAmount, group.currency)}</td>
-                        <td class="amount-cell text-end">{money(balanceInPaymentCurrency(item, group), form.currency)}</td>
+                        <td class="amount-cell text-end">{money(item.amount, item.currency || $baseCurrency)}</td>
+                        <td class="amount-cell text-end">{money(item.paidAmount, item.currency || $baseCurrency)}</td>
+                        <td class="amount-cell text-end">{money(balanceInPaymentCurrency(item), form.currency)}</td>
                         <td class="text-end">
-                          <input class:is-invalid={formErrors[`allocation-${item.id}`]} class="form-control amount-input" type="number" min="0" max={balanceInPaymentCurrency(item, group)} step="0.01" value={allocations[item.id] || ''} on:input={(event) => updateAllocation(item.id, event.currentTarget.value)}/>
+                          <input class:is-invalid={formErrors[`allocation-${item.id}`]} class="form-control amount-input" type="number" min="0" max={balanceInPaymentCurrency(item)} step="0.01" value={allocations[item.id] || ''} on:input={(event) => updateAllocation(item.id, event.currentTarget.value)}/>
                           {#if formErrors[`allocation-${item.id}`]}<div class="invalid-feedback">{formErrors[`allocation-${item.id}`]}</div>{/if}
                         </td>
                       </tr>
@@ -354,6 +377,16 @@
 {/if}
 
 <style>
+  /* This modal's form wraps both the body and footer. Make that wrapper part of
+     the dialog's flex layout so the body receives a real height and can scroll
+     instead of pushing the footer below the viewport. */
+  .modal-content { height: 100%; }
+  .modal-content > form {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+  }
   fieldset + fieldset { margin-top: 1.5rem; }
   .section-label { color: var(--text-secondary); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .tenancy-context { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem 1rem; margin: 0; }

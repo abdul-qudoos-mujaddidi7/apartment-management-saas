@@ -2,10 +2,12 @@ const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
 const Decimal = Prisma.Decimal;
-const { toBase } = require('../../lib/money');
+const { fromBase, toBase } = require('../../lib/money');
 const { priceDocument } = require('../currency/currency.service');
 const { ensureDefaultAccounts } = require('../financials/financial-account.service');
 const { postJournal, voidJournalWithReversal } = require('../financials/journal.service');
+const { incomeAccountCodes } = require('./invoice-income');
+const { lineCurrency } = require('./invoice-line-currency');
 const { postTenantLedgerEntry, replaceInvoiceLedgerEntry, reverseTenantLedgerEntry } = require('../tenant-accounts/tenant-account.service');
 
 function serviceError(code, message) {
@@ -59,6 +61,9 @@ function invoiceSelect(includeItems = false) {
           quantity: true,
           unitPrice: true,
           amount: true,
+          currency: true,
+          exchangeRate: true,
+          baseAmount: true,
           paymentAllocations: {
             where: { payment: { status: 'POSTED' } },
             select: { amount: true, appliedAmount: true, baseAppliedAmount: true, voidedAt: true },
@@ -72,6 +77,9 @@ function invoiceSelect(includeItems = false) {
         id: true,
         contractNumber: true,
         monthlyRent: true,
+        currency: true,
+        serviceFee: true,
+        serviceFeeCurrency: true,
         tenant: { select: { id: true, firstName: true, lastName: true } },
         apartment: {
           select: {
@@ -133,6 +141,15 @@ function sumItemBaseAllocations(allocations) {
   }, new Decimal(0)).toDecimalPlaces(2);
 }
 
+/**
+ * A line's value in the base currency, falling back to its own currency's rate
+ * for a row written before lines carried a base mirror of their own.
+ */
+function itemBaseAmount(item, invoiceRate = 1) {
+  if (item.baseAmount !== undefined && item.baseAmount !== null) return new Decimal(item.baseAmount);
+  return toBase(item.amount, item.exchangeRate ?? invoiceRate ?? 1);
+}
+
 function deriveItemStatus(amount, paidAmount) {
   if (paidAmount.greaterThanOrEqualTo(amount)) return 'PAID';
   if (paidAmount.isZero()) return 'UNPAID';
@@ -164,6 +181,11 @@ function formatInvoice(invoice) {
         quantity: Number(item.quantity),
         unitPrice: Number(item.unitPrice),
         amount: Number(item.amount),
+        // The currency this line is stated in, and what it is worth in the base
+        // currency at the rate it was posted at.
+        currency: item.currency || invoice.currency || 'AFN',
+        exchangeRate: Number(item.exchangeRate ?? exchangeRate ?? 1),
+        baseAmount: Number(itemBaseAmount(item, exchangeRate)),
         paidAmount: Number(itemPaid),
         balance: Number(itemBalance),
         basePaidAmount: Number(itemBasePaid),
@@ -207,34 +229,58 @@ function formatInvoice(invoice) {
   };
 }
 
-function preparedItems(items) {
-  return items.map((item) => {
-    const quantity = new Decimal(item.quantity);
-    const unitPrice = new Decimal(item.unitPrice);
-    const amount = quantity.times(unitPrice).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+function utilityDescription(reading) {
+  const name = reading.meter.utilityType.charAt(0) + reading.meter.utilityType.slice(1).toLowerCase();
+  return `${name} - Meter ${reading.meter.meterNumber} - ${new Decimal(reading.consumption).toFixed(3)} ${reading.meter.unit}`;
+}
 
+/**
+ * Turn what the user sent into the rows to store.
+ *
+ * Every line is priced in the currency it is stated in — `invoice-line-currency`
+ * says which that is — and that currency's rate against the base currency is
+ * resolved for the invoice's own date and frozen onto the line. The line's base
+ * mirror is what the invoice's totals add up, so a lease agreed in one currency
+ * and a meter priced in another can be billed on the same invoice.
+ */
+async function prepareInvoiceItems(client, organizationId, lease, sourceItems, { baseCurrency, date }) {
+  const utilityReadingIds = new Set();
+  const rates = new Map();
+  const items = [];
+
+  // One rate lookup per currency for the whole invoice, not one per line.
+  async function rateFor(currency) {
+    const code = String(currency || baseCurrency).toUpperCase();
+    if (!rates.has(code)) {
+      rates.set(code, (await priceDocument(client, organizationId, { currency: code, date })).exchangeRate);
+    }
+    return rates.get(code);
+  }
+
+  /** A line as it will be stored: in its own currency, and in the base one. */
+  function stored(item, currency, quantity, unitPrice, amount, rate) {
     return {
       type: item.type,
       description: item.description,
       quantity,
       unitPrice,
       amount,
+      currency: String(currency || baseCurrency).toUpperCase(),
+      exchangeRate: rate,
+      baseAmount: toBase(amount, rate),
     };
-  });
-}
-
-function utilityDescription(reading) {
-  const name = reading.meter.utilityType.charAt(0) + reading.meter.utilityType.slice(1).toLowerCase();
-  return `${name} - Meter ${reading.meter.meterNumber} - ${new Decimal(reading.consumption).toFixed(3)} ${reading.meter.unit}`;
-}
-
-async function prepareInvoiceItems(client, organizationId, lease, sourceItems) {
-  const utilityReadingIds = new Set();
-  const items = [];
+  }
 
   for (const item of sourceItems) {
     if (!item.meterReadingId) {
-      items.push(preparedItems([item])[0]);
+      const currency = lineCurrency(item, lease, baseCurrency);
+      // Service fees are contractual charges. Always copy the selected lease's
+      // fee so a stale or manipulated client cannot invoice a different value.
+      const isServiceFee = item.type === 'SERVICE_FEE';
+      const quantity = new Decimal(isServiceFee ? 1 : item.quantity);
+      const unitPrice = new Decimal(isServiceFee ? lease.serviceFee : item.unitPrice);
+      const amount = quantity.times(unitPrice).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      items.push(stored(item, currency, quantity, unitPrice, amount, await rateFor(currency)));
       continue;
     }
 
@@ -285,46 +331,53 @@ async function prepareInvoiceItems(client, organizationId, lease, sourceItems) {
       throw serviceError('METER_READING_TYPE_MISMATCH', 'Meter reading utility type does not match the invoice item type.');
     }
 
+    // A meter holds one price for its unit and that price is entered in the base
+    // currency, so a reading is billed in the base currency as it stands.
     items.push({
       meterReadingId: reading.id,
-      type: reading.meter.utilityType,
-      description: utilityDescription(reading),
-      quantity: new Decimal(reading.consumption),
-      unitPrice: new Decimal(reading.unitPrice),
-      amount: new Decimal(reading.amount),
+      ...stored(
+        { ...item, type: reading.meter.utilityType, description: utilityDescription(reading) },
+        baseCurrency,
+        new Decimal(reading.consumption),
+        new Decimal(reading.unitPrice),
+        new Decimal(reading.amount),
+        await rateFor(baseCurrency),
+      ),
     });
   }
 
   return items;
 }
 
+/**
+ * The invoice's totals, in the base currency: the sum of its lines' base
+ * mirrors. Every line states its own currency, so these are the only totals
+ * that mean anything across a mixed-currency invoice.
+ */
 function calculateTotals(items) {
-  const subtotal = items.reduce((total, item) => total.plus(item.amount), new Decimal(0));
+  const subtotal = items.reduce((total, item) => total.plus(itemBaseAmount(item)), new Decimal(0));
   return { subtotal, total: subtotal };
 }
 
 async function assertLeaseInOrganization(client, organizationId, leaseId) {
   const lease = await client.lease.findFirst({
     where: { id: leaseId, ...leaseScope(organizationId) },
-    select: { id: true, tenantId: true, apartmentId: true, currency: true },
+    select: { id: true, tenantId: true, apartmentId: true, currency: true, serviceFee: true, serviceFeeCurrency: true },
   });
   if (!lease) throw serviceError('LEASE_NOT_FOUND', 'Lease not found.');
   return lease;
 }
 
-const incomeAccountCodes = {
-  RENT: '4000',
-  ELECTRICITY: '4010',
-  WATER: '4020',
-  GAS: '4030',
-};
-
 async function postInvoiceJournal(client, organizationId, invoice, tenantId, items) {
   const accounts = await ensureDefaultAccounts(client, organizationId);
+  // A credit is stated in the invoice's own currency: the line's base value read
+  // back at the rate the invoice was posted at. An invoice written in the base
+  // currency credits the line itself.
   const creditByAccount = items.reduce((totals, item) => {
     const code = incomeAccountCodes[item.type];
     if (!code) return totals;
-    totals[code] = (totals[code] || new Decimal(0)).plus(item.amount);
+    const credit = fromBase(itemBaseAmount(item, invoice.exchangeRate ?? 1), invoice.exchangeRate ?? 1);
+    totals[code] = (totals[code] || new Decimal(0)).plus(credit);
     return totals;
   }, {});
 
@@ -372,10 +425,14 @@ async function refreshInvoiceJournal(client, organizationId, invoice, tenantId, 
   }
 
   const accounts = await ensureDefaultAccounts(client, organizationId);
+  // A credit is stated in the invoice's own currency: the line's base value read
+  // back at the rate the invoice was posted at. An invoice written in the base
+  // currency credits the line itself.
   const creditByAccount = items.reduce((totals, item) => {
     const code = incomeAccountCodes[item.type];
     if (!code) return totals;
-    totals[code] = (totals[code] || new Decimal(0)).plus(item.amount);
+    const credit = fromBase(itemBaseAmount(item, invoice.exchangeRate ?? 1), invoice.exchangeRate ?? 1);
+    totals[code] = (totals[code] || new Decimal(0)).plus(credit);
     return totals;
   }, {});
   const lines = [
@@ -400,16 +457,6 @@ async function refreshInvoiceJournal(client, organizationId, invoice, tenantId, 
       },
     },
   });
-}
-
-/** Re-read an invoice's lines in the shape the journal builder expects. */
-async function currentInvoiceItems(client, invoiceId) {
-  const items = await client.invoiceItem.findMany({
-    where: { invoiceId },
-    select: { type: true, amount: true },
-    orderBy: { createdAt: 'asc' },
-  });
-  return items.map((item) => ({ type: item.type, amount: new Decimal(item.amount) }));
 }
 
 async function nextInvoiceNumber(client, organizationId) {
@@ -505,29 +552,19 @@ async function getInvoiceFromTransaction(client, id) {
   return formatInvoice(invoice);
 }
 
-/** Base-currency mirror of a set of invoice totals at one frozen rate. */
-function baseTotals(totals, exchangeRate) {
-  return {
-    baseSubtotal: toBase(totals.subtotal, exchangeRate),
-    baseTotal: toBase(totals.total, exchangeRate),
-  };
-}
-
 async function createInvoice(organizationId, data) {
   try {
     return await prisma.$transaction(async (tx) => {
       const lease = await assertLeaseInOrganization(tx, organizationId, data.leaseId);
-      const items = await prepareInvoiceItems(tx, organizationId, lease, data.items);
-      const totals = calculateTotals(items);
-      // The rate is resolved for the invoice date and frozen onto the invoice,
-      // so a later rate change leaves this document and its ledger untouched.
-      // An invoice raised from a lease is written in the lease's currency unless
-      // the caller overrides it, because that is the currency the rent is stated
-      // in; the rate is still this invoice's own, taken for its own date.
-      const pricing = await priceDocument(tx, organizationId, {
-        currency: data.currency || lease.currency,
+      // The document is written in the base currency and each of its lines keeps
+      // the currency it was agreed in, so everything it stores is already a
+      // base-currency figure and its own rate is 1.
+      const { currency: baseCurrency } = await priceDocument(tx, organizationId, { date: data.invoiceDate });
+      const items = await prepareInvoiceItems(tx, organizationId, lease, data.items, {
+        baseCurrency,
         date: data.invoiceDate,
       });
+      const totals = calculateTotals(items);
       const invoiceNumber = await nextInvoiceNumber(tx, organizationId);
       const invoice = await tx.invoice.create({
         data: {
@@ -537,12 +574,14 @@ async function createInvoice(organizationId, data) {
           invoiceDate: data.invoiceDate,
           dueDate: data.dueDate,
           notes: data.notes ?? null,
-          currency: pricing.currency,
-          exchangeRate: pricing.exchangeRate,
+          currency: baseCurrency,
+          exchangeRate: 1,
           paidAmount: 0,
           status: 'UNPAID',
-          ...totals,
-          ...baseTotals(totals, pricing.exchangeRate),
+          subtotal: totals.subtotal,
+          total: totals.total,
+          baseSubtotal: totals.subtotal,
+          baseTotal: totals.total,
         },
         select: { id: true },
       });
@@ -580,12 +619,11 @@ async function updateInvoice(organizationId, id, data) {
       where: { id, organizationId, deletedAt: null, lease: leaseScope(organizationId) },
       select: {
         id: true,
+        leaseId: true,
         invoiceDate: true,
         dueDate: true,
         notes: true,
         status: true,
-        currency: true,
-        exchangeRate: true,
         paidAmount: true,
         items: { where: { meterReadingId: { not: null } }, select: { id: true } },
       },
@@ -601,36 +639,34 @@ async function updateInvoice(organizationId, id, data) {
       throw serviceError('INVALID_INVOICE_DATES', 'Due date cannot be before invoice date.');
     }
 
-    // Correcting a wrong currency is allowed while nothing has been paid against
-    // the invoice; the rate is then re-resolved for the invoice's own date.
-    const currencyRequested = data.currency
-      ? String(data.currency).toUpperCase() !== current.currency
-      : false;
-    const pricing = (currencyRequested || !current.exchangeRate)
-      ? await priceDocument(tx, organizationId, { currency: data.currency || current.currency, date: invoiceDate })
-      : { currency: current.currency, exchangeRate: current.exchangeRate };
-
+    // An edited invoice is re-stated under the rule a new one is posted under:
+    // its lines keep their own currencies and the document reads in the base
+    // currency. Nothing may be paid against it at this point, so this can never
+    // restate money that has already moved.
+    const { currency: baseCurrency } = await priceDocument(tx, organizationId, { date: invoiceDate });
     const updateData = {
       invoiceDate,
       dueDate,
       notes: data.notes === undefined ? current.notes : data.notes,
-      currency: pricing.currency,
-      exchangeRate: pricing.exchangeRate,
+      currency: baseCurrency,
+      exchangeRate: 1,
     };
+
     if (data.items) {
-      const items = preparedItems(data.items);
+      const lease = await assertLeaseInOrganization(tx, organizationId, current.leaseId);
+      const items = await prepareInvoiceItems(tx, organizationId, lease, data.items, {
+        baseCurrency,
+        date: invoiceDate,
+      });
       const totals = calculateTotals(items);
       updateData.subtotal = totals.subtotal;
       updateData.total = totals.total;
+      updateData.baseSubtotal = totals.subtotal;
+      updateData.baseTotal = totals.total;
       updateData.items = { deleteMany: {}, create: items };
-      Object.assign(updateData, baseTotals(totals, pricing.exchangeRate));
-    }
 
-    await tx.invoice.update({ where: { id }, data: updateData });
-    if (data.items || currencyRequested) {
+      await tx.invoice.update({ where: { id }, data: updateData });
       const refreshed = await getInvoiceFromTransaction(tx, id);
-      const lease = await assertLeaseInOrganization(tx, organizationId, refreshed.leaseId);
-      const items = data.items ? preparedItems(data.items) : await currentInvoiceItems(tx, id);
       await replaceInvoiceLedgerEntry(tx, organizationId, {
         tenantId: lease.tenantId,
         invoiceId: refreshed.id,
@@ -641,7 +677,10 @@ async function updateInvoice(organizationId, id, data) {
         exchangeRate: refreshed.exchangeRate,
       });
       await refreshInvoiceJournal(tx, organizationId, refreshed, lease.tenantId, items);
+      return refreshed;
     }
+
+    await tx.invoice.update({ where: { id }, data: updateData });
     return getInvoiceFromTransaction(tx, id);
   });
 }

@@ -60,6 +60,8 @@ const paymentSelect = {
           type: true,
           description: true,
           amount: true,
+          currency: true,
+          exchangeRate: true,
           invoice: {
             select: {
               id: true,
@@ -118,6 +120,9 @@ function formatPayment(payment) {
       invoiceItem: {
         ...allocation.invoiceItem,
         amount: Number(allocation.invoiceItem.amount),
+        // The charge's own currency, which is what its amount is stated in.
+        currency: allocation.invoiceItem.currency || allocation.invoiceItem.invoice.currency || 'AFN',
+        exchangeRate: Number(allocation.invoiceItem.exchangeRate ?? allocation.invoiceItem.invoice.exchangeRate ?? 1),
         invoice: {
           ...allocation.invoiceItem.invoice,
           currency: allocation.invoiceItem.invoice.currency || 'AFN',
@@ -185,6 +190,9 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
           type: true,
           description: true,
           amount: true,
+          currency: true,
+          exchangeRate: true,
+          baseAmount: true,
           paymentAllocations: {
             where: { payment: { status: 'POSTED' } },
             select: { amount: true, appliedAmount: true, baseAppliedAmount: true, voidedAt: true },
@@ -201,7 +209,7 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
     const invoiceRate = new Decimal(invoice.exchangeRate ?? 1);
     const outstandingItems = [];
     for (const item of invoice.items) {
-      // Paid against an item is always counted in the invoice's own currency.
+      // Paid against an item is always counted in that item's own currency.
       const paid = item.paymentAllocations.reduce((sum, alloc) => {
         if (alloc.voidedAt) return sum;
         return sum.plus(new Decimal(alloc.appliedAmount ?? alloc.amount));
@@ -219,11 +227,19 @@ async function getOutstandingItems(client, organizationId, tenantId, leaseId) {
           if (alloc.voidedAt) return sum;
           return sum.plus(new Decimal(alloc.baseAppliedAmount ?? alloc.amount));
         }, new Decimal(0));
-        const baseBalance = Decimal.max(toBase(item.amount, invoiceRate).minus(basePaid), 0).toDecimalPlaces(2);
+        // The line's own base mirror is what a receipt settling it credits the
+        // receivable with, so that is the balance that has to reach zero.
+        const itemBase = item.baseAmount !== null && item.baseAmount !== undefined
+          ? new Decimal(item.baseAmount)
+          : toBase(item.amount, item.exchangeRate ?? invoiceRate);
+        const baseBalance = Decimal.max(itemBase.minus(basePaid), 0).toDecimalPlaces(2);
         outstandingItems.push({
           id: item.id,
           type: item.type,
           description: item.description,
+          // The currency this charge was agreed in, which is what its amount and
+          // balance are stated in — not the invoice's.
+          currency: item.currency || invoice.currency || 'AFN',
           amount: Number(item.amount),
           paidAmount: Number(paid),
           balance: Number(balance),
@@ -300,6 +316,9 @@ async function validateAllocations(client, organizationId, tenantId, leaseId, al
       select: {
         id: true,
         amount: true,
+        currency: true,
+        exchangeRate: true,
+        baseAmount: true,
         invoice: { select: { id: true, currency: true, exchangeRate: true } },
       },
     });
@@ -322,14 +341,18 @@ async function validateAllocations(client, organizationId, tenantId, leaseId, al
     const currentPaid = new Decimal(paidSum || 0).toDecimalPlaces(2);
     const balance = new Decimal(invoiceItem.amount).minus(currentPaid).toDecimalPlaces(2);
 
-    const invoiceRate = new Decimal(invoiceItem.invoice.exchangeRate ?? 1);
-    const appliedAmount = convert(amount, paymentRate, invoiceRate);
+    // The line's own rate, not the invoice's: one invoice can carry a rent line
+    // agreed in USD and an electricity line priced in AFN, and a receipt settles
+    // each line in the currency that line was agreed in.
+    const itemRate = new Decimal(invoiceItem.exchangeRate ?? invoiceItem.invoice.exchangeRate ?? 1);
+    const itemCurrency = invoiceItem.currency || invoiceItem.invoice.currency || '';
+    const appliedAmount = convert(amount, paymentRate, itemRate);
     if (appliedAmount.greaterThan(balance)) {
       throw fail(
         'ALLOCATION_EXCEEDS_BALANCE',
-        invoiceRate.equals(paymentRate)
+        itemRate.equals(paymentRate)
           ? 'Allocation exceeds the item outstanding balance.'
-          : `Allocation converts to ${appliedAmount.toFixed(2)} ${invoiceItem.invoice.currency || ''}, which exceeds the item outstanding balance.`.trim(),
+          : `Allocation converts to ${appliedAmount.toFixed(2)} ${itemCurrency}, which exceeds the item outstanding balance.`.trim(),
       );
     }
 
@@ -349,7 +372,9 @@ async function validateAllocations(client, organizationId, tenantId, leaseId, al
      * than an unpayable remainder. A partial allocation never applies more base
      * than the money it arrived with.
      */
-    const itemBaseAmount = toBase(invoiceItem.amount, invoiceRate);
+    const itemBaseAmount = invoiceItem.baseAmount !== null && invoiceItem.baseAmount !== undefined
+      ? new Decimal(invoiceItem.baseAmount)
+      : toBase(invoiceItem.amount, itemRate);
     const paidBaseSum = aggregate._sum.baseAppliedAmount ?? aggregate._sum.amount;
     const baseBalance = Decimal.max(
       itemBaseAmount.minus(new Decimal(paidBaseSum || 0)),
@@ -358,7 +383,7 @@ async function validateAllocations(client, organizationId, tenantId, leaseId, al
     const settlesItem = appliedAmount.greaterThanOrEqualTo(balance);
     const baseAppliedAmount = (settlesItem
       ? baseBalance
-      : Decimal.min(toBase(appliedAmount, invoiceRate), baseBalance, toBase(amount, paymentRate))
+      : Decimal.min(toBase(appliedAmount, itemRate), baseBalance, toBase(amount, paymentRate))
     ).toDecimalPlaces(2);
 
     allocated = allocated.plus(amount);

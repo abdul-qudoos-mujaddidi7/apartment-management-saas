@@ -89,6 +89,8 @@ enum InvoiceItemType {
   ELECTRICITY
   WATER
   GAS
+  /// The service fee a lease carries, billed on its own income line.
+  SERVICE_FEE
   OTHER
 }
 
@@ -472,6 +474,15 @@ model Lease {
   /// The security deposit may be agreed in a different currency from rent.
   securityDepositCurrency String @default("AFN") @db.VarChar(3)
 
+  /// The recurring service fee this contract bills on top of the rent — the
+  /// apartment's own figure, agreed once and carried by every lease raised on
+  /// it. Billed as its own invoice line, so it can be seen and settled apart
+  /// from the rent it accompanies.
+  serviceFee      Decimal     @default(0) @db.Decimal(12, 2)
+
+  /// The currency the service fee is stated in, which need not be the rent's.
+  serviceFeeCurrency String  @default("AFN") @db.VarChar(3)
+
   paymentDueDay   Int
   status          LeaseStatus @default(DRAFT)
   notes           String?     @db.Text
@@ -710,6 +721,17 @@ model InvoiceItem {
   quantity       Decimal            @default(1) @db.Decimal(15, 3)
   unitPrice      Decimal            @db.Decimal(15, 4)
   amount         Decimal            @db.Decimal(15, 2)
+  /// The currency this line's `unitPrice` and `amount` are stated in: the one
+  /// the charge was copied from — the lease's rent, the fee it charges, or the
+  /// meter reading. A line is never converted into a currency it was not agreed
+  /// in; the invoice adds its lines up in the base currency instead.
+  currency       String             @default("AFN") @db.VarChar(3)
+  /// That currency's rate against the base currency (base units per unit),
+  /// frozen for the invoice's own date when the line was posted.
+  exchangeRate   Decimal            @default(1) @db.Decimal(18, 8)
+  /// `amount` in the base currency at the rate above. Invoice totals are the
+  /// sum of these, so an invoice that mixes currencies still adds up.
+  baseAmount     Decimal            @default(0) @db.Decimal(15, 2)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -718,6 +740,7 @@ model InvoiceItem {
   paymentAllocations   PaymentAllocation[]
 
   @@index([invoiceId])
+  @@index([currency])
 }
 
 model SecurityDepositTransaction {

@@ -2,6 +2,7 @@ const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
 const Decimal = Prisma.Decimal;
+const { fromBase, toBase } = require('../../lib/money');
 const { ensureDefaultAccounts } = require('./financial-account.service');
 const { postJournal } = require('./journal.service');
 const { postTenantLedgerEntry, recalculateBalance, reconcileReceivables } = require('../tenant-accounts/tenant-account.service');
@@ -18,10 +19,17 @@ async function backfillInvoice(tx, invoice) {
     debit: invoice.baseTotal ?? invoice.total, credit: 0,
     currency: invoice.currency, exchangeRate: invoice.exchangeRate,
   });
+  const invoiceRate = new Decimal(invoice.exchangeRate ?? 1);
+  // A line credits income in the invoice's own currency: its base mirror read
+  // back at the rate the invoice was posted at, so an invoice that mixes the
+  // currencies its charges were agreed in still balances.
   const income = invoice.items.reduce((totals, item) => {
     const code = incomeCode[item.type];
     if (!code) return totals;
-    totals[code] = (totals[code] || new Decimal(0)).plus(item.amount);
+    const base = item.baseAmount !== null && item.baseAmount !== undefined
+      ? new Decimal(item.baseAmount)
+      : toBase(item.amount, invoiceRate);
+    totals[code] = (totals[code] || new Decimal(0)).plus(fromBase(base, invoiceRate));
     return totals;
   }, {});
   await postJournal(tx, invoice.organizationId, {

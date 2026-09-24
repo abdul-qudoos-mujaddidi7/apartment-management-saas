@@ -12,6 +12,8 @@ const DEFAULT_ACCOUNTS = [
   ['4010', 'Electricity Income', 'INCOME'],
   ['4020', 'Water Income', 'INCOME'],
   ['4030', 'Gas Income', 'INCOME'],
+  ['4040', 'Service Fee Income', 'INCOME'],
+  ['4090', 'Other Income', 'INCOME'],
   ['5000', 'Building Expenses', 'EXPENSE'],
 ];
 

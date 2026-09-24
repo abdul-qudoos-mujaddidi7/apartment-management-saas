@@ -171,12 +171,19 @@ async function voidJournalWithReversal(client, organizationId, referenceType, re
     },
     include: { lines: true },
   });
-  if (!original || original.status === 'VOIDED') return null;
+  if (!original) return null;
 
-  await client.journal.update({
-    where: { id: original.id },
-    data: { status: 'VOIDED', voidedAt: new Date(), voidReason: description || null },
-  });
+  /*
+   * Keep the original POSTED and post an equal-and-opposite `_VOID` journal.
+   * Account balances exclude VOIDED journals, so marking the original VOIDED
+   * as well would leave only the opposite movement in the books.
+   */
+  if (original.status === 'VOIDED') {
+    await client.journal.update({
+      where: { id: original.id },
+      data: { status: 'POSTED', voidedAt: null, voidReason: null },
+    });
+  }
 
   return postJournal(client, organizationId, {
     transactionDate,

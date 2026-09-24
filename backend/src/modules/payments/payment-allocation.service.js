@@ -6,6 +6,7 @@
 
 const { Prisma } = require('@prisma/client');
 const Decimal = Prisma.Decimal;
+const { fromBase } = require('../../lib/money');
 const { deriveInvoiceFromItems } = require('./payment-allocation-helpers');
 
 /**
@@ -14,7 +15,7 @@ const { deriveInvoiceFromItems } = require('./payment-allocation-helpers');
 async function recalculateInvoice(client, invoiceId) {
   const invoice = await client.invoice.findUnique({
     where: { id: invoiceId },
-    select: { id: true, total: true, dueDate: true, status: true },
+    select: { id: true, total: true, dueDate: true, status: true, exchangeRate: true },
   });
   if (!invoice || invoice.status === 'CANCELLED') return null;
 
@@ -31,19 +32,21 @@ async function recalculateInvoice(client, invoiceId) {
   });
 
   // Total paid across all items, in the invoice's currency and in base.
-  // `appliedAmount` is the invoice-currency figure frozen when each allocation
-  // was made; `amount` is only its fallback for pre-existing rows.
-  let paidAmount = new Decimal(0);
+  //
+  // A line states its own currency, so the figure that spans an invoice at all
+  // is the base one; the invoice-currency total is that read back at the rate
+  // the invoice was posted at, which is what its own `total` is quoted in.
+  // `appliedAmount` and `amount` are fallbacks for rows written before
+  // allocations carried a base mirror.
   let basePaidAmount = new Decimal(0);
   for (const item of items) {
     for (const alloc of item.paymentAllocations) {
       if (alloc.voidedAt) continue;
-      paidAmount = paidAmount.plus(new Decimal(alloc.appliedAmount ?? alloc.amount));
       basePaidAmount = basePaidAmount.plus(new Decimal(alloc.baseAppliedAmount ?? alloc.amount));
     }
   }
-  paidAmount = paidAmount.toDecimalPlaces(2);
   basePaidAmount = basePaidAmount.toDecimalPlaces(2);
+  const paidAmount = fromBase(basePaidAmount, invoice.exchangeRate ?? 1);
 
   const status = deriveStatus(invoice, paidAmount);
 

@@ -1,6 +1,6 @@
 const { z } = require('zod');
 
-const itemTypes = ['RENT', 'ELECTRICITY', 'WATER', 'GAS', 'OTHER'];
+const itemTypes = ['RENT', 'ELECTRICITY', 'WATER', 'GAS', 'SERVICE_FEE', 'OTHER'];
 const invoiceStatuses = ['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED'];
 
 const requiredDate = z
@@ -44,18 +44,17 @@ const datesAreValid = (schema) => schema.refine(
   { path: ['dueDate'], message: 'Due date cannot be before invoice date.' },
 );
 
-// Optional currency: omitted means the organization's base currency, which is
-// what every pre-existing client sends.
-const optionalCurrencyCode = z.preprocess(
-  (value) => (value === '' || value === null || value === undefined ? undefined : value),
-  z.string().trim().length(3).regex(/^[A-Za-z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
-);
-
+/*
+ * There is no currency on the invoice itself any more: every charge is stated in
+ * the currency it was agreed in — the lease's rent currency, the fee's own
+ * currency, the base currency a meter was priced in — and the invoice adds those
+ * lines up in the organization's base currency. A client still sending
+ * `currency` has the field ignored rather than rejected.
+ */
 const createInvoiceSchema = datesAreValid(z.object({
   leaseId: z.string().trim().min(1),
   invoiceDate: requiredDate,
   dueDate: optionalDate,
-  currency: optionalCurrencyCode,
   notes: optionalText,
   items: z.array(invoiceItemSchema).min(1),
 }));
@@ -63,7 +62,6 @@ const createInvoiceSchema = datesAreValid(z.object({
 const updateInvoiceSchema = datesAreValid(z.object({
   invoiceDate: requiredDate.optional(),
   dueDate: optionalDate.optional(),
-  currency: optionalCurrencyCode,
   notes: optionalText,
   items: z.array(invoiceItemSchema).min(1).optional(),
 }).refine((data) => Object.keys(data).length > 0, {
@@ -93,6 +91,7 @@ const listInvoicesSchema = z.object({
 module.exports = {
   createInvoiceSchema,
   invoiceStatuses,
+  itemTypes,
   listInvoicesSchema,
   updateInvoiceSchema,
 };
