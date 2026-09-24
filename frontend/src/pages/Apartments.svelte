@@ -382,6 +382,10 @@
     await push(`/buildings/${floor.building.id}`);
   }
 
+  async function editApartmentAssets(apartment) {
+    await push(`/apartments/${apartment.id}/assets`);
+  }
+
   function statusTone(status) {
     switch (status) {
       case 'AVAILABLE': return 'success';
@@ -450,6 +454,10 @@
                 <button class="row-menu-item" type="button" on:click={() => openEditApartment(apartment)}>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
                   {$locale.common.actions.edit}
+                </button>
+                <button class="row-menu-item" type="button" on:click={() => editApartmentAssets(apartment)}>
+                  <i class="bi bi-box-seam" aria-hidden="true"></i>
+                  {$locale.assets.apartmentTitle}
                 </button>
                 <button class="row-menu-item danger" type="button" on:click={() => removeApartment(apartment)}>
                   <i class="bi bi-trash3" aria-hidden="true"></i>

@@ -68,6 +68,12 @@
   let recordErrors = {};
   let recordForm = emptyRecordForm();
 
+  let apartmentPickerOpen = false;
+  let apartmentPickerError = '';
+  let apartmentPickerFloors = [];
+  let apartmentPickerApartments = [];
+  let apartmentPicker = { buildingId: '', floorId: '', apartmentId: '' };
+
   let assetModalOpen = false;
   let assetEditingId = null;
   let assetError = '';
@@ -268,6 +274,53 @@
 
   function assetLabel(record) {
     return record.asset?.name || '—';
+  }
+
+  // Asset registration belongs to one apartment. Choose that apartment first,
+  // then use its complete asset sheet to add and save one or more items.
+  function openApartmentAssetCreate() {
+    apartmentPickerError = '';
+    apartmentPicker = { buildingId, floorId, apartmentId };
+    apartmentPickerFloors = buildingId ? floors : [];
+    apartmentPickerApartments = floorId ? apartments : [];
+    apartmentPickerOpen = true;
+  }
+
+  function closeApartmentPicker() {
+    apartmentPickerOpen = false;
+    apartmentPickerError = '';
+  }
+
+  async function changePickerBuilding(value) {
+    apartmentPicker = { buildingId: value, floorId: '', apartmentId: '' };
+    apartmentPickerFloors = [];
+    apartmentPickerApartments = [];
+    apartmentPickerError = '';
+    if (!value) return;
+    try {
+      const response = await listFloors({ buildingId: value, pageSize: 100 });
+      apartmentPickerFloors = response.items || [];
+    } catch (error) {
+      apartmentPickerError = error.message || $locale.assets.optionsError;
+    }
+  }
+
+  async function changePickerFloor(value) {
+    apartmentPicker = { ...apartmentPicker, floorId: value, apartmentId: '' };
+    apartmentPickerApartments = [];
+    apartmentPickerError = '';
+    if (!value) return;
+    try {
+      const response = await listApartments({ floorId: value, pageSize: 100 });
+      apartmentPickerApartments = response.items || [];
+    } catch (error) {
+      apartmentPickerError = error.message || $locale.assets.optionsError;
+    }
+  }
+
+  function continueToApartmentAssets() {
+    if (!apartmentPicker.apartmentId) return;
+    push(`/apartments/${apartmentPicker.apartmentId}/assets`);
   }
 
   // --- Record modal ---------------------------------------------------------
@@ -540,7 +593,9 @@
   ariaLabel={$locale.assets.title}
 >
   <svelte:fragment slot="actions">
-    {#if activeTab === 'catalog'}
+    {#if activeTab === 'records'}
+      <ActionButton icon="bi-plus-lg" label={$locale.assets.addApartmentAsset} on:click={openApartmentAssetCreate} />
+    {:else if activeTab === 'catalog'}
       <ActionButton icon="bi-plus-lg" label={$locale.assets.newAsset} on:click={openAssetCreate} />
     {:else if activeTab === 'categories'}
       <ActionButton icon="bi-plus-lg" label={$locale.assets.newCategory} on:click={openCategoryCreate} />
@@ -601,6 +656,8 @@
         minTableWidth="80rem"
         showFooter={!loading && records.length > 0}
       >
+        <ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.assets.addApartmentAsset} on:click={openApartmentAssetCreate} />
+
         <PageToolbar
           slot="toolbar"
           bind:search
@@ -880,6 +937,59 @@
     {/if}
   </svelte:fragment>
 </PageLayout>
+
+<!-- Choose the apartment before opening its multi-item asset sheet. -->
+<Modal
+  bind:open={apartmentPickerOpen}
+  icon="bi-building-add"
+  title={$locale.assets.addApartmentAsset}
+  closeLabel={$locale.assets.cancel}
+  on:close={closeApartmentPicker}
+>
+  {#if apartmentPickerError}
+    <div class="alert alert-danger" role="alert">{apartmentPickerError}</div>
+  {/if}
+
+  <div class="row g-3">
+    <div class="col-12">
+      <label class="form-label" for="asset-building">{$locale.assets.building}</label>
+      <select class="form-select" id="asset-building" value={apartmentPicker.buildingId} on:change={(event) => changePickerBuilding(event.currentTarget.value)}>
+        <option value="">{$locale.assets.selectBuilding}</option>
+        {#each buildings as building (building.id)}
+          <option value={building.id}>{building.name}</option>
+        {/each}
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label class="form-label" for="asset-floor">{$locale.assets.floor}</label>
+      <select class="form-select" id="asset-floor" value={apartmentPicker.floorId} on:change={(event) => changePickerFloor(event.currentTarget.value)} disabled={!apartmentPicker.buildingId}>
+        <option value="">{$locale.assets.selectFloor}</option>
+        {#each apartmentPickerFloors as floor (floor.id)}
+          <option value={floor.id}>{floor.name}</option>
+        {/each}
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label class="form-label" for="asset-apartment">{$locale.assets.apartment}</label>
+      <select class="form-select" id="asset-apartment" bind:value={apartmentPicker.apartmentId} disabled={!apartmentPicker.floorId}>
+        <option value="">{$locale.assets.selectApartment}</option>
+        {#each apartmentPickerApartments as apartment (apartment.id)}
+          <option value={apartment.id}>{apartment.apartmentNumber} · {apartment.name}</option>
+        {/each}
+      </select>
+    </div>
+  </div>
+
+  <div slot="footer">
+    <button class="btn btn-light" type="button" on:click={closeApartmentPicker}>{$locale.assets.cancel}</button>
+    <button class="btn btn-primary" type="button" on:click={continueToApartmentAssets} disabled={!apartmentPicker.apartmentId}>
+      {$locale.assets.continue}
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+    </button>
+  </div>
+</Modal>
 
 <!-- Edit a registered apartment asset -->
 <Modal
