@@ -396,6 +396,7 @@
   bind:open={modalOpen}
   icon="bi-file-earmark-text"
   title={editing ? $locale.leases.edit : $locale.leases.new}
+  description={editing ? $locale.leases.editHint : $locale.leases.newHint}
   busy={saving}
   size="modal-lg"
   closeLabel={$locale.leases.cancel}
@@ -405,21 +406,28 @@
     {#if modalError}
       <div class="alert alert-danger" role="alert">{modalError}</div>
     {/if}
-    <div class="row g-3">
-      <div class="col-md-6">
-        <label class="form-label" for="lease-tenant">{$locale.leases.tenant}</label>
-        <select class="form-select" id="lease-tenant" bind:value={form.tenantId} disabled={optionsLoading} required>
-          <option value="">{$locale.leases.select}</option>
-          {#each tenants as tenant (tenant.id)}
-            <option value={tenant.id}>{tenant.firstName} {tenant.lastName} — {tenant.phone}</option>
-          {/each}
-        </select>
+    <div class="field-grid">
+      <div class="field">
+        <label class="field-label" for="lease-tenant">
+          {$locale.leases.tenant}<span class="field-required" aria-hidden="true">*</span>
+          <span class="visually-hidden">({$locale.common.required})</span>
+        </label>
+        <div class="field-control">
+          <i class="bi bi-person" aria-hidden="true"></i>
+          <select class="form-select" id="lease-tenant" bind:value={form.tenantId} disabled={optionsLoading} required>
+            <option value="">{$locale.leases.select}</option>
+            {#each tenants as tenant (tenant.id)}
+              <option value={tenant.id}>{tenant.firstName} {tenant.lastName} — {tenant.phone}</option>
+            {/each}
+          </select>
+        </div>
       </div>
-      <div class="col-md-6">
+      <div class="field">
         <BuildingSelect
           selectId="lease-building"
           label={$locale.leases.building}
           buildings={buildings}
+          icon="bi-building"
           bind:value={form.buildingId}
           on:change={buildingChanged}
           placeholder={$locale.leases.select}
@@ -427,75 +435,109 @@
           disabled={optionsLoading}
         />
       </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-floor">{$locale.leases.floor}</label>
-        <select class="form-select" id="lease-floor" bind:value={form.floorId} on:change={floorChanged} disabled={!form.buildingId} required>
-          <option value="">{$locale.leases.select}</option>
-          {#each floors as floor (floor.id)}
-            <option value={floor.id}>{floor.name}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-apartment">{$locale.leases.apartment}</label>
-        <select class="form-select" id="lease-apartment" bind:value={form.apartmentId} on:change={apartmentChanged} disabled={!form.floorId} required>
-          <option value="">{$locale.leases.select}</option>
-          {#each apartments as apartment (apartment.id)}
-            <option value={apartment.id} disabled={apartment.status !== 'AVAILABLE' && apartment.id !== editing?.apartment?.id}>
-              {apartment.apartmentNumber} — {apartment.name}
-            </option>
-          {/each}
-        </select>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-contract-number">{$locale.leases.contractNumber}</label>
-        <input class="form-control" id="lease-contract-number" type="text" bind:value={form.contractNumber} required />
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-start-date">{$locale.leases.startDate}</label>
-        <ShamsiDatePicker id="lease-start-date" bind:value={form.startDate} required />
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-end-date">{$locale.leases.endDate}</label>
-        <ShamsiDatePicker id="lease-end-date" bind:value={form.endDate} required />
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-monthly-rent">{$locale.leases.monthlyRent}</label>
-        <div class="input-group money-input">
-          <input class="form-control" id="lease-monthly-rent" type="number" min="0.01" step="0.01" bind:value={form.monthlyRent} required />
-          <select class="form-select currency-select" bind:value={form.currency} aria-label={$locale.leases.rentCurrency}>
-            {#each $activeCurrencies as currency (currency.id)}
-              <option value={currency.code}>{currency.code}</option>
+      <div class="field">
+        <label class="field-label" for="lease-floor">{$locale.leases.floor}</label>
+        <div class="field-control">
+          <i class="bi bi-layers" aria-hidden="true"></i>
+          <select class="form-select" id="lease-floor" bind:value={form.floorId} on:change={floorChanged} disabled={!form.buildingId} required>
+            <option value="">{$locale.leases.select}</option>
+            {#each floors as floor (floor.id)}
+              <option value={floor.id}>{floor.name}</option>
             {/each}
           </select>
         </div>
-        <div class="form-text">{$locale.leases.rentCurrencyHint}</div>
       </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-security-deposit">{$locale.leases.securityDeposit}</label>
-        <div class="input-group money-input">
-          <input class="form-control" id="lease-security-deposit" type="number" min="0" step="0.01" bind:value={form.securityDeposit} required />
-          <select class="form-select currency-select" bind:value={form.securityDepositCurrency} aria-label={$locale.leases.depositCurrency}>
-            {#each $activeCurrencies as currency (currency.id)}
-              <option value={currency.code}>{currency.code}</option>
+      <div class="field">
+        <label class="field-label" for="lease-apartment">{$locale.leases.apartment}</label>
+        <div class="field-control">
+          <i class="bi bi-door-open" aria-hidden="true"></i>
+          <select class="form-select" id="lease-apartment" bind:value={form.apartmentId} on:change={apartmentChanged} disabled={!form.floorId} required>
+            <option value="">{$locale.leases.select}</option>
+            {#each apartments as apartment (apartment.id)}
+              <option value={apartment.id} disabled={apartment.status !== 'AVAILABLE' && apartment.id !== editing?.apartment?.id}>
+                {apartment.apartmentNumber} — {apartment.name}
+              </option>
             {/each}
           </select>
         </div>
-        <div class="form-text">{$locale.leases.depositCurrencyHint}</div>
       </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-payment-due-day">{$locale.leases.paymentDueDay}</label>
-        <input class="form-control" id="lease-payment-due-day" type="number" min="1" max="28" step="1" bind:value={form.paymentDueDay} required />
+      <div class="field">
+        <label class="field-label" for="lease-contract-number">{$locale.leases.contractNumber}</label>
+        <div class="field-control">
+          <i class="bi bi-hash" aria-hidden="true"></i>
+          <input class="form-control" id="lease-contract-number" type="text" placeholder={$locale.leases.contractNumberPlaceholder} bind:value={form.contractNumber} required />
+        </div>
       </div>
-      <div class="col-md-6">
-        <label class="form-label" for="lease-status">{$locale.leases.status}</label>
-        <select class="form-select" id="lease-status" bind:value={form.status}>
-          <option value="DRAFT">{$locale.leases.draft}</option>
-          <option value="ACTIVE">{$locale.leases.active}</option>
-        </select>
+      <div class="field">
+        <label class="field-label" for="lease-start-date">
+          {$locale.leases.startDate}<span class="field-required" aria-hidden="true">*</span>
+          <span class="visually-hidden">({$locale.common.required})</span>
+        </label>
+        <ShamsiDatePicker
+          id="lease-start-date"
+          placeholder={$locale.leases.startDatePrompt}
+          bind:value={form.startDate}
+          required
+        />
       </div>
-      <div class="col-12">
-        <label class="form-label" for="lease-notes">{$locale.leases.notes}</label>
+      <div class="field">
+        <label class="field-label" for="lease-end-date">{$locale.leases.endDate}</label>
+        <ShamsiDatePicker
+          id="lease-end-date"
+          placeholder={$locale.leases.endDatePrompt}
+          bind:value={form.endDate}
+          required
+        />
+      </div>
+      <div class="field">
+        <label class="field-label" for="lease-monthly-rent">{$locale.leases.monthlyRent}</label>
+        <div class="field-control">
+          <i class="bi bi-currency-dollar" aria-hidden="true"></i>
+          <div class="money-control">
+            <input class="form-control" id="lease-monthly-rent" type="number" min="0.01" step="0.01" placeholder={$locale.leases.amountPlaceholder} bind:value={form.monthlyRent} required />
+            <select class="form-select currency-select" bind:value={form.currency} aria-label={$locale.leases.rentCurrency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+        <p class="field-hint">{$locale.leases.rentCurrencyHint}</p>
+      </div>
+      <div class="field">
+        <label class="field-label" for="lease-security-deposit">{$locale.leases.securityDeposit}</label>
+        <div class="field-control">
+          <i class="bi bi-shield-check" aria-hidden="true"></i>
+          <div class="money-control">
+            <input class="form-control" id="lease-security-deposit" type="number" min="0" step="0.01" bind:value={form.securityDeposit} required />
+            <select class="form-select currency-select" bind:value={form.securityDepositCurrency} aria-label={$locale.leases.depositCurrency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+        <p class="field-hint">{$locale.leases.depositCurrencyHint}</p>
+      </div>
+      <div class="field">
+        <label class="field-label" for="lease-payment-due-day">{$locale.leases.paymentDueDay}</label>
+        <div class="field-control">
+          <i class="bi bi-calendar3" aria-hidden="true"></i>
+          <input class="form-control" id="lease-payment-due-day" type="number" min="1" max="28" step="1" bind:value={form.paymentDueDay} required />
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="lease-status">{$locale.leases.status}</label>
+        <div class="field-control">
+          <i class="bi bi-list-ul" aria-hidden="true"></i>
+          <select class="form-select" id="lease-status" bind:value={form.status}>
+            <option value="DRAFT">{$locale.leases.draft}</option>
+            <option value="ACTIVE">{$locale.leases.active}</option>
+          </select>
+        </div>
+      </div>
+      <div class="field field-wide">
+        <label class="field-label" for="lease-notes">{$locale.leases.notes}</label>
         <textarea class="form-control" id="lease-notes" rows="3" bind:value={form.notes}></textarea>
       </div>
     </div>
@@ -510,7 +552,7 @@
 </Modal>
 
 <!-- Detail Modal -->
-<Modal open={Boolean(detail)} title={$locale.leases.details} size="modal-lg" closeLabel={$locale.leases.cancel} on:close={() => (detail = null)}>
+<Modal open={Boolean(detail)} title={$locale.leases.details} description={$locale.leases.description} icon="bi-file-earmark-text" size="modal-lg" closeLabel={$locale.leases.cancel} on:close={() => (detail = null)}>
   {#if detail}
     <div class="detail-grid">
       <div class="detail-item"><span>{$locale.leases.tenant}</span><strong>{detail.tenant.firstName} {detail.tenant.lastName}</strong></div>
@@ -534,7 +576,6 @@
 </Modal>
 
 <style>
-  .money-input .currency-select { flex: 0 0 6.75rem; max-width: 6.75rem; font-weight: var(--weight-semibold); }
   .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
   .detail-item { padding: 0.85rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface-muted); }
   .detail-item > span, .detail-notes > span { display: block; margin-bottom: 0.25rem; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }

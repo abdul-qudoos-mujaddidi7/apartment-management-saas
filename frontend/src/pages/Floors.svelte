@@ -197,22 +197,35 @@
   </svelte:fragment>
 </PageLayout>
 
-<Modal bind:open={modalOpen} title={editingId ? $locale.floors.edit : $locale.floors.add} busy={saving} icon="bi-layers" closeLabel={$locale.floors.cancel} on:close={() => { if (!saving) modalOpen = false; }}>
+<Modal bind:open={modalOpen} title={editingId ? $locale.floors.edit : $locale.floors.add} description={$locale.floors.description} busy={saving} icon="bi-layers" closeLabel={$locale.floors.cancel} on:close={() => { if (!saving) modalOpen = false; }}>
   <form id="floors-form" on:submit|preventDefault={saveFloor}>
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
-    <div class="mb-3">
+    <div class="field">
       <BuildingSelect
         selectId="floor-building"
         label={$locale.buildings.name}
         buildings={buildings}
+        icon="bi-building"
         bind:value={form.buildingId}
         placeholder={$locale.meterReadings.selectBuilding}
         required
         disabled={saving || Boolean(editingId)}
       />
     </div>
-    <div class="mb-3"><label class="form-label" for="floor-number">{$locale.floors.floorNumber}</label><input id="floor-number" class="form-control" type="text" maxlength="32" required pattern=".*\S.*" bind:value={form.floorNumber} disabled={saving} /></div>
-    <div class="mb-3"><label class="form-label" for="floor-name">{$locale.floors.name}</label><input id="floor-name" class="form-control" required pattern=".*\S.*" maxlength="191" bind:value={form.name} disabled={saving} /></div>
+    <div class="field">
+      <label class="field-label" for="floor-number">{$locale.floors.floorNumber}</label>
+      <div class="field-control">
+        <i class="bi bi-123" aria-hidden="true"></i>
+        <input id="floor-number" class="form-control" type="text" maxlength="32" required pattern=".*\S.*" bind:value={form.floorNumber} disabled={saving} />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="floor-name">{$locale.floors.name}</label>
+      <div class="field-control">
+        <i class="bi bi-tag" aria-hidden="true"></i>
+        <input id="floor-name" class="form-control" required pattern=".*\S.*" maxlength="191" bind:value={form.name} disabled={saving} />
+      </div>
+    </div>
   </form>
   <div slot="footer">
     <button class="btn btn-light" type="button" disabled={saving} on:click={() => modalOpen = false}>{$locale.floors.cancel}</button>

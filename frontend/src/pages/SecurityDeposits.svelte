@@ -236,7 +236,7 @@
   </svelte:fragment>
 </PageLayout>
 
-<Modal bind:open={detailOpen} title={$locale.securityDeposits.title} busy={savingTransaction || Boolean(voidingId)} size="modal-xl" icon="bi-shield-check" closeLabel={$locale.securityDeposits.close} on:close={closeDetails}>
+<Modal bind:open={detailOpen} title={$locale.securityDeposits.title} description={$locale.securityDeposits.description} busy={savingTransaction || Boolean(voidingId)} size="modal-xl" icon="bi-shield-check" closeLabel={$locale.securityDeposits.close} on:close={closeDetails}>
   {#if detailLoading && !detail}
     <div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">{$locale.securityDeposits.loading}</span></div></div>
   {:else if detail}
@@ -262,44 +262,59 @@
         <div class="row g-3">
           <div class="col-md-3">
             <label class="form-label" for="transaction-type">{$locale.securityDeposits.type}</label>
-            <select class="form-select" id="transaction-type" bind:value={transaction.type}>
-              <option value="RECEIVED">{$locale.securityDeposits.received}</option>
-              <option value="DEDUCTION">{$locale.securityDeposits.deduction}</option>
-              <option value="REFUND">{$locale.securityDeposits.refund}</option>
-            </select>
+            <div class="field-control">
+              <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+              <select class="form-select" id="transaction-type" bind:value={transaction.type}>
+                <option value="RECEIVED">{$locale.securityDeposits.received}</option>
+                <option value="DEDUCTION">{$locale.securityDeposits.deduction}</option>
+                <option value="REFUND">{$locale.securityDeposits.refund}</option>
+              </select>
+            </div>
           </div>
           {#if transaction.type === 'DEDUCTION'}
             <div class="col-md-3">
               <label class="form-label" for="transaction-reason">{$locale.securityDeposits.reason}</label>
-              <select class="form-select" id="transaction-reason" bind:value={transaction.reason} required>
-                <option value="">{$locale.securityDeposits.chooseReason}</option>
-                {#each deductionReasons as value (value)}
-                  <option value={value}>{$locale.securityDeposits.reasons[value]}</option>
-                {/each}
-              </select>
+              <div class="field-control">
+                <i class="bi bi-question-circle" aria-hidden="true"></i>
+                <select class="form-select" id="transaction-reason" bind:value={transaction.reason} required>
+                  <option value="">{$locale.securityDeposits.chooseReason}</option>
+                  {#each deductionReasons as value (value)}
+                    <option value={value}>{$locale.securityDeposits.reasons[value]}</option>
+                  {/each}
+                </select>
+              </div>
             </div>
           {:else}
             <div class="col-md-3">
               <label class="form-label" for="transaction-account">{$locale.securityDeposits.account}</label>
-              <select class="form-select" id="transaction-account" bind:value={transaction.accountId}>
-                <option value="">{$locale.securityDeposits.defaultAccount}</option>
-                {#each accounts as account (account.id)}
-                  <option value={account.id}>{account.code} — {account.name}</option>
-                {/each}
-              </select>
+              <div class="field-control">
+                <i class="bi bi-journal-bookmark" aria-hidden="true"></i>
+                <select class="form-select" id="transaction-account" bind:value={transaction.accountId}>
+                  <option value="">{$locale.securityDeposits.defaultAccount}</option>
+                  {#each accounts as account (account.id)}
+                    <option value={account.id}>{account.code} — {account.name}</option>
+                  {/each}
+                </select>
+              </div>
             </div>
           {/if}
           <div class="col-md-3">
             <label class="form-label" for="transaction-currency">{$locale.currencies.currency}</label>
-            <select class="form-select" id="transaction-currency" bind:value={transaction.currency}>
-              {#each $activeCurrencies as currency (currency.id)}
-                <option value={currency.code}>{currency.code} — {currency.name}</option>
-              {/each}
-            </select>
+            <div class="field-control">
+              <i class="bi bi-currency-exchange" aria-hidden="true"></i>
+              <select class="form-select" id="transaction-currency" bind:value={transaction.currency}>
+                {#each $activeCurrencies as currency (currency.id)}
+                  <option value={currency.code}>{currency.code} — {currency.name}</option>
+                {/each}
+              </select>
+            </div>
           </div>
           <div class="col-md-3">
             <label class="form-label" for="transaction-amount">{$locale.securityDeposits.amount}</label>
-            <input class="form-control" id="transaction-amount" type="number" inputmode="decimal" min="0.01" step="0.01" bind:value={transaction.amount} required />
+            <div class="field-control">
+              <i class="bi bi-currency-dollar" aria-hidden="true"></i>
+              <input class="form-control" id="transaction-amount" type="number" inputmode="decimal" min="0.01" step="0.01" bind:value={transaction.amount} required />
+            </div>
           </div>
           <div class="col-md-3">
             <label class="form-label" for="transaction-date">{$locale.securityDeposits.date}</label>
@@ -307,7 +322,10 @@
           </div>
           <div class="col-md-3">
             <label class="form-label" for="transaction-reference">{$locale.securityDeposits.reference}</label>
-            <input class="form-control" id="transaction-reference" bind:value={transaction.reference} />
+            <div class="field-control">
+              <i class="bi bi-upc" aria-hidden="true"></i>
+              <input class="form-control" id="transaction-reference" bind:value={transaction.reference} />
+            </div>
           </div>
           <div class="col-12">
             <label class="form-label" for="transaction-notes">{$locale.securityDeposits.notes}</label>

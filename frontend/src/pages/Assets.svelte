@@ -943,6 +943,7 @@
   bind:open={apartmentPickerOpen}
   icon="bi-building-add"
   title={$locale.assets.addApartmentAsset}
+  description={$locale.assets.apartmentDescription}
   closeLabel={$locale.assets.cancel}
   on:close={closeApartmentPicker}
 >
@@ -953,32 +954,41 @@
   <div class="row g-3">
     <div class="col-12">
       <label class="form-label" for="asset-building">{$locale.assets.building}</label>
-      <select class="form-select" id="asset-building" value={apartmentPicker.buildingId} on:change={(event) => changePickerBuilding(event.currentTarget.value)}>
-        <option value="">{$locale.assets.selectBuilding}</option>
-        {#each buildings as building (building.id)}
-          <option value={building.id}>{building.name}</option>
-        {/each}
-      </select>
+      <div class="field-control">
+        <i class="bi bi-building" aria-hidden="true"></i>
+        <select class="form-select" id="asset-building" value={apartmentPicker.buildingId} on:change={(event) => changePickerBuilding(event.currentTarget.value)}>
+          <option value="">{$locale.assets.selectBuilding}</option>
+          {#each buildings as building (building.id)}
+            <option value={building.id}>{building.name}</option>
+          {/each}
+        </select>
+      </div>
     </div>
 
     <div class="col-12">
       <label class="form-label" for="asset-floor">{$locale.assets.floor}</label>
-      <select class="form-select" id="asset-floor" value={apartmentPicker.floorId} on:change={(event) => changePickerFloor(event.currentTarget.value)} disabled={!apartmentPicker.buildingId}>
-        <option value="">{$locale.assets.selectFloor}</option>
-        {#each apartmentPickerFloors as floor (floor.id)}
-          <option value={floor.id}>{floor.name}</option>
-        {/each}
-      </select>
+      <div class="field-control">
+        <i class="bi bi-layers" aria-hidden="true"></i>
+        <select class="form-select" id="asset-floor" value={apartmentPicker.floorId} on:change={(event) => changePickerFloor(event.currentTarget.value)} disabled={!apartmentPicker.buildingId}>
+          <option value="">{$locale.assets.selectFloor}</option>
+          {#each apartmentPickerFloors as floor (floor.id)}
+            <option value={floor.id}>{floor.name}</option>
+          {/each}
+        </select>
+      </div>
     </div>
 
     <div class="col-12">
       <label class="form-label" for="asset-apartment">{$locale.assets.apartment}</label>
-      <select class="form-select" id="asset-apartment" bind:value={apartmentPicker.apartmentId} disabled={!apartmentPicker.floorId}>
-        <option value="">{$locale.assets.selectApartment}</option>
-        {#each apartmentPickerApartments as apartment (apartment.id)}
-          <option value={apartment.id}>{apartment.apartmentNumber} · {apartment.name}</option>
-        {/each}
-      </select>
+      <div class="field-control">
+        <i class="bi bi-door-open" aria-hidden="true"></i>
+        <select class="form-select" id="asset-apartment" bind:value={apartmentPicker.apartmentId} disabled={!apartmentPicker.floorId}>
+          <option value="">{$locale.assets.selectApartment}</option>
+          {#each apartmentPickerApartments as apartment (apartment.id)}
+            <option value={apartment.id}>{apartment.apartmentNumber} · {apartment.name}</option>
+          {/each}
+        </select>
+      </div>
     </div>
   </div>
 
@@ -996,6 +1006,7 @@
   bind:open={recordModalOpen}
   icon="bi-box-seam"
   title={$locale.assets.edit}
+  description={$locale.assets.apartmentDescription}
   busy={saving}
   closeLabel={$locale.assets.cancel}
   on:close={closeRecordModal}
@@ -1008,45 +1019,63 @@
     <div class="row g-3">
       <div class="col-sm-6">
         <label class="form-label" for="record-asset">{$locale.assets.asset}</label>
-        <select class:is-invalid={recordErrors.assetId} class="form-select" id="record-asset" bind:value={recordForm.assetId}>
-          <option value="">{$locale.assets.selectAsset}</option>
-          {#each assetGroups as group (group.label)}
-            {#if group.label}
-              <optgroup label={group.label}>
+        <div class="field-control">
+          <i class="bi bi-box-seam" aria-hidden="true"></i>
+          <select class:is-invalid={recordErrors.assetId} class="form-select" id="record-asset" bind:value={recordForm.assetId}>
+            <option value="">{$locale.assets.selectAsset}</option>
+            {#each assetGroups as group (group.label)}
+              {#if group.label}
+                <optgroup label={group.label}>
+                  {#each group.items as asset (asset.id)}<option value={asset.id}>{asset.name}</option>{/each}
+                </optgroup>
+              {:else}
                 {#each group.items as asset (asset.id)}<option value={asset.id}>{asset.name}</option>{/each}
-              </optgroup>
-            {:else}
-              {#each group.items as asset (asset.id)}<option value={asset.id}>{asset.name}</option>{/each}
-            {/if}
-          {/each}
-        </select>
+              {/if}
+            {/each}
+          </select>
+        </div>
         {#if recordErrors.assetId}<div class="invalid-feedback">{recordErrors.assetId}</div>{/if}
       </div>
       <div class="col-sm-3">
         <label class="form-label" for="record-quantity">{$locale.assets.quantity}</label>
-        <input class:is-invalid={recordErrors.quantity} class="form-control" id="record-quantity" type="number" min="1" step="1" bind:value={recordForm.quantity} />
+        <div class="field-control">
+          <i class="bi bi-123" aria-hidden="true"></i>
+          <input class:is-invalid={recordErrors.quantity} class="form-control" id="record-quantity" type="number" min="1" step="1" bind:value={recordForm.quantity} />
+        </div>
         {#if recordErrors.quantity}<div class="invalid-feedback">{recordErrors.quantity}</div>{/if}
       </div>
       <div class="col-sm-3">
         <label class="form-label" for="record-condition">{$locale.assets.condition}</label>
-        <select class="form-select" id="record-condition" bind:value={recordForm.condition}>
-          {#each conditionKeys as conditionValue (conditionValue)}
-            <option value={conditionValue}>{$locale.assets.conditions[conditionValue]}</option>
-          {/each}
-        </select>
+        <div class="field-control">
+          <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+          <select class="form-select" id="record-condition" bind:value={recordForm.condition}>
+            {#each conditionKeys as conditionValue (conditionValue)}
+              <option value={conditionValue}>{$locale.assets.conditions[conditionValue]}</option>
+            {/each}
+          </select>
+        </div>
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="record-serial">{$locale.assets.serialNumber}</label>
-        <input class:is-invalid={recordErrors.serialNumber} class="form-control" id="record-serial" bind:value={recordForm.serialNumber} />
+        <div class="field-control">
+          <i class="bi bi-upc-scan" aria-hidden="true"></i>
+          <input class:is-invalid={recordErrors.serialNumber} class="form-control" id="record-serial" bind:value={recordForm.serialNumber} />
+        </div>
         {#if recordErrors.serialNumber}<div class="invalid-feedback">{recordErrors.serialNumber}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="record-model">{$locale.assets.modelNumber}</label>
-        <input class="form-control" id="record-model" bind:value={recordForm.modelNumber} />
+        <div class="field-control">
+          <i class="bi bi-tag" aria-hidden="true"></i>
+          <input class="form-control" id="record-model" bind:value={recordForm.modelNumber} />
+        </div>
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="record-value">{$locale.assets.unitValue}</label>
-        <input class:is-invalid={recordErrors.unitValue} class="form-control" id="record-value" type="number" min="0" step="0.01" bind:value={recordForm.unitValue} />
+        <div class="field-control">
+          <i class="bi bi-currency-dollar" aria-hidden="true"></i>
+          <input class:is-invalid={recordErrors.unitValue} class="form-control" id="record-value" type="number" min="0" step="0.01" bind:value={recordForm.unitValue} />
+        </div>
         {#if recordErrors.unitValue}<div class="invalid-feedback">{recordErrors.unitValue}</div>{/if}
       </div>
       <div class="col-12">
@@ -1071,6 +1100,7 @@
   bind:open={assetModalOpen}
   icon="bi-box-seam"
   title={assetEditingId ? $locale.assets.edit : $locale.assets.newAsset}
+  description={$locale.assets.formHint}
   busy={saving}
   closeLabel={$locale.assets.cancel}
   on:close={closeAssetModal}
@@ -1083,25 +1113,37 @@
     <div class="row g-3">
       <div class="col-sm-6">
         <label class="form-label" for="asset-name">{$locale.assets.name}</label>
-        <input class:is-invalid={assetErrors.name} class="form-control" id="asset-name" bind:value={assetForm.name} />
+        <div class="field-control">
+          <i class="bi bi-box-seam" aria-hidden="true"></i>
+          <input class:is-invalid={assetErrors.name} class="form-control" id="asset-name" bind:value={assetForm.name} />
+        </div>
         {#if assetErrors.name}<div class="invalid-feedback">{assetErrors.name}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="asset-category">{$locale.assets.category}</label>
-        <select class="form-select" id="asset-category" bind:value={assetForm.categoryId}>
-          <option value="">{$locale.assets.selectCategory}</option>
-          {#each categories as category (category.id)}
-            <option value={category.id}>{category.name}</option>
-          {/each}
-        </select>
+        <div class="field-control">
+          <i class="bi bi-tags" aria-hidden="true"></i>
+          <select class="form-select" id="asset-category" bind:value={assetForm.categoryId}>
+            <option value="">{$locale.assets.selectCategory}</option>
+            {#each categories as category (category.id)}
+              <option value={category.id}>{category.name}</option>
+            {/each}
+          </select>
+        </div>
       </div>
       <div class="col-sm-4">
         <label class="form-label" for="asset-unit">{$locale.assets.unit}</label>
-        <input class="form-control" id="asset-unit" placeholder={$locale.assets.unitPlaceholder} bind:value={assetForm.unit} />
+        <div class="field-control">
+          <i class="bi bi-rulers" aria-hidden="true"></i>
+          <input class="form-control" id="asset-unit" placeholder={$locale.assets.unitPlaceholder} bind:value={assetForm.unit} />
+        </div>
       </div>
       <div class="col-sm-4">
         <label class="form-label" for="asset-code">{$locale.assets.code}</label>
-        <input class="form-control" id="asset-code" bind:value={assetForm.code} />
+        <div class="field-control">
+          <i class="bi bi-upc" aria-hidden="true"></i>
+          <input class="form-control" id="asset-code" bind:value={assetForm.code} />
+        </div>
       </div>
       <div class="col-12">
         <label class="form-label" for="asset-description">{$locale.assets.description}</label>
@@ -1125,6 +1167,7 @@
   bind:open={categoryModalOpen}
   icon="bi-tags"
   title={categoryEditingId ? $locale.assets.edit : $locale.assets.newCategory}
+  description={$locale.assets.categoryHint}
   busy={saving}
   closeLabel={$locale.assets.cancel}
   on:close={closeCategoryModal}
@@ -1137,7 +1180,10 @@
     <div class="row g-3">
       <div class="col-12">
         <label class="form-label" for="category-name">{$locale.assets.name}</label>
-        <input class:is-invalid={categoryErrors.name} class="form-control" id="category-name" bind:value={categoryForm.name} />
+        <div class="field-control">
+          <i class="bi bi-tags" aria-hidden="true"></i>
+          <input class:is-invalid={categoryErrors.name} class="form-control" id="category-name" bind:value={categoryForm.name} />
+        </div>
         {#if categoryErrors.name}<div class="invalid-feedback">{categoryErrors.name}</div>{/if}
       </div>
       <div class="col-12">

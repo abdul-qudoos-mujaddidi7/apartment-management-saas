@@ -1,5 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+
+  import { locale } from '../../i18n';
   import {
     AFGHAN_MONTHS,
     formatShamsiDate,
@@ -15,6 +17,8 @@
   export let disabled = false;
   export let invalid = false;
   export let ariaLabel = undefined;
+  /** Prompt shown while empty. Defaults to the localized "select a date". */
+  export let placeholder = '';
 
   const dispatch = createEventDispatcher();
   const WEEKDAYS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
@@ -23,6 +27,7 @@
   let viewYear;
   let viewMonth;
 
+  $: promptText = placeholder || $locale.common.selectDate;
   $: selected = gregorianToShamsi(value);
   $: monthLength = viewYear && viewMonth ? shamsiMonthLength(viewYear, viewMonth) : 0;
   $: leadingDays = viewYear && viewMonth ? firstDayOffset(viewYear, viewMonth) : 0;
@@ -90,8 +95,9 @@
     {disabled}
     on:click={showPicker}
   >
-    <span>{value ? formatShamsiDate(value) : 'انتخاب تاریخ شمسی'}</span>
-    <i class="bi bi-calendar3" aria-hidden="true"></i>
+    <i class="bi bi-calendar3 picker-icon" aria-hidden="true"></i>
+    <span>{value ? formatShamsiDate(value) : promptText}</span>
+    <i class="bi bi-calendar3 picker-glyph" aria-hidden="true"></i>
   </button>
 
   {#if open}
@@ -128,9 +134,23 @@
 
 <style>
   .shamsi-picker { position: relative; width: 100%; }
-  .picker-trigger { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 2.75rem; background: var(--bs-body-bg); color: var(--bs-body-color); text-align: start; }
-  .picker-trigger.empty { color: var(--text-muted, #6c757d); }
-  .picker-trigger i { color: var(--text-muted, #6c757d); }
+  /* A date is an ordinary field with a calendar glyph in its leading edge:
+     the same height, the same fill and the same icon slot as every other
+     control, so a form's date rows line up with its text rows. The trigger
+     sits in a row of fields, so its height comes from `.form-control` — the
+     old `min-height` made it taller than the select beside it. */
+  /* No background of its own: the trigger wears `.form-control`, so it takes
+     the surface that class is given — a grey well in a toolbar, a white box in
+     a dialog — instead of holding a second opinion about it. */
+  .picker-trigger { position: relative; display: flex; align-items: center; min-height: 0; padding-inline: 2.6rem; color: var(--bs-body-color); text-align: start; }
+  .picker-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker-trigger.empty { color: var(--text-placeholder, var(--text-muted, #6c757d)); }
+  /* Two glyphs, two jobs: the leading one names the field, the trailing one is
+     the darker “open the calendar” affordance. Both decorative — the button
+     itself carries the label. */
+  .picker-icon, .picker-glyph { position: absolute; inset-block-start: 50%; transform: translateY(-50%); pointer-events: none; }
+  .picker-icon { inset-inline-start: .85rem; color: var(--text-muted, #6c757d); font-size: 1rem; }
+  .picker-glyph { inset-inline-end: .85rem; color: var(--text-muted, #6c757d); font-size: .95rem; }
   .calendar { position: absolute; z-index: 1090; inset-block-start: calc(100% + .4rem); inset-inline-start: 0; width: min(20rem, calc(100vw - 2rem)); padding: .75rem; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-body-bg); color: var(--bs-body-color); box-shadow: 0 .75rem 2rem rgba(0, 0, 0, .18); direction: rtl; }
   .calendar-header { display: grid; grid-template-columns: 2.75rem 1fr 2.75rem; align-items: center; text-align: center; margin-bottom: .5rem; }
   .nav-button, .day, .footer-button { border: 0; background: transparent; color: inherit; }

@@ -112,6 +112,7 @@
   bind:open={ledgerOpen}
   icon="bi-journal-bookmark"
   title={selected ? tenantName(selected) : ''}
+  description={$locale.tenantAccounts.description}
   size="modal-xl"
   closeLabel={$locale.common.close}
   on:close={() => (selected = null)}

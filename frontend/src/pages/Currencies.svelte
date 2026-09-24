@@ -368,25 +368,34 @@
       </div>
       <div class="col-md-4">
         <label class="form-label" for="currency-name">{$locale.currencies.name}</label>
-        <input id="currency-name" class="form-control" bind:value={form.name} />
+        <div class="field-control">
+          <i class="bi bi-tag" aria-hidden="true"></i>
+          <input id="currency-name" class="form-control" bind:value={form.name} />
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label" for="currency-symbol">{$locale.currencies.symbol}</label>
-        <input id="currency-symbol" class="form-control" maxlength="8" bind:value={form.symbol} />
+        <div class="field-control">
+          <i class="bi bi-coin" aria-hidden="true"></i>
+          <input id="currency-symbol" class="form-control" maxlength="8" bind:value={form.symbol} />
+        </div>
       </div>
       {#if !isBaseCode}
         <div class="col-md-6">
           <label class="form-label" for="currency-rate">
             {$locale.currencies.rateLabel.replace('{base}', $baseCurrency)}
           </label>
-          <input
-            id="currency-rate"
-            class="form-control"
-            type="number"
-            min="0.00000001"
-            step="0.00000001"
-            bind:value={form.rate}
-          />
+          <div class="field-control">
+            <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+            <input
+              id="currency-rate"
+              class="form-control"
+              type="number"
+              min="0.00000001"
+              step="0.00000001"
+              bind:value={form.rate}
+            />
+          </div>
           <div class="form-text">{$locale.currencies.rateHint.replace('{base}', $baseCurrency)}</div>
         </div>
         <div class="col-md-6">
@@ -424,7 +433,10 @@
           <label class="form-label" for="rate-value">
             {$locale.currencies.rateLabel.replace('{base}', $baseCurrency)}
           </label>
-          <input id="rate-value" class="form-control" type="number" min="0.00000001" step="0.00000001" bind:value={rateForm.rate} />
+          <div class="field-control">
+            <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+            <input id="rate-value" class="form-control" type="number" min="0.00000001" step="0.00000001" bind:value={rateForm.rate} />
+          </div>
         </div>
         <div class="col-md-6">
           <label class="form-label" for="rate-date">{$locale.currencies.rateDate}</label>
@@ -482,12 +494,15 @@
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
     {#if canChangeBase}
       <label class="form-label" for="base-currency">{$locale.currencies.baseCurrency}</label>
-      <select id="base-currency" class="form-select" bind:value={baseChoice}>
-        <option value="">{$locale.currencies.chooseBase}</option>
-        {#each otherCurrencies as currency (currency.id)}
-          <option value={currency.code}>{currency.code} — {currency.name}</option>
-        {/each}
-      </select>
+      <div class="field-control">
+        <i class="bi bi-sliders" aria-hidden="true"></i>
+        <select id="base-currency" class="form-select" bind:value={baseChoice}>
+          <option value="">{$locale.currencies.chooseBase}</option>
+          {#each otherCurrencies as currency (currency.id)}
+            <option value={currency.code}>{currency.code} — {currency.name}</option>
+          {/each}
+        </select>
+      </div>
       <div class="form-text">{$locale.currencies.baseLockHint}</div>
     {:else}
       <p class="text-muted mb-0">{$locale.currencies.baseLocked}</p>

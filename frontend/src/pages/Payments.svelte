@@ -144,7 +144,7 @@
 </PageLayout>
 
 <!-- Details Modal -->
-<Modal bind:open={detailsOpen} title={detailsPayment ? detailsPayment.paymentNumber : ''} size="modal-lg" closeLabel={$locale.common.close} on:close={closeDetails}>
+<Modal bind:open={detailsOpen} title={detailsPayment ? detailsPayment.paymentNumber : ''} description={$locale.payments.description} icon="bi-cash-stack" size="modal-lg" closeLabel={$locale.common.close} on:close={closeDetails}>
   {#if detailsPayment}
     <dl class="payment-details"><div><dt>{$locale.payments.tenant}</dt><dd>{tenantName(detailsPayment)}</dd></div><div><dt>{$locale.payments.amount}</dt><dd>{formatMoney(detailsPayment.amount, detailsPayment.currency)}</dd></div><div><dt>{$locale.payments.status}</dt><dd><StatusBadge label={paymentLabel(detailsPayment.status)} tone={paymentTone(detailsPayment.status)} /></dd></div><div><dt>{$locale.payments.reference}</dt><dd>{detailsPayment.reference || '—'}</dd></div></dl>
     <h3 class="h6 mt-4">{$locale.payments.allocations}</h3>
@@ -156,7 +156,7 @@
 </Modal>
 
 <!-- Void Modal -->
-<Modal bind:open={voidOpen} title={$locale.payments.void} busy={saving} icon="bi-x-octagon" tone="danger" closeLabel={$locale.payments.cancel} on:close={closeVoid}>
+<Modal bind:open={voidOpen} title={$locale.payments.void} description={$locale.payments.voidHint} busy={saving} icon="bi-x-octagon" tone="danger" closeLabel={$locale.payments.cancel} on:close={closeVoid}>
   <form id="void-payment-form" on:submit|preventDefault={submitVoid} novalidate>
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
     <p>{$locale.payments.confirmVoid}</p>

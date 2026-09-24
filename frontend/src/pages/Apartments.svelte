@@ -478,6 +478,7 @@
   bind:open={modalOpen}
   icon="bi-door-open"
   title={editingId ? $locale.apartments.edit : $locale.apartments.add}
+  description={$locale.apartments.description}
   busy={saving}
   size="modal-lg"
   closeLabel={$locale.apartments.cancel}
@@ -500,56 +501,77 @@
              some floor, so the form asks which one. -->
         <div class="col-12">
           <label class="form-label" for="apartment-floor">{$locale.apartments.floor}</label>
-          <select class:is-invalid={formErrors.floorId} class="form-select" id="apartment-floor" bind:value={formFloorId} on:change={handleFloorChoice} disabled={loadingFloors}>
-            <option value="">{$locale.apartments.chooseFloor}</option>
-            {#each floors as option (option.id)}
-              <option value={option.id}>{option.building?.name ? `${option.building.name} · ${option.name}` : option.name}</option>
-            {/each}
-          </select>
+          <div class="field-control">
+            <i class="bi bi-layers" aria-hidden="true"></i>
+            <select class:is-invalid={formErrors.floorId} class="form-select" id="apartment-floor" bind:value={formFloorId} on:change={handleFloorChoice} disabled={loadingFloors}>
+              <option value="">{$locale.apartments.chooseFloor}</option>
+              {#each floors as option (option.id)}
+                <option value={option.id}>{option.building?.name ? `${option.building.name} · ${option.name}` : option.name}</option>
+              {/each}
+            </select>
+          </div>
           {#if formErrors.floorId}<div class="invalid-feedback">{formErrors.floorId}</div>{/if}
         </div>
       {/if}
       <div class="col-sm-6">
         <label class="form-label" for="apartment-number">{$locale.apartments.apartmentNumber}</label>
-        <input class:is-invalid={formErrors.apartmentNumber} class="form-control" id="apartment-number" bind:value={form.apartmentNumber} />
+        <div class="field-control">
+          <i class="bi bi-123" aria-hidden="true"></i>
+          <input class:is-invalid={formErrors.apartmentNumber} class="form-control" id="apartment-number" bind:value={form.apartmentNumber} />
+        </div>
         {#if formErrors.apartmentNumber}<div class="invalid-feedback">{formErrors.apartmentNumber}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="apartment-name">{$locale.apartments.name}</label>
-        <input class:is-invalid={formErrors.name} class="form-control" id="apartment-name" bind:value={form.name} />
+        <div class="field-control">
+          <i class="bi bi-tag" aria-hidden="true"></i>
+          <input class:is-invalid={formErrors.name} class="form-control" id="apartment-name" bind:value={form.name} />
+        </div>
         {#if formErrors.name}<div class="invalid-feedback">{formErrors.name}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="apartment-type">{$locale.apartments.type}</label>
-        <select class:is-invalid={formErrors.type} class="form-select" id="apartment-type" bind:value={form.type}>
-          <option value="">{$locale.apartments.selectType}</option>
-          {#each Object.keys($locale.apartments.types) as typeValue (typeValue)}
-            <option value={typeValue}>{$locale.apartments.types[typeValue]}</option>
-          {/each}
-        </select>
+        <div class="field-control">
+          <i class="bi bi-tags" aria-hidden="true"></i>
+          <select class:is-invalid={formErrors.type} class="form-select" id="apartment-type" bind:value={form.type}>
+            <option value="">{$locale.apartments.selectType}</option>
+            {#each Object.keys($locale.apartments.types) as typeValue (typeValue)}
+              <option value={typeValue}>{$locale.apartments.types[typeValue]}</option>
+            {/each}
+          </select>
+        </div>
         {#if formErrors.type}<div class="invalid-feedback">{formErrors.type}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="apartment-area">{$locale.apartments.area}</label>
-        <input class:is-invalid={formErrors.area} class="form-control" id="apartment-area" type="number" min="0" step="0.01" bind:value={form.area} />
+        <div class="field-control">
+          <i class="bi bi-rulers" aria-hidden="true"></i>
+          <input class:is-invalid={formErrors.area} class="form-control" id="apartment-area" type="number" min="0" step="0.01" bind:value={form.area} />
+        </div>
         {#if formErrors.area}<div class="invalid-feedback">{formErrors.area}</div>{/if}
       </div>
       <div class="col-sm-6">
         <div class="row g-2">
           <div class="col-7">
             <label class="form-label" for="apartment-rent">{$locale.apartments.monthlyRent}</label>
-            <input class:is-invalid={formErrors.monthlyRent} class="form-control" id="apartment-rent" type="number" min="0" step="0.01" bind:value={form.monthlyRent} />
+            <div class="field-control">
+              <i class="bi bi-currency-dollar" aria-hidden="true"></i>
+              <input class:is-invalid={formErrors.monthlyRent} class="form-control" id="apartment-rent" type="number" min="0" step="0.01" bind:value={form.monthlyRent} />
+            </div>
           </div>
           <div class="col-5">
             <label class="form-label" for="apartment-rent-currency">{$locale.apartments.rentCurrency}</label>
-            <select class:is-invalid={formErrors.rentCurrency} class="form-select" id="apartment-rent-currency" bind:value={form.rentCurrency}>
-              {#each $activeCurrencies as currency (currency.id)}
-                <option value={currency.code}>{currency.code}</option>
-              {/each}
-              {#if !$activeCurrencies.length}
-                <option value={$baseCurrency}>{$baseCurrency}</option>
-              {/if}
-            </select>
+            <div class="field-control">
+              <i class="bi bi-currency-exchange" aria-hidden="true"></i>
+              <select class:is-invalid={formErrors.rentCurrency} class="form-select" id="apartment-rent-currency" bind:value={form.rentCurrency}>
+                {#each $activeCurrencies as currency (currency.id)}
+                  <option value={currency.code}>{currency.code}</option>
+                {/each}
+                {#if !$activeCurrencies.length}
+                  <option value={$baseCurrency}>{$baseCurrency}</option>
+                {/if}
+              </select>
+            </div>
           </div>
         </div>
         {#if formErrors.monthlyRent}<div class="invalid-feedback">{formErrors.monthlyRent}</div>{/if}
@@ -557,11 +579,14 @@
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="apartment-status">{$locale.apartments.status}</label>
-        <select class="form-select" id="apartment-status" bind:value={form.status}>
-          {#each Object.keys($locale.apartments.statuses) as statusValue (statusValue)}
-            <option value={statusValue}>{$locale.apartments.statuses[statusValue]}</option>
-          {/each}
-        </select>
+        <div class="field-control">
+          <i class="bi bi-list-ul" aria-hidden="true"></i>
+          <select class="form-select" id="apartment-status" bind:value={form.status}>
+            {#each Object.keys($locale.apartments.statuses) as statusValue (statusValue)}
+              <option value={statusValue}>{$locale.apartments.statuses[statusValue]}</option>
+            {/each}
+          </select>
+        </div>
       </div>
       <ApartmentSpacesEditor bind:spaces={form.spaces} errors={formErrors.spaces || {}} />
     </div>
@@ -583,7 +608,7 @@
   </div>
 </Modal>
 
-<Modal bind:open={detailsOpen} title={detailsApartment ? `${detailsApartment.apartmentNumber} · ${detailsApartment.name}` : ''} closeLabel={$locale.common.close} on:close={closeDetails}>
+<Modal bind:open={detailsOpen} title={detailsApartment ? `${detailsApartment.apartmentNumber} · ${detailsApartment.name}` : ''} description={$locale.apartments.spaces.description} icon="bi-door-open" size="modal-lg" closeLabel={$locale.common.close} on:close={closeDetails}>
   {#if detailsApartment}
     <div class="details-rent">
       <span>{$locale.apartments.monthlyRent}</span>

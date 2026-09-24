@@ -53,13 +53,13 @@
      that sheet plus the shell wash below, which is why `.app-page` itself is
      transparent rather than painted with `--canvas`.
 
-     The canvas is light grey, not white: a white card on a white page can only
-     be found by its hairline, and every panel, table and form ends up relying
-     on a 1px border to be seen at all. Against #f5f5f5 the cards are white
-     objects on a grey desk — the border becomes a nicety rather than the thing
-     doing the work. The topbar paints from this same token, so the bar and the
-     page below it stay one surface. */
-  --canvas: #f5f5f5;
+     The canvas is a light, faintly cool grey rather than white: a white card on
+     a white page can only be found by its hairline, and every panel, table and
+     form ends up relying on a 1px border to be seen at all. The blue lean is a
+     few points of chroma — enough that the desk reads as the same family as the
+     accent without ever competing with it. The topbar paints from this same
+     token, so the bar and the page below it stay one surface. */
+  --canvas: #f5f7fa;
   --card-border: #eef0f4;
   --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   --card-shadow-raised: 0 2px 8px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
@@ -291,7 +291,10 @@
      sheet's height, so it appears in both the width and the height sums. */
   --modal-gutter: clamp(0.75rem, 2vw, 1.5rem);
   --modal-width: 560px;
-  --modal-width-lg: 760px;
+  /* Wide enough for the two-column field grid a form dialog is laid out on:
+     at ~420px per column a select shows its whole option and a date its whole
+     date, which is what the grid is for. */
+  --modal-width-lg: 920px;
   --modal-width-xl: 1040px;
   --modal-backdrop: rgba(17, 24, 39, 0.55);
   --modal-shadow:
@@ -313,6 +316,13 @@
   --card-radius: 16px;
   --control-height: clamp(2.25rem, 2vw, 2.5rem);
   --control-height-sm: clamp(1.875rem, 1.75vw, 2rem);
+  /* The roomier control a dialog uses. A page is dense — filters and toolbars
+     are scanned, not filled in — while a dialog is the one place the eye
+     moves field by field, so its controls take the taller, easier target.
+     A literal 44px rather than a rem value: this is the one measurement in the
+     system that was chosen on screen rather than derived from the type scale,
+     and it should not shrink with it. */
+  --control-height-dialog: 44px;
   --control-font: clamp(0.8rem, 0.08vw + 0.77rem, 0.86rem);
   --control-radius: 10px;
   --button-height: var(--control-height);

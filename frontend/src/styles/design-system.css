@@ -825,6 +825,17 @@ textarea.form-control {
 .form-control::placeholder { color: var(--text-placeholder); }
 .form-control:hover:not(:disabled) { border-color: var(--border-strong); }
 
+/* A select reserves the trailing room its own chevron is drawn in, so a long
+   option name can never run underneath it. */
+.form-select { padding-inline-end: 2rem; }
+
+/* Bootstrap paints that chevron with a *physical* corner. This app loads both
+   its LTR and its RTL build, so whichever loads last decides the side for both
+   languages — and in Dari and Pashto that put the chevron on the reading-
+   leading edge, directly on top of the field's own glyph. Send it back to the
+   trailing edge, which is the side the padding above was reserved on. */
+[dir='rtl'] .form-select { background-position: left 0.75rem center; }
+
 .form-control:focus,
 .form-select:focus {
   border-color: var(--accent-border);
@@ -902,6 +913,78 @@ textarea.form-control {
 }
 
 .field-grid > .field { margin-block-start: 0; }
+
+/* A field can ask for the whole row — a notes box reads as one column, not as
+   half of a pair with nothing beside it. */
+.field-wide { grid-column: 1 / -1; }
+
+/* A glyph inside the field --------------------------------------------------
+   A dialog's fields each lead with a muted icon, so a column of them can be
+   read at a glance — a person for a tenant, a calendar for a date — without a
+   legend. Wrap the control and nothing else:
+
+     <div class="field-control">
+       <i class="bi bi-person" aria-hidden="true"></i>
+       <select class="form-select" …>…</select>
+     </div>
+
+   The glyph repeats what the label already says, so it is decorative and must
+   stay `aria-hidden`. Everything here is logical (`inset-inline-start`,
+   `padding-inline-start`), so Persian and Pashto get the icon on their own
+   leading edge with no second rule. */
+.field-control { position: relative; }
+
+.field-control > .bi {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0.85rem;
+  transform: translateY(-50%);
+  /* Muted, not the palest grey: the glyph is a quiet label, and at placeholder
+     weight it read as though the field were empty of even its icon. */
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Only the control that *follows* the glyph makes room for it, so a second
+   control in the same wrapper keeps its own padding. */
+.field-control > .bi:first-child + .form-control,
+.field-control > .bi:first-child + .form-select,
+.field-control > .bi:first-child + .money-control > .form-control { padding-inline-start: 2.6rem; }
+
+/* A disabled field's glyph dims with it instead of staying the loudest thing in
+   the row. */
+.field-control:has(> .form-control:disabled) > .bi,
+.field-control:has(> .form-select:disabled) > .bi { opacity: 0.55; }
+
+/* An amount and its currency are one control in two halves: the number, then
+   the currency, meeting on a single hairline that collapses between them.
+
+   Bootstrap's `.input-group` is the obvious tool and the wrong one here: this
+   app ships both its LTR and its RTL build, and their mirrored “square every
+   child but the first / but the last” rules then apply at once — which squares
+   all four outer corners of the pair. Six lines of our own are shorter and
+   direction-proof: logical radii, so the outer corners round on whichever side
+   the language reads from. */
+.money-control { display: flex; align-items: stretch; }
+
+.money-control > .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.money-control > .form-select {
+  /* Wide enough for a three-letter code and the chevron beside it. */
+  flex: 0 0 6.75rem;
+  min-width: 0;
+  margin-inline-start: -1px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  font-weight: var(--weight-semibold);
+}
 
 .form-error-list {
   margin: 6px 0 0;
@@ -1317,40 +1400,54 @@ textarea.form-control {
   max-height: 100%;
   background: var(--surface);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-xl);
+  /* 12px against the 8px of the controls inside it: the sheet reads as a
+     surface *above* them rather than one more box in the grid. */
+  border-radius: var(--radius-lg);
   box-shadow: var(--modal-shadow);
   overflow: hidden;
-  animation: modal-sheet-in 0.18s cubic-bezier(0.2, 0.8, 0.3, 1);
+  /* A dialog is the one place the app has room to breathe: its fields and
+     buttons take the taller control, so a form is read a row at a time
+     instead of scanned like the dense tables behind it. Overriding the two
+     tokens here is what keeps every control — and the `+` beside a select —
+     on that one height without a rule per component. `--button-height`
+     restates it by hand because it is resolved against :root, not inherited
+     through the chain. */
+  --control-height: var(--control-height-dialog);
+  --button-height: var(--control-height-dialog);
+  animation: modal-sheet-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes modal-sheet-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
 
+/* The header names the dialog and nothing else: a soft tile, a bold title and
+   one line of description, with the close control on the trailing edge. */
 .modal-header {
   flex: 0 0 auto;
   align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-5);
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
   border-block-end: 1px solid var(--card-border);
   background: var(--surface);
 }
 
-/* The optional icon chip: a soft accent tile that names the dialog's subject
-   without a second heading. `is-danger` and friends recolor it for a
-   confirmation, so the header carries the warning instead of a red button
-   doing all the talking. */
+/* The dialog's subject as a tile. It reads first — before the title, before
+   the fields — so a popup says what it is at a glance.
+
+   `is-danger` and friends recolor it for a confirmation, so the header carries
+   the warning instead of a red button doing all the talking. */
 .modal-icon {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: var(--radius-lg);
   color: var(--accent-text);
   background: var(--accent-soft);
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .modal-icon.is-success { color: var(--success); background: var(--success-soft); }
@@ -1360,61 +1457,155 @@ textarea.form-control {
 .modal-heading {
   min-width: 0;
   flex: 1 1 auto;
+  /* The title's cap-height lines up with the tile's top edge, so tile and
+     heading read as one block rather than a chip beside a paragraph. */
+  padding-block-start: 1px;
 }
 
 .modal-title {
   margin: 0;
   color: var(--text-strong);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-heavy);
   letter-spacing: var(--tracking-tight);
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .modal-description {
-  margin: 4px 0 0;
+  margin: 5px 0 0;
   color: var(--text-muted);
   font-size: var(--text-sm);
   line-height: 1.5;
 }
 
-/* Bootstrap's close button is a bare glyph with a padded hit area. As a target
-   in a header it should look like one: a fixed square that picks up a grey
-   wash on hover, so it is findable before it is aimed at. */
+/* Bootstrap's close button is a bare glyph over nothing. Here it is a light
+   grey square with a dark cross: a control you can see before you aim at it,
+   and it answers the tile on the opposite edge. */
 .modal-header .btn-close {
   flex: 0 0 auto;
   box-sizing: border-box;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 2.25rem;
+  height: 2.25rem;
   padding: 0;
   margin: 0;
-  background-size: 0.8rem;
-  border-radius: var(--radius-md);
-  opacity: 0.55;
+  background-size: 0.85rem;
+  border-radius: var(--radius-lg);
+  background-color: var(--grey-200);
+  opacity: 1;
   transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .modal-header .btn-close:hover,
 .modal-header .btn-close:focus-visible {
-  background-color: var(--grey-100);
-  opacity: 1;
+  background-color: var(--grey-300);
+}
+
+.modal-header .btn-close:focus-visible {
+  outline: 0;
+  box-shadow: var(--ring);
+}
+
+.modal-header .btn-close:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .modal-body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: var(--space-5);
+  padding: var(--space-6);
   overflow-y: auto;
   /* A dialog body that reaches its end should not hand the scroll on to the
      page behind it. */
   overscroll-behavior: contain;
+  /* A slim bar that only appears as you scroll: a long form should not carry a
+     permanent grey stripe down its edge. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.modal-body::-webkit-scrollbar { width: 10px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+
+.modal-body::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+  background-color: var(--border-strong);
+}
+
+/* One field rhythm for every dialog, whichever markup its page happens to
+   use: Bootstrap's grid (`row g-3`) and the forms' own `.field-grid` both get
+   the same roomy two-column gutter, so fields line up column by column
+   instead of drifting apart dialog by dialog. */
+.modal-body .row { --bs-gutter-x: var(--space-6); --bs-gutter-y: var(--space-5); }
+.modal-body .field-grid { column-gap: var(--space-6); row-gap: var(--space-5); }
+
+.modal-body .field + .field,
+.modal-body .field + .field-grid,
+.modal-body .field-grid + .field,
+.modal-body .field-grid + .field-grid { margin-block-start: var(--space-5); }
+
+/* …but inside a grid the row gap is the *only* space between rows. That
+   stacking margin is for fields listed one after another: on a grid item it
+   does two wrong things at once — it adds to the row gap, and in the first row
+   it lands on the second item alone, so the pair that should share a baseline
+   (Tenant and Building) sits at two different heights. */
+.modal-body .field-grid > .field + .field,
+.modal-body .field-grid > .field + .field-grid,
+.modal-body .field-grid > .field-grid + .field,
+.modal-body .field-grid > .field-grid + .field-grid { margin-block-start: 0; }
+
+/* A dialog labels its fields the same way whichever class its markup uses:
+   the dark 600-weight label of `.field-label`, not Bootstrap's quiet
+   micro-label, which reads as a caption and makes a form look unstyled. */
+.modal-body .form-label {
+  /* Block, not Bootstrap's `inline-block`: an inline-block label sits on a text
+     baseline and so carries ~1px of line-box leading under it, which is enough
+     to drop the control beside it out of line with its neighbour. */
+  display: block;
+  margin-block-end: 8px;
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+
+/* The browser's own stylesheet forces `direction: ltr` on a number input. In
+   Dari that left the amount sitting against the currency at the trailing edge
+   while the glyph and its padding stood empty at the leading one — the field
+   read as two unrelated halves. The digits are unaffected either way; the box
+   around them follows the language. */
+[dir='rtl'] .modal-body input[type='number'] { direction: rtl; }
+
+/* Inside a dialog a control is a *box on a page*, not a well cut into it. The
+   grey well suits a toolbar, where a filter sits flush with the surface around
+   it; a form someone is filling in wants the opposite reading — a white control
+   with a hairline you can see, so each field is legible as a thing to type
+   into. `--border-strong` rather than the page's far fainter `--border`, which
+   all but disappears against white. */
+.modal-body .form-control,
+.modal-body .form-select,
+.modal-body .picker-trigger {
+  border-color: var(--border-strong);
+  background-color: var(--surface);
+}
+
+/* A disabled field keeps the same surface and dims instead — in a lease form
+   the greyed-out Floor is not broken, it is waiting for a Building, and one
+   field painted a different colour reads as a fault rather than a state. */
+.modal-body .form-control:disabled,
+.modal-body .form-select:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .modal-footer {
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-4) var(--space-6);
   border-block-start: 1px solid var(--card-border);
   background: var(--surface);
 }

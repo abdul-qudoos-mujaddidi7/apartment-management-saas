@@ -689,6 +689,7 @@
   bind:open={quickCreateOpen}
   icon="bi-box-seam"
   title={$locale.assets.newAsset}
+  description={$locale.assets.formHint}
   busy={quickCreateSaving}
   closeLabel={$locale.assets.cancel}
   on:close={closeQuickCreate}
@@ -701,17 +702,21 @@
     <div class="row g-3">
       <div class="col-sm-6">
         <label class="form-label" for="quick-asset-name">{$locale.assets.name}</label>
-        <input
-          class:is-invalid={quickCreateErrors.name}
-          class="form-control"
-          id="quick-asset-name"
-          bind:value={quickCreateForm.name}
-        />
+        <div class="field-control">
+          <i class="bi bi-box-seam" aria-hidden="true"></i>
+          <input
+            class:is-invalid={quickCreateErrors.name}
+            class="form-control"
+            id="quick-asset-name"
+            bind:value={quickCreateForm.name}
+          />
+        </div>
         {#if quickCreateErrors.name}<div class="invalid-feedback">{quickCreateErrors.name}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="quick-asset-category">{$locale.assets.category}</label>
-        <div class="modal-control">
+        <div class="field-control modal-control">
+          <i class="bi bi-tags" aria-hidden="true"></i>
           <select class="form-select" id="quick-asset-category" bind:value={quickCreateForm.categoryId}>
             <option value="">{$locale.assets.selectCategory}</option>
             {#each categories as category (category.id)}
@@ -738,16 +743,22 @@
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="quick-asset-unit">{$locale.assets.unit}</label>
-        <input
-          class="form-control"
-          id="quick-asset-unit"
-          placeholder={$locale.assets.unitPlaceholder}
-          bind:value={quickCreateForm.unit}
-        />
+        <div class="field-control">
+          <i class="bi bi-rulers" aria-hidden="true"></i>
+          <input
+            class="form-control"
+            id="quick-asset-unit"
+            placeholder={$locale.assets.unitPlaceholder}
+            bind:value={quickCreateForm.unit}
+          />
+        </div>
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="quick-asset-code">{$locale.assets.code}</label>
-        <input class="form-control" id="quick-asset-code" bind:value={quickCreateForm.code} />
+        <div class="field-control">
+          <i class="bi bi-upc" aria-hidden="true"></i>
+          <input class="form-control" id="quick-asset-code" bind:value={quickCreateForm.code} />
+        </div>
       </div>
     </div>
   </form>
@@ -767,6 +778,7 @@
   bind:open={quickCategoryOpen}
   icon="bi-tags"
   title={$locale.assets.newCategory}
+  description={$locale.assets.categoryHint}
   busy={quickCategorySaving}
   closeLabel={$locale.assets.cancel}
   on:close={closeQuickCategory}
@@ -779,12 +791,15 @@
     <div class="row g-3">
       <div class="col-12">
         <label class="form-label" for="quick-category-name">{$locale.assets.name}</label>
-        <input
-          class:is-invalid={quickCategoryErrors.name}
-          class="form-control"
-          id="quick-category-name"
-          bind:value={quickCategoryForm.name}
-        />
+        <div class="field-control">
+          <i class="bi bi-tags" aria-hidden="true"></i>
+          <input
+            class:is-invalid={quickCategoryErrors.name}
+            class="form-control"
+            id="quick-category-name"
+            bind:value={quickCategoryForm.name}
+          />
+        </div>
         {#if quickCategoryErrors.name}<div class="invalid-feedback">{quickCategoryErrors.name}</div>{/if}
       </div>
       <div class="col-12">

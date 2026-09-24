@@ -159,17 +159,20 @@
         {$locale.buildings.name}<span class="field-required" aria-hidden="true">*</span>
         <span class="visually-hidden">({$locale.common.required})</span>
       </label>
-      <input
-        class:is-invalid={fieldErrors.name}
-        class="form-control"
-        id="building-name"
-        placeholder={$locale.buildings.namePlaceholder}
-        maxlength="191"
-        bind:value={form.name}
-        aria-required="true"
-        aria-invalid={fieldErrors.name ? 'true' : 'false'}
-        aria-describedby="building-name-hint"
-      />
+      <div class="field-control">
+        <i class="bi bi-building" aria-hidden="true"></i>
+        <input
+          class:is-invalid={fieldErrors.name}
+          class="form-control"
+          id="building-name"
+          placeholder={$locale.buildings.namePlaceholder}
+          maxlength="191"
+          bind:value={form.name}
+          aria-required="true"
+          aria-invalid={fieldErrors.name ? 'true' : 'false'}
+          aria-describedby="building-name-hint"
+        />
+      </div>
       <p class="field-hint" id="building-name-hint">{$locale.buildings.nameHint}</p>
       {#if fieldErrors.name}
         <div class="invalid-feedback">{fieldErrors.name}</div>
@@ -182,17 +185,20 @@
           {$locale.buildings.code}<span class="field-required" aria-hidden="true">*</span>
           <span class="visually-hidden">({$locale.common.required})</span>
         </label>
-        <input
-          class:is-invalid={fieldErrors.code}
-          class="form-control"
-          id="building-code"
-          placeholder={$locale.buildings.codePlaceholder}
-          maxlength="64"
-          bind:value={form.code}
-          aria-required="true"
-          aria-invalid={fieldErrors.code ? 'true' : 'false'}
-          aria-describedby="building-code-hint"
-        />
+        <div class="field-control">
+          <i class="bi bi-upc" aria-hidden="true"></i>
+          <input
+            class:is-invalid={fieldErrors.code}
+            class="form-control"
+            id="building-code"
+            placeholder={$locale.buildings.codePlaceholder}
+            maxlength="64"
+            bind:value={form.code}
+            aria-required="true"
+            aria-invalid={fieldErrors.code ? 'true' : 'false'}
+            aria-describedby="building-code-hint"
+          />
+        </div>
         <p class="field-hint" id="building-code-hint">{$locale.buildings.codeHint}</p>
         {#if fieldErrors.code}
           <div class="invalid-feedback">{fieldErrors.code}</div>
@@ -201,10 +207,13 @@
 
       <div class="field">
         <label class="field-label" for="building-status">{$locale.buildings.status}</label>
-        <select class="form-select" id="building-status" bind:value={form.status}>
-          <option value="ACTIVE">{$locale.buildings.active}</option>
-          <option value="INACTIVE">{$locale.buildings.inactive}</option>
-        </select>
+        <div class="field-control">
+          <i class="bi bi-list-ul" aria-hidden="true"></i>
+          <select class="form-select" id="building-status" bind:value={form.status}>
+            <option value="ACTIVE">{$locale.buildings.active}</option>
+            <option value="INACTIVE">{$locale.buildings.inactive}</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -213,17 +222,20 @@
         {$locale.buildings.address}<span class="field-required" aria-hidden="true">*</span>
         <span class="visually-hidden">({$locale.common.required})</span>
       </label>
-      <input
-        class:is-invalid={fieldErrors.address}
-        class="form-control"
-        id="building-address"
-        placeholder={$locale.buildings.addressPlaceholder}
-        maxlength="500"
-        bind:value={form.address}
-        aria-required="true"
-        aria-invalid={fieldErrors.address ? 'true' : 'false'}
-        aria-describedby="building-address-hint"
-      />
+      <div class="field-control">
+        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+        <input
+          class:is-invalid={fieldErrors.address}
+          class="form-control"
+          id="building-address"
+          placeholder={$locale.buildings.addressPlaceholder}
+          maxlength="500"
+          bind:value={form.address}
+          aria-required="true"
+          aria-invalid={fieldErrors.address ? 'true' : 'false'}
+          aria-describedby="building-address-hint"
+        />
+      </div>
       <p class="field-hint" id="building-address-hint">{$locale.buildings.addressHint}</p>
       {#if fieldErrors.address}
         <div class="invalid-feedback">{fieldErrors.address}</div>

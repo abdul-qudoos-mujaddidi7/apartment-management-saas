@@ -441,6 +441,7 @@
   bind:open={modalOpen}
   icon="bi-person-plus"
   title={editingId ? $locale.tenants.edit : $locale.tenants.add}
+  description={$locale.tenants.description}
   busy={saving}
   size="modal-lg"
   closeLabel={$locale.tenants.cancel}
@@ -457,13 +458,16 @@
       <div class="row g-3">
         <div class="col-sm-4">
           <label class="form-label" for="tenant-first-name">{$locale.tenants.firstName}</label>
-          <input
-            class:is-invalid={formErrors.firstName}
-            class="form-control"
-            id="tenant-first-name"
-            autocomplete="given-name"
-            bind:value={form.firstName}
-          />
+          <div class="field-control">
+            <i class="bi bi-person" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.firstName}
+              class="form-control"
+              id="tenant-first-name"
+              autocomplete="given-name"
+              bind:value={form.firstName}
+            />
+          </div>
           {#if formErrors.firstName}
             <div class="invalid-feedback">{formErrors.firstName}</div>
           {/if}
@@ -471,13 +475,16 @@
 
         <div class="col-sm-4">
           <label class="form-label" for="tenant-last-name">{$locale.tenants.lastName}</label>
-          <input
-            class:is-invalid={formErrors.lastName}
-            class="form-control"
-            id="tenant-last-name"
-            autocomplete="family-name"
-            bind:value={form.lastName}
-          />
+          <div class="field-control">
+            <i class="bi bi-person" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.lastName}
+              class="form-control"
+              id="tenant-last-name"
+              autocomplete="family-name"
+              bind:value={form.lastName}
+            />
+          </div>
           {#if formErrors.lastName}
             <div class="invalid-feedback">{formErrors.lastName}</div>
           {/if}
@@ -485,12 +492,15 @@
 
         <div class="col-sm-4">
           <label class="form-label" for="tenant-father-name">{$locale.tenants.fatherName}</label>
-          <input
-            class:is-invalid={formErrors.fatherName}
-            class="form-control"
-            id="tenant-father-name"
-            bind:value={form.fatherName}
-          />
+          <div class="field-control">
+            <i class="bi bi-person-badge" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.fatherName}
+              class="form-control"
+              id="tenant-father-name"
+              bind:value={form.fatherName}
+            />
+          </div>
           {#if formErrors.fatherName}
             <div class="invalid-feedback">{formErrors.fatherName}</div>
           {/if}
@@ -545,14 +555,17 @@
       <div class="row g-3">
         <div class="col-sm-6">
           <label class="form-label" for="tenant-phone">{$locale.tenants.phone}</label>
-          <input
-            class:is-invalid={formErrors.phone}
-            class="form-control"
-            id="tenant-phone"
-            type="tel"
-            autocomplete="tel"
-            bind:value={form.phone}
-          />
+          <div class="field-control">
+            <i class="bi bi-telephone" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.phone}
+              class="form-control"
+              id="tenant-phone"
+              type="tel"
+              autocomplete="tel"
+              bind:value={form.phone}
+            />
+          </div>
           {#if formErrors.phone}
             <div class="invalid-feedback">{formErrors.phone}</div>
           {/if}
@@ -560,13 +573,16 @@
 
         <div class="col-sm-6">
           <label class="form-label" for="tenant-alt-phone">{$locale.tenants.alternatePhone}</label>
-          <input
-            class:is-invalid={formErrors.alternatePhone}
-            class="form-control"
-            id="tenant-alt-phone"
-            type="tel"
-            bind:value={form.alternatePhone}
-          />
+          <div class="field-control">
+            <i class="bi bi-telephone-plus" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.alternatePhone}
+              class="form-control"
+              id="tenant-alt-phone"
+              type="tel"
+              bind:value={form.alternatePhone}
+            />
+          </div>
           {#if formErrors.alternatePhone}
             <div class="invalid-feedback">{formErrors.alternatePhone}</div>
           {/if}
@@ -574,14 +590,17 @@
 
         <div class="col-sm-6">
           <label class="form-label" for="tenant-email">{$locale.tenants.email}</label>
-          <input
-            class:is-invalid={formErrors.email}
-            class="form-control"
-            id="tenant-email"
-            type="email"
-            autocomplete="email"
-            bind:value={form.email}
-          />
+          <div class="field-control">
+            <i class="bi bi-envelope" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.email}
+              class="form-control"
+              id="tenant-email"
+              type="email"
+              autocomplete="email"
+              bind:value={form.email}
+            />
+          </div>
           {#if formErrors.email}
             <div class="invalid-feedback">{formErrors.email}</div>
           {/if}
@@ -589,12 +608,15 @@
 
         <div class="col-sm-6">
           <label class="form-label" for="tenant-national-id">{$locale.tenants.nationalId}</label>
-          <input
-            class:is-invalid={formErrors.nationalId}
-            class="form-control"
-            id="tenant-national-id"
-            bind:value={form.nationalId}
-          />
+          <div class="field-control">
+            <i class="bi bi-person-vcard" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.nationalId}
+              class="form-control"
+              id="tenant-national-id"
+              bind:value={form.nationalId}
+            />
+          </div>
           {#if formErrors.nationalId}
             <div class="invalid-feedback">{formErrors.nationalId}</div>
           {/if}
@@ -602,13 +624,16 @@
 
         <div class="col-12">
           <label class="form-label" for="tenant-address">{$locale.tenants.address}</label>
-          <input
-            class:is-invalid={formErrors.address}
-            class="form-control"
-            id="tenant-address"
-            autocomplete="street-address"
-            bind:value={form.address}
-          />
+          <div class="field-control">
+            <i class="bi bi-geo-alt" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.address}
+              class="form-control"
+              id="tenant-address"
+              autocomplete="street-address"
+              bind:value={form.address}
+            />
+          </div>
           {#if formErrors.address}
             <div class="invalid-feedback">{formErrors.address}</div>
           {/if}
@@ -622,12 +647,15 @@
       <div class="row g-3">
         <div class="col-sm-6">
           <label class="form-label" for="tenant-emergency-name">{$locale.tenants.emergencyContactName}</label>
-          <input
-            class:is-invalid={formErrors.emergencyContactName}
-            class="form-control"
-            id="tenant-emergency-name"
-            bind:value={form.emergencyContactName}
-          />
+          <div class="field-control">
+            <i class="bi bi-person-hearts" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.emergencyContactName}
+              class="form-control"
+              id="tenant-emergency-name"
+              bind:value={form.emergencyContactName}
+            />
+          </div>
           {#if formErrors.emergencyContactName}
             <div class="invalid-feedback">{formErrors.emergencyContactName}</div>
           {/if}
@@ -635,13 +663,16 @@
 
         <div class="col-sm-6">
           <label class="form-label" for="tenant-emergency-phone">{$locale.tenants.emergencyContactPhone}</label>
-          <input
-            class:is-invalid={formErrors.emergencyContactPhone}
-            class="form-control"
-            id="tenant-emergency-phone"
-            type="tel"
-            bind:value={form.emergencyContactPhone}
-          />
+          <div class="field-control">
+            <i class="bi bi-telephone" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.emergencyContactPhone}
+              class="form-control"
+              id="tenant-emergency-phone"
+              type="tel"
+              bind:value={form.emergencyContactPhone}
+            />
+          </div>
           {#if formErrors.emergencyContactPhone}
             <div class="invalid-feedback">{formErrors.emergencyContactPhone}</div>
           {/if}
@@ -649,10 +680,13 @@
 
         <div class="col-sm-6">
           <label class="form-label" for="tenant-status">{$locale.tenants.status}</label>
-          <select class="form-select" id="tenant-status" bind:value={form.status}>
-            <option value="ACTIVE">{$locale.tenants.active}</option>
-            <option value="INACTIVE">{$locale.tenants.inactive}</option>
-          </select>
+          <div class="field-control">
+            <i class="bi bi-list-ul" aria-hidden="true"></i>
+            <select class="form-select" id="tenant-status" bind:value={form.status}>
+              <option value="ACTIVE">{$locale.tenants.active}</option>
+              <option value="INACTIVE">{$locale.tenants.inactive}</option>
+            </select>
+          </div>
         </div>
 
         <div class="col-12">

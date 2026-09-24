@@ -428,7 +428,7 @@
 </PageLayout>
 
 <!-- Entry details -->
-<Modal bind:open={detailsOpen} title={detailsEntry ? detailsEntry.journalNumber : ''} size="modal-lg" closeLabel={$locale.common.close} on:close={closeDetails}>
+<Modal bind:open={detailsOpen} title={detailsEntry ? detailsEntry.journalNumber : ''} description={$locale.journals.detailsHint} size="modal-lg" icon="bi-journal-text" closeLabel={$locale.common.close} on:close={closeDetails}>
   {#if detailsEntry}
     <dl class="journal-details">
       <div><dt>{$locale.journals.date}</dt><dd>{formatShortDate(detailsEntry.transactionDate)}</dd></div>
@@ -477,7 +477,7 @@
 </Modal>
 
 <!-- Create / edit entry -->
-<Modal bind:open={formOpen} title={form.id ? $locale.journals.editEntry : $locale.journals.newEntry} size="modal-xl" busy={saving} icon="bi-journal-text" closeLabel={$locale.common.close} on:close={closeForm}>
+<Modal bind:open={formOpen} title={form.id ? $locale.journals.editEntry : $locale.journals.newEntry} description={$locale.journals.formHint} size="modal-xl" busy={saving} icon="bi-journal-text" closeLabel={$locale.common.close} on:close={closeForm}>
   <form id="journal-entry-form" on:submit|preventDefault={submitForm} novalidate>
     {#if formError}<div class="alert alert-danger" role="alert">{formError}</div>{/if}
 
@@ -488,15 +488,21 @@
       </div>
       <div class="journal-meta-field">
         <label class="form-label" for="journal-entry-currency">{$locale.currencies.currency}</label>
-        <select id="journal-entry-currency" class="form-select" bind:value={form.currency}>
-          {#each $activeCurrencies as currency (currency.id)}
-            <option value={currency.code}>{currency.code} — {currency.name}</option>
-          {/each}
-        </select>
+        <div class="field-control">
+          <i class="bi bi-currency-exchange" aria-hidden="true"></i>
+          <select id="journal-entry-currency" class="form-select" bind:value={form.currency}>
+            {#each $activeCurrencies as currency (currency.id)}
+              <option value={currency.code}>{currency.code} — {currency.name}</option>
+            {/each}
+          </select>
+        </div>
       </div>
       <div class="journal-meta-field">
         <label class="form-label" for="journal-entry-description">{$locale.journals.description}</label>
-        <input id="journal-entry-description" class="form-control" bind:value={form.description} placeholder={$locale.journals.description} autocomplete="off" />
+        <div class="field-control">
+          <i class="bi bi-card-text" aria-hidden="true"></i>
+          <input id="journal-entry-description" class="form-control" bind:value={form.description} placeholder={$locale.journals.description} autocomplete="off" />
+        </div>
       </div>
     </div>
 
@@ -581,7 +587,7 @@
 </Modal>
 
 <!-- Void -->
-<Modal bind:open={voidOpen} title={$locale.journals.void} busy={saving} icon="bi-x-octagon" tone="danger" closeLabel={$locale.journals.cancel} on:close={closeVoid}>
+<Modal bind:open={voidOpen} title={$locale.journals.void} description={$locale.journals.voidHint} busy={saving} icon="bi-x-octagon" tone="danger" closeLabel={$locale.journals.cancel} on:close={closeVoid}>
   <form id="void-journal-form" on:submit|preventDefault={submitVoid} novalidate>
     {#if voidError}<div class="alert alert-danger" role="alert">{voidError}</div>{/if}
     <p>{$locale.journals.confirmVoid}</p>

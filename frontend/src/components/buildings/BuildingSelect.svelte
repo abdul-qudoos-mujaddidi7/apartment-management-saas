@@ -19,6 +19,8 @@
   export let error = '';
   /** Set false where creating a building makes no sense (e.g. a filter). */
   export let allowCreate = true;
+  /** Bootstrap icon class for the glyph in the field's leading edge, e.g. 'bi-building'. */
+  export let icon = '';
 
   const dispatch = createEventDispatcher();
 
@@ -51,22 +53,25 @@
 </label>
 
 <div class="building-select">
-  <select
-    class:is-invalid={invalid}
-    class="form-select"
-    id={selectId}
-    bind:value
-    {disabled}
-    {required}
-    on:change={() => dispatch('change', value)}
-  >
-    {#if placeholder}
-      <option value="">{placeholder}</option>
-    {/if}
-    {#each options as building (building.id)}
-      <option value={building.id}>{building.name}</option>
-    {/each}
-  </select>
+  <div class="field-control">
+    {#if icon}<i class="bi {icon}" aria-hidden="true"></i>{/if}
+    <select
+      class:is-invalid={invalid}
+      class="form-select"
+      id={selectId}
+      bind:value
+      {disabled}
+      {required}
+      on:change={() => dispatch('change', value)}
+    >
+      {#if placeholder}
+        <option value="">{placeholder}</option>
+      {/if}
+      {#each options as building (building.id)}
+        <option value={building.id}>{building.name}</option>
+      {/each}
+    </select>
+  </div>
 
   {#if allowCreate}
     <button
@@ -96,9 +101,15 @@
     align-items: center;
   }
 
-  .building-select .form-select {
+  /* The glyph lives inside the select's wrapper, so the wrapper is what takes
+     the room the + button leaves. */
+  .building-select .field-control {
     flex: 1 1 auto;
     min-width: 0;
+  }
+
+  .building-select .form-select {
+    width: 100%;
   }
 
   /* A quiet square affordance that sits on the control row, so "add a
