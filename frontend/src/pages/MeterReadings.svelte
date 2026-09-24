@@ -18,6 +18,7 @@
   import { formatShortDate } from '../utils/formatters';
   import { AFGHAN_MONTHS, gregorianToShamsi } from '../utils/shamsiDate';
   import { locale, translate } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
@@ -37,7 +38,6 @@
   let loading = false;
   let saving = false;
   let errorMessage = '';
-  let noticeMessage = '';
   let modalError = '';
   let modalOpen = false;
   let editingId = null;
@@ -91,11 +91,11 @@
 
   async function saveReading() {
     if (!validateForm()) return;
-    saving = true; modalError = ''; errorMessage = ''; noticeMessage = '';
+    saving = true; modalError = ''; errorMessage = '';
     const payload = { readingDate: form.readingDate, currentReading: Number(form.currentReading), notes: form.notes.trim() || null };
     try {
-      if (editingId) { await updateMeterReading(editingId, payload); noticeMessage = $locale.meterReadings.updated; }
-      else { await createMeterReading({ meterId: form.meterId, ...payload }); noticeMessage = $locale.meterReadings.saved; }
+      if (editingId) { await updateMeterReading(editingId, payload); notifySuccess($locale.meterReadings.updated); }
+      else { await createMeterReading({ meterId: form.meterId, ...payload }); notifySuccess($locale.meterReadings.saved); }
       resetModal(); await loadReadings(1);
     } catch (error) {
       if (await handleRequestError(error)) return;
@@ -116,8 +116,8 @@
 
   async function removeReading(reading) {
     if (!window.confirm($locale.meterReadings.confirmDelete)) return;
-    errorMessage = ''; noticeMessage = '';
-    try { await deleteMeterReading(reading.id); noticeMessage = $locale.meterReadings.deleted; await loadReadings(readings.length === 1 && pagination.page > 1 ? pagination.page - 1 : pagination.page); }
+    errorMessage = '';
+    try { await deleteMeterReading(reading.id); notifySuccess($locale.meterReadings.deleted); await loadReadings(readings.length === 1 && pagination.page > 1 ? pagination.page - 1 : pagination.page); }
     catch (error) { if (!(await handleRequestError(error)) && error.data?.code === 'METER_READING_ALREADY_BILLED') { errorMessage = $locale.meterReadings.alreadyBilled; } }
   }
 
@@ -185,7 +185,6 @@
 
   <svelte:fragment slot="alerts">
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
   </svelte:fragment>
 
   <svelte:fragment slot="content">

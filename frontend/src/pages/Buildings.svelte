@@ -14,6 +14,7 @@
   import BuildingFormModal from '../components/buildings/BuildingFormModal.svelte';
 
   import { getBuildings, deleteBuilding } from '../services/buildings';
+  import { notifySuccess } from '../stores/toasts';
   import { locale } from '../i18n';
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
@@ -26,7 +27,6 @@
   let search = '';
   let loading = false;
   let errorMessage = '';
-  let noticeMessage = '';
   let requestToken = 0;
 
   // --- Tab filter state ---
@@ -78,14 +78,12 @@
   function openCreate() {
     editing = null;
     errorMessage = '';
-    noticeMessage = '';
     modalOpen = true;
   }
 
   function openEdit(building) {
     editing = building;
     errorMessage = '';
-    noticeMessage = '';
     modalOpen = true;
   }
 
@@ -98,7 +96,7 @@
     const wasEditing = Boolean(editing);
     editing = null;
     errorMessage = '';
-    noticeMessage = $locale.buildings.saved;
+    notifySuccess($locale.buildings.saved);
     // A new row lands on the first page; an edit stays where the user was.
     await loadBuildings(wasEditing ? pagination.page : 1);
   }
@@ -106,10 +104,9 @@
   async function confirmDelete(building) {
     if (!window.confirm($locale.buildings.confirmDelete)) return;
     errorMessage = '';
-    noticeMessage = '';
     try {
       await deleteBuilding(building.id);
-      noticeMessage = $locale.buildings.deleted;
+      notifySuccess($locale.buildings.deleted);
       const page = buildings.length === 1 && pagination.page > 1
         ? pagination.page - 1
         : pagination.page;
@@ -167,9 +164,6 @@
   <svelte:fragment slot="alerts">
     {#if errorMessage}
       <div class="alert alert-danger" role="alert">{errorMessage}</div>
-    {/if}
-    {#if noticeMessage}
-      <div class="alert alert-success" role="status">{noticeMessage}</div>
     {/if}
   </svelte:fragment>
 

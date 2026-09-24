@@ -29,6 +29,7 @@
     locale,
     translate
   } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
 
   export let params = {};
 
@@ -64,7 +65,6 @@
   let saving = false;
 
   let errorMessage = '';
-  let noticeMessage = '';
 
   let modalOpen = false;
   let modalError = '';
@@ -88,8 +88,21 @@
       /* The currency the rent is stated in. Empty means the reporting currency,
          which is what the selector starts on. */
       rentCurrency: '',
+      /* The apartment's own terms, agreed once so every lease raised on it starts
+         from the same figures: the deposit it is let against and the monthly
+         service fee it carries. Empty currency means the reporting currency. */
+      securityDeposit: 0,
+      securityDepositCurrency: '',
+      serviceFee: 0,
+      serviceFeeCurrency: '',
       status: 'AVAILABLE'
     };
+  }
+
+  /* Three amounts, each in its own currency, so a new apartment starts them all
+     on the reporting currency rather than on whatever the last one used. */
+  function currencyDefaults() {
+    return { rentCurrency: $baseCurrency, securityDepositCurrency: $baseCurrency, serviceFeeCurrency: $baseCurrency };
   }
 
   onMount(async () => {
@@ -116,7 +129,6 @@
     floor = null;
     search = '';
     errorMessage = '';
-    noticeMessage = '';
     pagination = { page: 1, pageSize: pagination.pageSize, total: 0, totalPages: 0 };
 
     if (floorId) {
@@ -218,6 +230,8 @@
     });
     if (Object.keys(spaceErrors).length) formErrors.spaces = spaceErrors;
     if (!Number.isFinite(Number(form.monthlyRent)) || Number(form.monthlyRent) < 0) formErrors.monthlyRent = translate('apartments.numberRequired', { field: $locale.apartments.monthlyRent });
+    if (!Number.isFinite(Number(form.securityDeposit)) || Number(form.securityDeposit) < 0) formErrors.securityDeposit = translate('apartments.numberRequired', { field: $locale.apartments.securityDeposit });
+    if (!Number.isFinite(Number(form.serviceFee)) || Number(form.serviceFee) < 0) formErrors.serviceFee = translate('apartments.numberRequired', { field: $locale.apartments.serviceFee });
     return Object.keys(formErrors).length === 0;
   }
 
@@ -227,7 +241,7 @@
     modalError = '';
     formErrors = {};
     formFloorId = floorId || '';
-    form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(floor), rentCurrency: $baseCurrency };
+    form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(floor), ...currencyDefaults() };
     modalOpen = true;
     // Re-read the floors so a floor added in another tab shows up in the picker.
     if (!floorId) void loadFloorOptions();
@@ -252,6 +266,10 @@
       spaces: (apartment.spaces || []).map((space) => ({ name: space.name, quantity: space.quantity })),
       monthlyRent: apartment.monthlyRent,
       rentCurrency: apartment.rentCurrency || '',
+      securityDeposit: apartment.securityDeposit ?? 0,
+      securityDepositCurrency: apartment.securityDepositCurrency || apartment.rentCurrency || '',
+      serviceFee: apartment.serviceFee ?? 0,
+      serviceFeeCurrency: apartment.serviceFeeCurrency || apartment.rentCurrency || '',
       status: apartment.status
     };
     modalOpen = true;
@@ -259,6 +277,16 @@
 
   function closeModal() {
     if (saving) return;
+    closeSavedModal();
+  }
+
+  /* Closing after the save has landed.
+     `closeModal` deliberately refuses while a save is in flight — that guard is
+     what keeps the dialog from vanishing mid-request when Cancel is clicked —
+     but the request is answered by the time this runs, so the dialog an update
+     was made in closes on its own instead of being left for the user to
+     dismiss. */
+  function closeSavedModal() {
     modalOpen = false;
     editingId = null;
     lastSavedApartmentNumber = null;
@@ -300,6 +328,10 @@
       spaces: form.spaces.map((space) => ({ name: space.name.trim(), quantity: Number(space.quantity) })),
       monthlyRent: Number(form.monthlyRent),
       rentCurrency: form.rentCurrency || $baseCurrency,
+      securityDeposit: Number(form.securityDeposit),
+      securityDepositCurrency: form.securityDepositCurrency || $baseCurrency,
+      serviceFee: Number(form.serviceFee),
+      serviceFeeCurrency: form.serviceFeeCurrency || $baseCurrency,
       status: form.status
     };
   }
@@ -313,7 +345,6 @@
     saving = true;
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
 
     try {
       const response = await createApartment({ floorId, ...buildApartmentPayload() });
@@ -330,9 +361,13 @@
       formErrors = { apartmentNumber: $locale.apartments.apartmentNumberExists };
     } else if (error.data?.code === 'FLOOR_NOT_FOUND') {
       modalError = $locale.apartments.notFound;
-    } else if (error.data?.errors?.rentCurrency?.length) {
-      // A currency the workspace does not trade in belongs under that select.
-      formErrors = { ...formErrors, rentCurrency: error.data.errors.rentCurrency[0] };
+    } else if (error.data?.errors?.rentCurrency?.length
+      || error.data?.errors?.securityDepositCurrency?.length
+      || error.data?.errors?.serviceFeeCurrency?.length) {
+      // A currency the workspace does not trade in belongs under its own select.
+      const field = ['rentCurrency', 'securityDepositCurrency', 'serviceFeeCurrency']
+        .find((name) => error.data.errors[name]?.length);
+      formErrors = { ...formErrors, [field]: error.data.errors[field][0] };
     } else {
       modalError = error.message;
     }
@@ -343,22 +378,27 @@
     saving = true;
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
     const payload = buildApartmentPayload();
     try {
       if (editingId) {
         await updateApartment(editingId, payload);
-        noticeMessage = $locale.apartments.updated;
-        closeModal();
+        notifySuccess($locale.apartments.updated);
+        closeSavedModal();
         await loadApartments(pagination.page);
       } else {
         const targetFloorId = floorId || formFloorId;
         if (!targetFloorId) { modalError = translate('apartments.required', { field: $locale.apartments.floor }); return; }
         const response = await createApartment({ floorId: targetFloorId, ...payload });
-        noticeMessage = $locale.apartments.saved;
+        notifySuccess($locale.apartments.saved);
         lastSavedApartmentNumber = response.apartment.apartmentNumber;
         await loadApartments(1);
-        form = { ...emptyForm(), apartmentNumber: nextApartmentNumber(floor ?? floors.find((option) => option.id === formFloorId) ?? null), rentCurrency: payload.rentCurrency };
+        form = {
+      ...emptyForm(),
+      apartmentNumber: nextApartmentNumber(floor ?? floors.find((option) => option.id === formFloorId) ?? null),
+      rentCurrency: payload.rentCurrency,
+      securityDepositCurrency: payload.securityDepositCurrency,
+      serviceFeeCurrency: payload.serviceFeeCurrency,
+    };
       }
     } catch (error) {
       applyModalError(error);
@@ -368,10 +408,9 @@
   async function removeApartment(apartment) {
     if (!window.confirm($locale.apartments.confirmDelete)) return;
     errorMessage = '';
-    noticeMessage = '';
     try {
       await deleteApartment(apartment.id);
-      noticeMessage = $locale.apartments.deleted;
+      notifySuccess($locale.apartments.deleted);
       const page = apartments.length === 1 && pagination.page > 1 ? pagination.page - 1 : pagination.page;
       await loadApartments(page);
     } catch (error) { errorMessage = error.message; }
@@ -433,7 +472,6 @@
 
   <svelte:fragment slot="alerts">
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
   </svelte:fragment>
 
   <svelte:fragment slot="content">
@@ -550,32 +588,67 @@
         </div>
         {#if formErrors.area}<div class="invalid-feedback">{formErrors.area}</div>{/if}
       </div>
+      <!-- The amount and its currency are one field, as on a lease: the number
+           on the left, the code it is read in on the right, one border around
+           both. -->
       <div class="col-sm-6">
-        <div class="row g-2">
-          <div class="col-7">
-            <label class="form-label" for="apartment-rent">{$locale.apartments.monthlyRent}</label>
-            <div class="field-control">
-              <i class="bi bi-currency-dollar" aria-hidden="true"></i>
-              <input class:is-invalid={formErrors.monthlyRent} class="form-control" id="apartment-rent" type="number" min="0" step="0.01" bind:value={form.monthlyRent} />
-            </div>
-          </div>
-          <div class="col-5">
-            <label class="form-label" for="apartment-rent-currency">{$locale.apartments.rentCurrency}</label>
-            <div class="field-control">
-              <i class="bi bi-currency-exchange" aria-hidden="true"></i>
-              <select class:is-invalid={formErrors.rentCurrency} class="form-select" id="apartment-rent-currency" bind:value={form.rentCurrency}>
-                {#each $activeCurrencies as currency (currency.id)}
-                  <option value={currency.code}>{currency.code}</option>
-                {/each}
-                {#if !$activeCurrencies.length}
-                  <option value={$baseCurrency}>{$baseCurrency}</option>
-                {/if}
-              </select>
-            </div>
+        <label class="form-label" for="apartment-rent">{$locale.apartments.monthlyRent}</label>
+        <div class="field-control">
+          <i class="bi bi-currency-dollar" aria-hidden="true"></i>
+          <div class="money-control">
+            <input class:is-invalid={formErrors.monthlyRent} class="form-control" id="apartment-rent" type="number" min="0" step="0.01" bind:value={form.monthlyRent} />
+            <select class:is-invalid={formErrors.rentCurrency} class="form-select currency-select" id="apartment-rent-currency" bind:value={form.rentCurrency} aria-label={$locale.apartments.rentCurrency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code}</option>
+              {/each}
+              {#if !$activeCurrencies.length}
+                <option value={$baseCurrency}>{$baseCurrency}</option>
+              {/if}
+            </select>
           </div>
         </div>
         {#if formErrors.monthlyRent}<div class="invalid-feedback">{formErrors.monthlyRent}</div>{/if}
         {#if formErrors.rentCurrency}<div class="invalid-feedback">{formErrors.rentCurrency}</div>{/if}
+      </div>
+      <!-- The apartment's own terms. Recorded here once, so a lease raised on it
+           starts from the agreed deposit instead of being retyped each time. -->
+      <div class="col-sm-6">
+        <label class="form-label" for="apartment-deposit">{$locale.apartments.securityDeposit}</label>
+        <div class="field-control">
+          <i class="bi bi-shield-check" aria-hidden="true"></i>
+          <div class="money-control">
+            <input class:is-invalid={formErrors.securityDeposit} class="form-control" id="apartment-deposit" type="number" min="0" step="0.01" bind:value={form.securityDeposit} />
+            <select class:is-invalid={formErrors.securityDepositCurrency} class="form-select currency-select" id="apartment-deposit-currency" bind:value={form.securityDepositCurrency} aria-label={$locale.apartments.depositCurrency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code}</option>
+              {/each}
+              {#if !$activeCurrencies.length}
+                <option value={$baseCurrency}>{$baseCurrency}</option>
+              {/if}
+            </select>
+          </div>
+        </div>
+        {#if formErrors.securityDeposit}<div class="invalid-feedback">{formErrors.securityDeposit}</div>{/if}
+        {#if formErrors.securityDepositCurrency}<div class="invalid-feedback">{formErrors.securityDepositCurrency}</div>{/if}
+      </div>
+      <div class="col-sm-6">
+        <label class="form-label" for="apartment-service-fee">{$locale.apartments.serviceFee}</label>
+        <div class="field-control">
+          <i class="bi bi-tools" aria-hidden="true"></i>
+          <div class="money-control">
+            <input class:is-invalid={formErrors.serviceFee} class="form-control" id="apartment-service-fee" type="number" min="0" step="0.01" bind:value={form.serviceFee} />
+            <select class:is-invalid={formErrors.serviceFeeCurrency} class="form-select currency-select" id="apartment-service-fee-currency" bind:value={form.serviceFeeCurrency} aria-label={$locale.apartments.serviceFeeCurrency}>
+              {#each $activeCurrencies as currency (currency.id)}
+                <option value={currency.code}>{currency.code}</option>
+              {/each}
+              {#if !$activeCurrencies.length}
+                <option value={$baseCurrency}>{$baseCurrency}</option>
+              {/if}
+            </select>
+          </div>
+        </div>
+        {#if formErrors.serviceFee}<div class="invalid-feedback">{formErrors.serviceFee}</div>{/if}
+        {#if formErrors.serviceFeeCurrency}<div class="invalid-feedback">{formErrors.serviceFeeCurrency}</div>{/if}
       </div>
       <div class="col-sm-6">
         <label class="form-label" for="apartment-status">{$locale.apartments.status}</label>
@@ -610,9 +683,19 @@
 
 <Modal bind:open={detailsOpen} title={detailsApartment ? `${detailsApartment.apartmentNumber} · ${detailsApartment.name}` : ''} description={$locale.apartments.spaces.description} icon="bi-door-open" size="modal-lg" closeLabel={$locale.common.close} on:close={closeDetails}>
   {#if detailsApartment}
-    <div class="details-rent">
-      <span>{$locale.apartments.monthlyRent}</span>
-      <strong>{formatMoney(detailsApartment.monthlyRent, detailsApartment.rentCurrency)}</strong>
+    <div class="details-terms">
+      <div>
+        <span>{$locale.apartments.monthlyRent}</span>
+        <strong>{formatMoney(detailsApartment.monthlyRent, detailsApartment.rentCurrency)}</strong>
+      </div>
+      <div>
+        <span>{$locale.apartments.securityDeposit}</span>
+        <strong>{formatMoney(detailsApartment.securityDeposit || 0, detailsApartment.securityDepositCurrency || detailsApartment.rentCurrency)}</strong>
+      </div>
+      <div>
+        <span>{$locale.apartments.serviceFee}</span>
+        <strong>{formatMoney(detailsApartment.serviceFee || 0, detailsApartment.serviceFeeCurrency || detailsApartment.rentCurrency)}</strong>
+      </div>
     </div>
     <section aria-labelledby="apartment-spaces-details">
       <h3 class="details-heading" id="apartment-spaces-details">{$locale.apartments.spaces.title}</h3>
@@ -645,9 +728,13 @@
     gap: 0.4rem;
   }
   :global([dir='rtl']) .save-continue i { transform: rotate(180deg); }
-  .details-rent { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-block-end: .9rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface-subtle); }
-  .details-rent span { color: var(--text-secondary); font-size: .85rem; }
-  .details-rent strong { font-size: .95rem; }
+  /* Rent, deposit and service fee read as one band of the apartment's terms
+     rather than as three stacked cards. */
+  .details-terms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-block-end: .9rem; }
+  .details-terms > div { display: grid; gap: .2rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface-subtle); }
+  .details-terms span { color: var(--text-secondary); font-size: .8rem; }
+  .details-terms strong { font-size: .95rem; }
+  @media (max-width: 575px) { .details-terms { grid-template-columns: 1fr; } }
   .details-heading { margin: 0 0 .75rem; font-size: .95rem; font-weight: 700; }
   .details-spaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
   .details-space { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface-subtle); }

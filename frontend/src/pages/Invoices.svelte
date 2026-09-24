@@ -19,6 +19,7 @@
   import ReceivePaymentModal from '../components/payments/ReceivePaymentModal.svelte';
   import { locale, translate } from '../i18n';
   import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
+  import { notifySuccess } from '../stores/toasts';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney, formatShortDate } from '../utils/formatters';
@@ -53,7 +54,6 @@
   let loading = false;
   let saving = false;
   let errorMessage = '';
-  let noticeMessage = '';
   let modalError = '';
   let modalOpen = false;
   let detailsOpen = false;
@@ -153,11 +153,11 @@
 
   async function saveInvoice() {
     if (!validateForm()) return;
-    saving = true; modalError = ''; errorMessage = ''; noticeMessage = '';
+    saving = true; modalError = ''; errorMessage = '';
     const payload = { invoiceDate: form.invoiceDate, dueDate: form.dueDate || null, currency: formCurrency, notes: form.notes.trim() || null, items: form.items.map((item) => ({ type: item.type, description: item.description.trim(), quantity: Number(item.quantity), unitPrice: Number(item.unitPrice) })) };
     try {
-      if (editingId) { await updateInvoice(editingId, payload); noticeMessage = $locale.invoices.updated; }
-      else { await createInvoice({ leaseId: form.leaseId, ...payload }); noticeMessage = $locale.invoices.saved; }
+      if (editingId) { await updateInvoice(editingId, payload); notifySuccess($locale.invoices.updated); }
+      else { await createInvoice({ leaseId: form.leaseId, ...payload }); notifySuccess($locale.invoices.saved); }
       resetModal(); await loadInvoices(1);
     } catch (error) {
       if (await handleRequestError(error)) return;
@@ -168,15 +168,15 @@
 
   async function removeInvoice(invoice) {
     if (!window.confirm($locale.invoices.confirmDelete)) return;
-    errorMessage = ''; noticeMessage = '';
-    try { await deleteInvoice(invoice.id); noticeMessage = $locale.invoices.deleted; await loadInvoices(invoices.length === 1 && pagination.page > 1 ? pagination.page - 1 : pagination.page); }
+    errorMessage = '';
+    try { await deleteInvoice(invoice.id); notifySuccess($locale.invoices.deleted); await loadInvoices(invoices.length === 1 && pagination.page > 1 ? pagination.page - 1 : pagination.page); }
     catch (error) { await handleRequestError(error); }
   }
 
   async function cancelExistingInvoice(invoice) {
     if (!window.confirm($locale.invoices.confirmCancel)) return;
-    errorMessage = ''; noticeMessage = '';
-    try { await cancelInvoice(invoice.id); noticeMessage = $locale.invoices.cancelledSuccess; await loadInvoices(pagination.page); }
+    errorMessage = '';
+    try { await cancelInvoice(invoice.id); notifySuccess($locale.invoices.cancelledSuccess); await loadInvoices(pagination.page); }
     catch (error) { await handleRequestError(error); }
   }
 
@@ -230,7 +230,6 @@
 
   <svelte:fragment slot="alerts">
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
   </svelte:fragment>
 
   <svelte:fragment slot="content">
@@ -316,7 +315,7 @@
   </div>
 </Modal>
 
-<ReceivePaymentModal open={paymentModalOpen} invoice={paymentInvoice} on:close={closeReceivePayment} on:saved={async () => { noticeMessage = $locale.payments.saved; closeReceivePayment(); await loadInvoices(pagination.page); }} />
+<ReceivePaymentModal open={paymentModalOpen} invoice={paymentInvoice} on:close={closeReceivePayment} on:saved={async () => { notifySuccess($locale.payments.saved); closeReceivePayment(); await loadInvoices(pagination.page); }} />
 
 <style>
   .cell-sub { display: block; color: var(--text-muted); font-size: var(--text-xs); font-weight: var(--weight-medium); }

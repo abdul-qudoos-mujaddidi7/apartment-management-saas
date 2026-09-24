@@ -20,6 +20,7 @@
   import { listFinancialAccounts } from '../services/financialAccounts';
   import { locale } from '../i18n';
   import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
+  import { notifySuccess } from '../stores/toasts';
   import { sortRows } from '../utils/sortRows';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
@@ -45,7 +46,6 @@
   let search = '';
   let loading = false;
   let errorMessage = '';
-  let noticeMessage = '';
 
   let detail = null;
   let detailOpen = false;
@@ -122,7 +122,7 @@
         reference: transaction.reference.trim() || null,
         notes: transaction.notes.trim() || null,
       });
-      noticeMessage = $locale.securityDeposits.transactionSaved;
+      notifySuccess($locale.securityDeposits.transactionSaved);
       await openDetails(detail.lease.id);
       await loadDeposits();
     } catch (error) { transactionError = error.message; }
@@ -136,7 +136,7 @@
     voidingId = id;
     try {
       await voidSecurityDepositTransaction(id, voidReason);
-      noticeMessage = $locale.securityDeposits.transactionVoided;
+      notifySuccess($locale.securityDeposits.transactionVoided);
       await openDetails(detail.lease.id);
       await loadDeposits();
     } catch (error) { transactionError = error.message; }
@@ -180,7 +180,6 @@
 
   <svelte:fragment slot="alerts">
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
   </svelte:fragment>
 
   <svelte:fragment slot="content">

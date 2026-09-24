@@ -15,6 +15,7 @@
   import { sortRows } from '../utils/sortRows';
   import { getBuildings } from '../services/buildings';
   import { listFloors, createFloor, updateFloor, deleteFloor } from '../services/floors';
+  import { notifySuccess } from '../stores/toasts';
 
   let floors = [];
   let sort = { key: null, dir: 'asc' };
@@ -24,7 +25,6 @@
   let buildingId = '';
   let loading = true;
   let errorMessage = '';
-  let noticeMessage = '';
   let pagination = { page: 1, pageSize: 10, totalPages: 0 };
   let requestToken = 0;
   let modalOpen = false;
@@ -82,12 +82,11 @@
     if (saving) return;
     saving = true;
     modalError = '';
-    noticeMessage = '';
     try {
       const payload = { buildingId: form.buildingId, floorNumber: String(form.floorNumber).trim(), name: form.name.trim() };
       if (editingId) await updateFloor(editingId, payload);
       else await createFloor(payload);
-      noticeMessage = editingId ? $locale.floors.updated : $locale.floors.saved;
+      notifySuccess(editingId ? $locale.floors.updated : $locale.floors.saved);
       modalOpen = false;
       await loadFloors(editingId ? pagination.page : 1);
     } catch (error) {
@@ -99,11 +98,10 @@
 
   async function removeFloor(floor) {
     if (!window.confirm($locale.floors.confirmDelete)) return;
-    noticeMessage = '';
     errorMessage = '';
     try {
       await deleteFloor(floor.id);
-      noticeMessage = $locale.floors.deleted;
+      notifySuccess($locale.floors.deleted);
       await loadFloors(floors.length === 1 ? Math.max(1, pagination.page - 1) : pagination.page);
     } catch (error) {
       errorMessage = error.message;
@@ -151,7 +149,6 @@
   </svelte:fragment>
   <svelte:fragment slot="alerts">
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
   </svelte:fragment>
   <svelte:fragment slot="content">
     <DataTable {loading} isEmpty={floors.length === 0} loadingLabel={$locale.floors.loading} emptyLabel={$locale.floors.empty} emptyIcon="bi-layers" minTableWidth="40rem" sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>

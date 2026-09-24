@@ -3,6 +3,7 @@
   import { locale } from '../../i18n';
   import Sidebar from '../Sidebar.svelte';
   import Topbar from './Topbar.svelte';
+  import ToastStack from '../ui/ToastStack.svelte';
 
   let navigationOpen = false;
 </script>
@@ -25,3 +26,7 @@
     </main>
   </div>
 </div>
+
+<!-- One stack for the whole shell: a confirmation survives the navigation that
+     follows the action that raised it. -->
+<ToastStack />

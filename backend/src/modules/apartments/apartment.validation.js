@@ -51,11 +51,32 @@ const apartmentFields = {
   spaces: spacesSchema.optional(),
   monthlyRent: z.coerce.number().min(0).max(1000000000),
   /*
-   * The currency the rent is stated in. Empty or absent means the organization's
-   * reporting currency, so a client that does not send one keeps working; the
-   * service rejects a code the organization does not trade in.
+   * The currency an amount on the apartment is stated in. Empty or absent means
+   * the organization's reporting currency, so a client that does not send one
+   * keeps working; the service rejects a code the organization does not trade
+   * in. Three amounts on an apartment may each be stated in their own currency —
+   * a deposit is routinely agreed in a different one from the rent.
    */
   rentCurrency: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined
+      ? undefined
+      : String(value).trim().toUpperCase()),
+    z.string().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
+  ),
+  /*
+   * The deposit the apartment is let against, and the service fee it carries.
+   * Both are optional and default to zero on a new apartment, so an existing
+   * client that knows nothing about them keeps working.
+   */
+  securityDeposit: z.coerce.number().min(0).max(1000000000),
+  securityDepositCurrency: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined
+      ? undefined
+      : String(value).trim().toUpperCase()),
+    z.string().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
+  ),
+  serviceFee: z.coerce.number().min(0).max(1000000000),
+  serviceFeeCurrency: z.preprocess(
     (value) => (value === '' || value === null || value === undefined
       ? undefined
       : String(value).trim().toUpperCase()),
@@ -75,6 +96,8 @@ const createApartmentSchema = z.object({
   bedrooms: apartmentFields.bedrooms.default(0),
   bathrooms: apartmentFields.bathrooms.default(0),
   monthlyRent: apartmentFields.monthlyRent.default(0),
+  securityDeposit: apartmentFields.securityDeposit.default(0),
+  serviceFee: apartmentFields.serviceFee.default(0),
   status: apartmentFields.status.default('AVAILABLE'),
 });
 

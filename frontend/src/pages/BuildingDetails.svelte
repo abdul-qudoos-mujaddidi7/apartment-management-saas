@@ -14,13 +14,14 @@
   import { api } from '../services/api';
   import { createFloor, deleteFloor, listFloors, updateFloor } from '../services/floors';
   import { language, locale, translate } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
 
   export let params = {};
   let buildingId, building, editingId = null;
   let floors = [], search = '', loadingBuilding = false, loadingFloors = false;
   let sort = { key: null, dir: 'asc' };
   $: view = sortRows(floors, sort.key, sort.dir);
-  let errorMessage = '', noticeMessage = '', modalError = '';
+  let errorMessage = '', modalError = '';
   let modalOpen = false, saving = false, lastSavedFloorNumber = null;
   let formErrors = {}, form = { floorNumber: '', name: '' };
   /* The list is paged by the server, so this page holds one page of floors and
@@ -113,18 +114,18 @@
   function closeModal() { if (saving) return; modalOpen = false; editingId = null; lastSavedFloorNumber = null; modalError = ''; formErrors = {}; }
   async function saveFloor() {
     if (!validateForm()) return;
-    saving = true; modalError = ''; errorMessage = ''; noticeMessage = '';
+    saving = true; modalError = ''; errorMessage = '';
     const payload = { floorNumber: String(form.floorNumber).trim(), name: form.name.trim() };
     try {
-      if (editingId) { await updateFloor(editingId, payload); noticeMessage = $locale.floors.updated; closeModal(); await refresh(); }
-      else { const response = await createFloor({ buildingId, ...payload }); noticeMessage = $locale.floors.saved; lastSavedFloorNumber = response.floor.floorNumber; await refresh(); form = { floorNumber: nextFloorNumber(), name: '' }; }
+      if (editingId) { await updateFloor(editingId, payload); notifySuccess($locale.floors.updated); closeModal(); await refresh(); }
+      else { const response = await createFloor({ buildingId, ...payload }); notifySuccess($locale.floors.saved); lastSavedFloorNumber = response.floor.floorNumber; await refresh(); form = { floorNumber: nextFloorNumber(), name: '' }; }
     } catch (error) { if (error.data?.code === 'FLOOR_NUMBER_EXISTS') formErrors = { floorNumber: $locale.floors.floorNumberExists }; else modalError = error.message; }
     finally { saving = false; }
   }
   async function removeFloor(floor) {
     if (!window.confirm($locale.floors.confirmDelete)) return;
-    errorMessage = ''; noticeMessage = '';
-    try { await deleteFloor(floor.id); noticeMessage = $locale.floors.deleted; await refresh(); } catch (error) { errorMessage = error.message; }
+    errorMessage = '';
+    try { await deleteFloor(floor.id); notifySuccess($locale.floors.deleted); await refresh(); } catch (error) { errorMessage = error.message; }
   }
 </script>
 
@@ -138,7 +139,6 @@
   <h1 class="visually-hidden">{$locale.buildings.details}</h1>
 
   {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
-  {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
 
   {#if loadingBuilding}
     <div class="page-loader"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">{$locale.floors.loading}</span></div></div>

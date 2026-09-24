@@ -30,7 +30,6 @@
   let loading = false;
   let saving = false;
   let errorMessage = '';
-  let noticeMessage = '';
   let modalError = '';
   let search = '';
 
@@ -128,7 +127,7 @@
           symbol: form.symbol.trim() || null,
           ...(editing.isBase || form.rate === '' ? {} : { rate: Number(form.rate), effectiveDate: form.effectiveDate }),
         });
-        noticeMessage = $locale.currencies.updated;
+        notifySuccess($locale.currencies.updated);
       } else {
         await createCurrency({
           code,
@@ -136,7 +135,7 @@
           symbol: form.symbol.trim() || null,
           ...(form.rate === '' ? {} : { rate: Number(form.rate), effectiveDate: form.effectiveDate }),
         });
-        noticeMessage = $locale.currencies.saved;
+        notifySuccess($locale.currencies.saved);
       }
       closeCurrency();
       await refresh();
@@ -173,7 +172,7 @@
         rate: Number(rateForm.rate),
         effectiveDate: rateForm.effectiveDate,
       });
-      noticeMessage = $locale.currencies.rateSaved;
+      notifySuccess($locale.currencies.rateSaved);
       closeRate();
       await refresh();
     } catch (error) {
@@ -204,7 +203,7 @@
     saving = true;
     try {
       await setBaseCurrency(baseChoice);
-      noticeMessage = $locale.currencies.baseSaved;
+      notifySuccess($locale.currencies.baseSaved);
       closeBase();
       await refresh();
     } catch (error) {
@@ -229,7 +228,7 @@
     if (!window.confirm($locale.currencies.confirmDelete)) return;
     try {
       await deleteCurrency(currency.id);
-      noticeMessage = $locale.currencies.deleted;
+      notifySuccess($locale.currencies.deleted);
       await refresh();
     } catch (error) {
       await handleRequestError(error);
@@ -255,7 +254,6 @@
   </svelte:fragment>
 
   <svelte:fragment slot="alerts">
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
   </svelte:fragment>
 

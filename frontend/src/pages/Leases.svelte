@@ -20,6 +20,7 @@
   import { listLeases, createLease, updateLease, deleteLease } from '../services/leases';
   import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
   import { locale } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
 
@@ -46,7 +47,6 @@
   let detail = null;
   let editing = null;
   let errorMessage = '';
-  let noticeMessage = '';
   let modalError = '';
   let search = '';
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
@@ -120,15 +120,26 @@
 
   /*
    * Picking the apartment is what the rent is being agreed for, so the lease
-   * adopts the currency that apartment's rent is stated in — the apartment was
-   * let at 1,200 USD, so its lease is in USD. The currency stays a normal select
-   * afterwards: a lease can be agreed in any currency the workspace trades in.
+   * adopts the terms that apartment was registered with: the currency its rent
+   * is stated in — the apartment was let at 1,200 USD, so its lease is in USD —
+   * and the deposit it is let against, with the currency that deposit is quoted
+   * in. Both stay normal fields afterwards: a lease can be agreed on different
+   * terms, and the deposit is where a negotiation usually shows up.
    */
   function apartmentChanged() {
     const apartment = apartments.find((entry) => entry.id === form.apartmentId);
-    if (apartment?.rentCurrency) {
-      form = { ...form, currency: apartment.rentCurrency, securityDepositCurrency: apartment.rentCurrency };
-    }
+    if (!apartment) return;
+    const rentCurrency = apartment.rentCurrency || form.currency;
+    const depositCurrency = apartment.securityDepositCurrency || rentCurrency;
+    const adoptsDeposit = Number(apartment.securityDeposit) > 0;
+    form = {
+      ...form,
+      currency: rentCurrency,
+      // An apartment that states no deposit leaves whatever is already typed
+      // alone, rather than wiping it back to zero.
+      ...(adoptsDeposit ? { securityDeposit: apartment.securityDeposit } : {}),
+      securityDepositCurrency: adoptsDeposit ? depositCurrency : form.securityDepositCurrency || depositCurrency,
+    };
   }
 
   function openNew() {
@@ -139,7 +150,6 @@
     apartments = [];
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
     modalOpen = true;
   }
 
@@ -147,7 +157,6 @@
     editing = lease;
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
     const buildingId = lease.apartment.floor.building.id;
     const floorId = lease.apartment.floor.id;
     const apartmentId = lease.apartment.id;
@@ -203,7 +212,6 @@
     saving = true;
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
     const payload = {
       tenantId: form.tenantId,
       apartmentId: form.apartmentId,
@@ -219,8 +227,8 @@
       notes: form.notes.trim() || null
     };
     try {
-      if (editing) { await updateLease(editing.id, payload); noticeMessage = $locale.leases.updated; }
-      else { await createLease(payload); noticeMessage = $locale.leases.saved; }
+      if (editing) { await updateLease(editing.id, payload); notifySuccess($locale.leases.updated); }
+      else { await createLease(payload); notifySuccess($locale.leases.saved); }
       closeModal();
       await loadLeases(1);
     } catch (error) { modalError = error?.message || 'Unable to save lease.'; }
@@ -229,10 +237,9 @@
 
   async function changeStatus(lease, status) {
     errorMessage = '';
-    noticeMessage = '';
     try {
       await updateLease(lease.id, { status });
-      noticeMessage = status === 'ACTIVE' ? $locale.leases.activated : $locale.leases.terminated;
+      notifySuccess(status === 'ACTIVE' ? $locale.leases.activated : $locale.leases.terminated);
       await loadLeases(pagination.page);
     } catch (error) { errorMessage = error?.message || 'Unable to update lease status.'; }
   }
@@ -240,7 +247,6 @@
   async function removeLease(lease) {
     if (!window.confirm($locale.leases.confirmDelete)) return;
     errorMessage = '';
-    noticeMessage = '';
     try {
       await deleteLease(lease.id);
       const nextPage = leases.length === 1 && pagination.page > 1 ? pagination.page - 1 : pagination.page;
@@ -296,9 +302,6 @@
   <svelte:fragment slot="alerts">
     {#if errorMessage}
       <div class="alert alert-danger" role="alert">{errorMessage}</div>
-    {/if}
-    {#if noticeMessage}
-      <div class="alert alert-success" role="status">{noticeMessage}</div>
     {/if}
   </svelte:fragment>
 

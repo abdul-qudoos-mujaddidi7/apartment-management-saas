@@ -297,6 +297,23 @@ model Apartment {
   // — 1,200 could be AFN or USD — and a lease raised for this apartment adopts
   // it, so the rent agreed with the tenant is the one the apartment was let at.
   rentCurrency    String          @default("AFN") @db.VarChar(3)
+
+  /// The deposit this apartment is let against. A lease raised on it adopts
+  /// this figure as its starting point, so the amount is agreed once instead of
+  /// being remembered per contract.
+  securityDeposit Decimal         @default(0) @db.Decimal(12, 2)
+
+  /// The deposit above may be agreed in a different currency from the rent, the
+  /// same way a lease states its deposit separately.
+  securityDepositCurrency String  @default("AFN") @db.VarChar(3)
+
+  /// The recurring monthly service fee the apartment carries — maintenance,
+  /// shared utilities, staff. It is a term of the apartment, not of one lease.
+  serviceFee      Decimal         @default(0) @db.Decimal(12, 2)
+
+  /// The currency the service fee above is stated in.
+  serviceFeeCurrency String       @default("AFN") @db.VarChar(3)
+
   status          ApartmentStatus @default(AVAILABLE)
   // NULL means the apartment's asset/furniture registration is still pending;
   // a timestamp means the user finished registering its assets.

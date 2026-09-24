@@ -1,6 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { getCurrentUser, logout as logoutRequest } from '../services/auth';
 import { resetCurrencies } from './currency';
+import { resetToasts } from './toasts';
 
 export const user = writable(null);
 export const authLoading = writable(false);
@@ -49,6 +50,8 @@ export function resetAuth() {
   authLoading.set(false);
   // Currency rates are organization data, so they never survive a sign-out.
   resetCurrencies();
+  // Neither does the last user's "saved" confirmation.
+  resetToasts();
 }
 
 export function signOut() {

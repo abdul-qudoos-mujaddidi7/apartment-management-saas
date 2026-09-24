@@ -21,6 +21,7 @@
     updateTenant
   } from '../services/tenants';
   import { locale, translate } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
   import { mediaUrl } from '../utils/media';
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
@@ -33,7 +34,6 @@
   let search = '';
   let loading = false;
   let errorMessage = '';
-  let noticeMessage = '';
   let requestToken = 0;
 
   // --- Tab filter state ---
@@ -123,29 +123,33 @@
     }
   }
 
+  /* A tenant filed before one of these fields existed comes back with `null` in
+     it, which the form shows as an empty box — reading the value has to survive
+     that, or editing such a tenant throws before it can be saved at all. */
   function validateForm() {
     formErrors = {};
+    const firstName = form.firstName?.trim() || '';
+    const lastName = form.lastName?.trim() || '';
+    const phone = form.phone?.trim() || '';
+    const email = form.email?.trim() || '';
 
-    if (!form.firstName.trim()) {
+    if (!firstName) {
       formErrors.firstName = translate('tenants.required', {
         field: $locale.tenants.firstName
       });
     }
 
-    if (!form.lastName.trim()) {
+    if (!lastName) {
       formErrors.lastName = translate('tenants.required', {
         field: $locale.tenants.lastName
       });
     }
 
-    if (!form.phone.trim() || form.phone.trim().length < 3) {
+    if (phone.length < 3) {
       formErrors.phone = $locale.tenants.invalidPhone;
     }
 
-    if (
-      form.email.trim() &&
-      !/^\S+@\S+\.\S+$/.test(form.email.trim())
-    ) {
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
       formErrors.email = $locale.tenants.invalidEmail;
     }
 
@@ -158,7 +162,6 @@
     formErrors = {};
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
     modalOpen = true;
   }
 
@@ -171,7 +174,6 @@
     formErrors = {};
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
     modalOpen = true;
   }
 
@@ -234,7 +236,6 @@
     saving = true;
     modalError = '';
     errorMessage = '';
-    noticeMessage = '';
 
     try {
       if (editingId) {
@@ -243,13 +244,13 @@
           normalizedPayload()
         );
 
-        noticeMessage = $locale.tenants.updated;
+        notifySuccess($locale.tenants.updated);
       } else {
         await createTenant(
           normalizedPayload()
         );
 
-        noticeMessage = $locale.tenants.saved;
+        notifySuccess($locale.tenants.saved);
       }
 
       modalOpen = false;
@@ -274,12 +275,11 @@
     }
 
     errorMessage = '';
-    noticeMessage = '';
 
     try {
       await deleteTenant(tenant.id);
 
-      noticeMessage = $locale.tenants.deleted;
+      notifySuccess($locale.tenants.deleted);
 
       const page =
         tenants.length === 1 &&
@@ -334,9 +334,6 @@
   <svelte:fragment slot="alerts">
     {#if errorMessage}
       <div class="alert alert-danger" role="alert">{errorMessage}</div>
-    {/if}
-    {#if noticeMessage}
-      <div class="alert alert-success" role="status">{noticeMessage}</div>
     {/if}
   </svelte:fragment>
 
@@ -513,9 +510,12 @@
 
       <div class="row g-3">
         <div class="col-12 col-md-4">
+          <!-- The same card-shaped slot as the two ID scans beside it: three
+               dropzones of one size read as the row they are, where a round
+               photograph among two rectangles read as a different kind of
+               field. -->
           <ImageUpload
             kind="tenant-photo"
-            shape="avatar"
             label={$locale.tenants.photo}
             hint={$locale.tenants.photoHint}
             value={form.photoUrl}

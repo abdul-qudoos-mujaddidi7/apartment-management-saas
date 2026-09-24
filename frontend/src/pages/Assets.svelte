@@ -30,6 +30,7 @@
   } from '../services/assets';
 
   import { locale, translate } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
   import { formatDate, formatMoney, formatNumber } from '../utils/formatters';
 
   const conditionKeys = ['NEW', 'GOOD', 'FAIR', 'DAMAGED', 'BROKEN'];
@@ -58,7 +59,6 @@
   let loading = false;
   let saving = false;
   let errorMessage = '';
-  let noticeMessage = '';
 
   // --- Modals ---------------------------------------------------------------
 
@@ -252,7 +252,6 @@
     if (activeTab === key) return;
     activeTab = key;
     errorMessage = '';
-    noticeMessage = '';
     if (key === 'records') await loadRecords(1);
   }
 
@@ -385,7 +384,7 @@
         notes: recordForm.notes.trim() || null
       });
 
-      noticeMessage = $locale.assets.updated;
+      notifySuccess($locale.assets.updated);
       closeRecordModal();
       await loadRecords(pagination.page);
     } catch (error) {
@@ -403,11 +402,10 @@
     if (!window.confirm($locale.assets.confirmDelete)) return;
 
     errorMessage = '';
-    noticeMessage = '';
 
     try {
       await deleteApartmentAssetRecord(record.id);
-      noticeMessage = $locale.assets.deleted;
+      notifySuccess($locale.assets.deleted);
       const page = records.length === 1 && pagination.page > 1 ? pagination.page - 1 : pagination.page;
       await loadRecords(page);
     } catch (error) {
@@ -473,10 +471,10 @@
     try {
       if (assetEditingId) {
         await updateAsset(assetEditingId, payload);
-        noticeMessage = $locale.assets.assetSaved;
+        notifySuccess($locale.assets.assetSaved);
       } else {
         await createAsset(payload);
-        noticeMessage = $locale.assets.assetSaved;
+        notifySuccess($locale.assets.assetSaved);
       }
 
       closeAssetModal();
@@ -492,11 +490,10 @@
     if (!window.confirm($locale.assets.confirmDelete)) return;
 
     errorMessage = '';
-    noticeMessage = '';
 
     try {
       await deleteAsset(asset.id);
-      noticeMessage = $locale.assets.deleted;
+      notifySuccess($locale.assets.deleted);
       await loadAssets();
     } catch (error) {
       errorMessage = error.message;
@@ -555,7 +552,7 @@
         await createAssetCategory(payload);
       }
 
-      noticeMessage = $locale.assets.categorySaved;
+      notifySuccess($locale.assets.categorySaved);
       // Closed directly: closeCategoryModal() refuses while `saving` is still set,
       // which is exactly the state the save leaves behind.
       categoryModalOpen = false;
@@ -572,11 +569,10 @@
     if (!window.confirm($locale.assets.confirmDelete)) return;
 
     errorMessage = '';
-    noticeMessage = '';
 
     try {
       await deleteAssetCategory(category.id);
-      noticeMessage = $locale.assets.deleted;
+      notifySuccess($locale.assets.deleted);
       await loadCategories();
     } catch (error) {
       errorMessage = error.message;
@@ -638,9 +634,6 @@
   <svelte:fragment slot="alerts">
     {#if errorMessage}
       <div class="alert alert-danger" role="alert">{errorMessage}</div>
-    {/if}
-    {#if noticeMessage}
-      <div class="alert alert-success" role="status">{noticeMessage}</div>
     {/if}
   </svelte:fragment>
 

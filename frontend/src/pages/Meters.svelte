@@ -18,6 +18,7 @@
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { locale, translate } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
   import { sortRows } from '../utils/sortRows';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
@@ -39,7 +40,6 @@
   let loading = false;
   let saving = false;
   let errorMessage = '';
-  let noticeMessage = '';
   let modalError = '';
   let modalOpen = false;
   let editingId = null;
@@ -115,11 +115,11 @@
 
   async function saveMeter() {
     if (!validateForm()) return;
-    saving = true; modalError = ''; errorMessage = ''; noticeMessage = '';
+    saving = true; modalError = ''; errorMessage = '';
     const payload = { apartmentId: form.apartmentId, meterNumber: form.meterNumber.trim(), utilityType: form.utilityType, unit: form.unit.trim(), defaultUnitPrice: Number(form.defaultUnitPrice), initialReading: form.initialReading === '' ? null : Number(form.initialReading), installationDate: form.installationDate || null, status: form.status, notes: form.notes.trim() || null };
     try {
-      if (editingId) { await updateMeter(editingId, payload); noticeMessage = $locale.meters.updated; }
-      else { await createMeter(payload); noticeMessage = $locale.meters.saved; }
+      if (editingId) { await updateMeter(editingId, payload); notifySuccess($locale.meters.updated); }
+      else { await createMeter(payload); notifySuccess($locale.meters.saved); }
       resetModal(); await loadMeters(1);
     } catch (error) {
       if (await handleRequestError(error)) return;
@@ -131,8 +131,8 @@
 
   async function removeMeter(meter) {
     if (!window.confirm($locale.meters.confirmDelete)) return;
-    errorMessage = ''; noticeMessage = '';
-    try { await deleteMeter(meter.id); noticeMessage = $locale.meters.deleted; const lastRowOnPage = meters.length === 1 && pagination.page > 1; await loadMeters(lastRowOnPage ? pagination.page - 1 : pagination.page); }
+    errorMessage = '';
+    try { await deleteMeter(meter.id); notifySuccess($locale.meters.deleted); const lastRowOnPage = meters.length === 1 && pagination.page > 1; await loadMeters(lastRowOnPage ? pagination.page - 1 : pagination.page); }
     catch (error) { await handleRequestError(error); }
   }
 
@@ -156,10 +156,10 @@
 
   async function saveQuickReading() {
     if (!validateReadingForm()) return;
-    readingSaving = true; readingModalError = ''; errorMessage = ''; noticeMessage = '';
+    readingSaving = true; readingModalError = ''; errorMessage = '';
     try {
       await createMeterReading({ meterId: selectedMeter.id, readingDate: readingForm.readingDate, currentReading: Number(readingForm.currentReading), notes: readingForm.notes.trim() || null });
-      noticeMessage = $locale.meterReadings.saved; closeReadingModal(true);
+      notifySuccess($locale.meterReadings.saved); closeReadingModal(true);
     } catch (error) {
       if (await handleRequestError(error)) return;
       if (error.data?.errors) { readingFormErrors = Object.fromEntries(Object.entries(error.data.errors).map(([field, messages]) => [field, messages[0]])); }
@@ -233,7 +233,6 @@
 
   <svelte:fragment slot="alerts">
     {#if errorMessage}<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>{errorMessage}</span></div>{/if}
-    {#if noticeMessage}<div class="alert alert-success" role="status"><i class="bi bi-check-circle" aria-hidden="true"></i><span>{noticeMessage}</span></div>{/if}
   </svelte:fragment>
 
   <svelte:fragment slot="content">

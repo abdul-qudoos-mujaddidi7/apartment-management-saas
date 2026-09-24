@@ -15,6 +15,7 @@
   import { formatShortDate } from '../utils/formatters';
   import { locale } from '../i18n';
   import { activeCurrencies, baseCurrency, convertAmount } from '../stores/currency';
+  import { notifySuccess } from '../stores/toasts';
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
@@ -58,7 +59,6 @@
   let filters = { search: '', status: '', referenceType: '', accountId: '', dateFrom: '', dateTo: '' };
   let loading = false;
   let errorMessage = '';
-  let noticeMessage = '';
 
   let detailsEntry = null;
   let detailsOpen = false;
@@ -222,10 +222,10 @@
     try {
       if (form.id) {
         await updateJournal(form.id, payload);
-        noticeMessage = $locale.journals.updated;
+        notifySuccess($locale.journals.updated);
       } else {
         await createJournal(payload);
-        noticeMessage = $locale.journals.saved;
+        notifySuccess($locale.journals.saved);
       }
       formOpen = false;
       await loadJournals(form.id ? pagination.page : 1);
@@ -245,7 +245,7 @@
     saving = true; voidError = '';
     try {
       await voidJournal(voidingEntry.id, voidReason.trim());
-      noticeMessage = $locale.journals.voidedSuccess;
+      notifySuccess($locale.journals.voidedSuccess);
       voidOpen = false; voidingEntry = null;
       await loadJournals(pagination.page);
     } catch (error) {
@@ -377,7 +377,6 @@
   </svelte:fragment>
 
   <svelte:fragment slot="alerts">
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
   </svelte:fragment>
 

@@ -27,6 +27,7 @@
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
 
   import { locale, translate } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
   import { formatMoney, formatNumber, formatDate } from '../utils/formatters';
 
   const INVOICE_ITEM_TYPES = [
@@ -99,7 +100,6 @@
   let summaryLoading = true;
   let summaryError = '';
   let today = new Date();
-  let dashboardNotice = '';
 
   let activeLeases = [];
   let activeLeasesLoading = false;
@@ -462,7 +462,6 @@
 
     invoiceSaving = true;
     invoiceError = '';
-    dashboardNotice = '';
 
     try {
       await createInvoice({
@@ -480,7 +479,7 @@
             })
       });
 
-      dashboardNotice = $locale.invoices.invoiceCreated;
+      notifySuccess($locale.invoices.invoiceCreated);
       closeInvoiceModal(true);
       await loadDashboard();
     } catch (error) {
@@ -513,13 +512,6 @@
       <button class="btn btn-light btn-sm" type="button" on:click={loadDashboard}>
         {$locale.common.retry}
       </button>
-    </div>
-  {/if}
-
-  {#if dashboardNotice}
-    <div class="alert alert-success dash-alert" role="status">
-      <i class="bi bi-check-circle" aria-hidden="true"></i>
-      <span>{dashboardNotice}</span>
     </div>
   {/if}
 
@@ -869,7 +861,7 @@
   lease={paymentLease}
   on:close={closePaymentModal}
   on:saved={() => {
-    dashboardNotice = $locale.payments.saved;
+    notifySuccess($locale.payments.saved);
     closePaymentModal();
     void loadDashboard();
   }}

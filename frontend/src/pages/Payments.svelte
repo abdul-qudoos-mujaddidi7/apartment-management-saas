@@ -11,6 +11,7 @@
   import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { locale } from '../i18n';
+  import { notifySuccess } from '../stores/toasts';
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
@@ -24,7 +25,6 @@
   let filters = { search: '', status: '', dateFrom: '', dateTo: '' };
   let loading = false;
   let errorMessage = '';
-  let noticeMessage = '';
   let detailsPayment = null;
   let detailsOpen = false;
   let voidingPayment = null;
@@ -56,7 +56,7 @@
   async function submitVoid() {
     if (!voidReason.trim()) { modalError = $locale.payments.voidReasonRequired; return; }
     saving = true;
-    try { await voidPayment(voidingPayment.id, voidReason.trim()); noticeMessage = $locale.payments.voidedSuccess; closeVoid(); await loadPayments(pagination.page); }
+    try { await voidPayment(voidingPayment.id, voidReason.trim()); notifySuccess($locale.payments.voidedSuccess); closeVoid(); await loadPayments(pagination.page); }
     catch (error) { if (!(await handleRequestError(error))) modalError = error.message; }
     finally { saving = false; }
   }
@@ -114,7 +114,6 @@
   </svelte:fragment>
 
   <svelte:fragment slot="alerts">
-    {#if noticeMessage}<div class="alert alert-success" role="status">{noticeMessage}</div>{/if}
     {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
   </svelte:fragment>
 

@@ -1,8 +1,10 @@
 const prisma = require('../../lib/prisma');
 
-function createApartmentError(code, message) {
+function createApartmentError(code, message, field) {
   const error = new Error(message);
   error.code = code;
+  // Which form field the message belongs under, when the fault is a bad input.
+  if (field) error.field = field;
   return error;
 }
 
@@ -19,6 +21,10 @@ function apartmentSelect() {
     bathrooms: true,
     monthlyRent: true,
     rentCurrency: true,
+    securityDeposit: true,
+    securityDepositCurrency: true,
+    serviceFee: true,
+    serviceFeeCurrency: true,
     status: true,
     createdAt: true,
     updatedAt: true,
@@ -45,6 +51,12 @@ function formatApartment(apartment) {
     area: apartment.area === null || apartment.area === undefined ? null : Number(apartment.area),
     monthlyRent: Number(apartment.monthlyRent),
     rentCurrency: apartment.rentCurrency || 'AFN',
+    securityDeposit: Number(apartment.securityDeposit || 0),
+    // An apartment written before these columns existed states its deposit and
+    // service fee in the currency its rent is already in.
+    securityDepositCurrency: apartment.securityDepositCurrency || apartment.rentCurrency || 'AFN',
+    serviceFee: Number(apartment.serviceFee || 0),
+    serviceFeeCurrency: apartment.serviceFeeCurrency || apartment.rentCurrency || 'AFN',
   };
 }
 
@@ -101,14 +113,15 @@ function splitApartmentData(data, fallbackSpaces) {
 }
 
 /**
- * The currency an apartment's rent is stated in: one of the currencies the
+ * The currency one of an apartment's amounts is stated in: a currency the
  * organization trades in, or its reporting currency.
  *
- * A code it does not trade in is refused rather than stored, because a rent in a
- * currency the workspace keeps no rate for could not be billed: the lease raised
- * for this apartment could not be priced in it.
+ * A code it does not trade in is refused rather than stored, because an amount
+ * in a currency the workspace keeps no rate for could not be billed: the lease
+ * raised for this apartment could not be priced in it. `field` names the column
+ * the client sent, so the message can be shown under the right selector.
  */
-async function resolveRentCurrency(organizationId, requested, client = prisma) {
+async function resolveApartmentCurrency(organizationId, requested, field, client = prisma) {
   const organization = await client.organization.findFirst({
     where: { id: organizationId, deletedAt: null },
     select: { baseCurrency: true },
@@ -119,7 +132,7 @@ async function resolveRentCurrency(organizationId, requested, client = prisma) {
 
   const code = String(requested).trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(code)) {
-    throw createApartmentError('INVALID_CURRENCY_CODE', 'Use a three-letter currency code such as USD.');
+    throw createApartmentError('INVALID_CURRENCY_CODE', 'Use a three-letter currency code such as USD.', field);
   }
   if (code === base) return code;
 
@@ -128,9 +141,37 @@ async function resolveRentCurrency(organizationId, requested, client = prisma) {
     select: { id: true },
   });
   if (!currency) {
-    throw createApartmentError('CURRENCY_NOT_SUPPORTED', `${code} is not an active currency for this organization.`);
+    throw createApartmentError('CURRENCY_NOT_SUPPORTED', `${code} is not an active currency for this organization.`, field);
   }
   return code;
+}
+
+/**
+ * Reads back an apartment's three amounts in the currencies they were sent in,
+ * and stores the assigned ones. Only what a partial update sent is resolved, so
+ * editing an apartment's name cannot reset its rent currency.
+ */
+async function resolveApartmentCurrencies(organizationId, data, client = prisma) {
+  if (data.rentCurrency !== undefined) {
+    data.rentCurrency = await resolveApartmentCurrency(organizationId, data.rentCurrency, 'rentCurrency', client);
+  }
+  if (data.securityDepositCurrency !== undefined) {
+    data.securityDepositCurrency = await resolveApartmentCurrency(
+      organizationId,
+      data.securityDepositCurrency,
+      'securityDepositCurrency',
+      client,
+    );
+  }
+  if (data.serviceFeeCurrency !== undefined) {
+    data.serviceFeeCurrency = await resolveApartmentCurrency(
+      organizationId,
+      data.serviceFeeCurrency,
+      'serviceFeeCurrency',
+      client,
+    );
+  }
+  return data;
 }
 
 async function assertFloorInOrganization(organizationId, floorId, client = prisma) {
@@ -191,7 +232,15 @@ async function getApartment(organizationId, apartmentId) {
 async function createApartment(organizationId, data) {
   await assertFloorInOrganization(organizationId, data.floorId);
   const { apartmentData, spaces } = splitApartmentData(data);
-  apartmentData.rentCurrency = await resolveRentCurrency(organizationId, apartmentData.rentCurrency);
+  await resolveApartmentCurrencies(organizationId, apartmentData);
+  // A new apartment without a stated deposit or service fee carries the rent's
+  // currency for both, so the figures it does state are at least coherent.
+  if (apartmentData.securityDepositCurrency === undefined) {
+    apartmentData.securityDepositCurrency = apartmentData.rentCurrency;
+  }
+  if (apartmentData.serviceFeeCurrency === undefined) {
+    apartmentData.serviceFeeCurrency = apartmentData.rentCurrency;
+  }
   try {
     return await prisma.$transaction(async (transaction) => {
       const apartment = await transaction.apartment.create({
@@ -228,9 +277,7 @@ async function updateApartment(organizationId, apartmentId, data) {
   if (data.floorId) await assertFloorInOrganization(organizationId, data.floorId);
   const { apartmentData, spaces } = splitApartmentData(data, apartment.spaces);
   // Only resolve what was sent, so a partial update cannot reset the currency.
-  if (apartmentData.rentCurrency !== undefined) {
-    apartmentData.rentCurrency = await resolveRentCurrency(organizationId, apartmentData.rentCurrency);
-  }
+  await resolveApartmentCurrencies(organizationId, apartmentData);
   try {
     return await prisma.$transaction(async (transaction) => {
       await transaction.apartment.update({ where: { id: apartmentId }, data: apartmentData });
