@@ -15,6 +15,14 @@ import './styles/design-system.css';
    console's, so they ship their own `au-`-prefixed layer. */
 import './styles/auth.css';
 
+/* The contract document itself. One stylesheet, shared with the API's own PDF
+   renderer so a downloaded contract and the preview above it cannot drift. */
+import '../../backend/src/modules/lease-contracts/contract-document.css';
+
+/* Print rules for a lease contract. Last, because a printed sheet has the final
+   word over whatever the screen laid out. */
+import './styles/print-contract.css';
+
 import './i18n';
 
 import { replace } from 'svelte-spa-router';

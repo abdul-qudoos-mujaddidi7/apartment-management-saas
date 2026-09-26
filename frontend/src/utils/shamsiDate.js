@@ -1,6 +1,6 @@
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const AFGHAN_MONTHS = ['حمل', 'ثور', 'جوزا', 'سرطان', 'اسد', 'سنبله', 'میزان', 'عقرب', 'قوس', 'جدی', 'دلو', 'حوت'];
-export { AFGHAN_MONTHS };
+export { AFGHAN_MONTHS, PERSIAN_DIGITS };
 const div = (a, b) => Math.trunc(a / b);
 const mod = (a, b) => a - Math.trunc(a / b) * b;
 

@@ -17,6 +17,7 @@ const currencyRoutes = require('./modules/currency/currency.routes');
 const floorRoutes = require('./modules/floors/floor.routes');
 const tenantRoutes = require('./modules/tenants/tenant.routes');
 const leaseRoutes = require('./modules/leases/lease.routes');
+const leaseContractRoutes = require('./modules/lease-contracts/lease-contract.routes');
 const securityDepositRoutes = require('./modules/security-deposits/security-deposit.routes');
 const meterRoutes = require('./modules/meters/meter.routes');
 const meterReadingRoutes = require('./modules/meter-readings/meter-reading.routes');
@@ -84,6 +85,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/currencies', currencyRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/leases', leaseRoutes);
+// The lease contract and the organization-wide wording it is printed from.
+app.use('/api/lease-contracts', leaseContractRoutes);
 app.use('/api/security-deposits', securityDepositRoutes);
 app.use('/api/meters', meterRoutes);
 app.use('/api/meter-readings', meterReadingRoutes);

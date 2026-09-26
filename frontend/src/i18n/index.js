@@ -49,6 +49,17 @@ export function setLanguage(nextLanguage) {
   applyDocumentLanguage(nextLanguage);
 }
 
+/**
+ * The dictionary for one specific language, whatever the interface is set to.
+ *
+ * A printed contract is written in the language it is printed in, while the
+ * chrome around it stays in the reader's own language — so the document's own
+ * headings and field labels are read from here rather than from `$locale`.
+ */
+export function dictionaryFor(currentLanguage) {
+  return dictionaries[currentLanguage] || dictionaries.en;
+}
+
 language.subscribe(applyDocumentLanguage);
 
 export function translate(key, values = {}) {

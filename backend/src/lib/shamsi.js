@@ -8,13 +8,27 @@
  * duplicated rather than approximated. `meter-reading.period.test.js` checks
  * this port against the values the frontend produces.
  *
- * Only the conversions the server needs are here: a Gregorian instant to its
- * Shamsi year, month and day.
+ * The conversions the server needs are here: a Gregorian instant to its Shamsi
+ * year, month and day, and back again — the contract's rent schedule is ruled by
+ * Shamsi months, so the month a rent is due in has to be turned into the date
+ * the office writes beside it.
  */
 
 const MONTH_NAMES = [
   'Hamal', 'Saur', 'Jawza', 'Saratan', 'Asad', 'Sunbula',
   'Mizan', 'Aqrab', 'Qaws', 'Jadi', 'Dalwa', 'Hoot',
+];
+
+/**
+ * The same twelve months in the script an Afghan reader reads them in.
+ *
+ * The names are the *Afghan* ones (`Saratan`, not the Iranian `Tir`), matching
+ * `frontend/src/utils/shamsiDate.js` — a contract printed in Dari must name
+ * months the way the office that signs it does.
+ */
+const AFGHAN_MONTH_NAMES = [
+  'حمل', 'ثور', 'جوزا', 'سرطان', 'اسد', 'سنبله',
+  'میزان', 'عقرب', 'قوس', 'جدی', 'دلو', 'حوت',
 ];
 
 const div = (a, b) => Math.trunc(a / b);
@@ -59,6 +73,12 @@ function d2g(jdn) {
   const gm = mod(div(i, 153), 12) + 1;
   const gy = div(j, 1461) - 100100 + div(8 - gm, 6);
   return { gy, gm, gd };
+}
+
+/** The day number of a Shamsi date, which is what the conversions count in. */
+function j2d(jy, jm, jd) {
+  const r = jalCal(jy);
+  return g2d(r.gy, 3, r.march) + (jm - 1) * 31 - div(jm, 7) * (jm - 7) + jd - 1;
 }
 
 function d2j(jdn) {
@@ -114,9 +134,60 @@ function shamsiMonthLabel(key) {
   return `${MONTH_NAMES[month - 1]} ${year}`;
 }
 
+/**
+ * How many days a Shamsi month has. The first six have 31, the next five 30,
+ * and the last one 29 or 30 depending on whether the year is a leap year —
+ * which is asked of the calendar rather than worked out, so the answer cannot
+ * drift from the conversions above.
+ */
+function shamsiMonthLength(jy, jm) {
+  if (jm <= 6) return 31;
+  if (jm <= 11) return 30;
+
+  const parts = d2j(j2d(jy, 12, 30));
+  return parts.jm === 12 && parts.jd === 30 ? 30 : 29;
+}
+
+/**
+ * A Shamsi date as the midnight the rest of this application stores dates at.
+ *
+ * Built in UTC for the same reason the conversion above reads UTC parts: the
+ * day the office wrote is the day that comes back, whatever the server's own
+ * timezone is.
+ */
+function shamsiToDate(jy, jm, jd) {
+  const g = d2g(j2d(jy, jm, jd));
+  return new Date(Date.UTC(g.gy, g.gm - 1, g.gd));
+}
+
+/**
+ * A date as the application writes it: `1405/06/29`, or `29 سرطان 1405` when the
+ * month's own name is wanted.
+ *
+ * This is a port of `formatShamsiDate` in the frontend, kept deliberately
+ * identical for the same reason the calendar itself is duplicated — a contract
+ * is assembled on the server, and it must read exactly like every date the
+ * browser draws. An unreadable value comes back as an em dash rather than as
+ * "Invalid Date".
+ */
+function formatShamsiDate(value, { monthName = false } = {}) {
+  // `new Date(null)` is the epoch, so an absent value is caught before it can
+  // become a date rather than after.
+  if (!value) return '—';
+
+  const parts = toShamsi(value);
+  if (!parts) return '—';
+  if (monthName) return `${parts.jd} ${AFGHAN_MONTH_NAMES[parts.jm - 1]} ${parts.jy}`;
+  return `${parts.jy}/${String(parts.jm).padStart(2, '0')}/${String(parts.jd).padStart(2, '0')}`;
+}
+
 module.exports = {
+  AFGHAN_MONTH_NAMES,
   MONTH_NAMES,
+  formatShamsiDate,
   shamsiMonthKey,
   shamsiMonthLabel,
+  shamsiMonthLength,
+  shamsiToDate,
   toShamsi,
 };

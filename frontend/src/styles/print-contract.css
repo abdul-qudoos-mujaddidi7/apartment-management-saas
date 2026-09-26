@@ -1,0 +1,145 @@
+/* ==========================================================================
+   Printing a contract
+   ==========================================================================
+
+   Printing is where this application stops being an application. The console
+   is a fixed-height shell whose panes scroll and whose cells are clipped; paper
+   has no scrollbars, so every one of those constraints has to be lifted or the
+   document prints as whatever happened to be on screen.
+
+   Three things therefore happen here:
+
+     1. the shell is undone — heights, scroll containers, padding and the canvas
+        tint all become plain flowing paper;
+     2. the chrome and anything interactive (`.no-print` — toolbars, language
+        chips, buttons, alerts) is removed, so the sheet is all that is left;
+    3. the page is A4, with no margin of its own — the sheet's own 16mm of side
+       padding is the paper's margin, so the hero band, which reaches through
+       that padding, lands on the edge of the paper and the body stays inset;
+    4. the page's blocks are kept whole: a heading stays with what it
+       introduces, and a row of a table or a signature panel is never sliced in
+       half by a page break.
+
+   Everything is scoped to `body:has(.contract-document)`. Any other page still
+   prints its own content, and the page size is stated once, for all of them.
+   ========================================================================== */
+
+@media print {
+  /* The paper has no margin of its own, and it is the same page box the
+     server's PDF renderer states, so the sheet the office prints here and the
+     sheet it downloads are one page rather than two that differ by a
+     millimetre of margin.
+
+     The margin is not missing, it has merely moved: the sheet carries it, as
+     the 16mm of padding the document already sets for its own sides. Stating
+     it on the page box *and* on the sheet would double it — the body would sit
+     32mm in from the paper, and the hero band, which reaches 16mm past the
+     sheet's edge, would stop a margin short of the paper's edge instead of
+     landing on it. */
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Nothing interactive is ever part of the document. */
+  .no-print,
+  .app-sidebar,
+  .app-topbar,
+  .app-nav-scrim,
+  .toast-stack,
+  .modal-layer {
+    display: none !important;
+  }
+
+  /* The shell, unwound: one column of paper, no fixed height, no scroll area
+     and no rounded frame around the page. */
+  body:has(.contract-document) .dashboard-layout,
+  body:has(.contract-document) .dashboard-container,
+  body:has(.contract-document) .dashboard-main,
+  body:has(.contract-document) .app-page,
+  body:has(.contract-document) .contract-page,
+  body:has(.contract-document) .contract-workspace,
+  body:has(.contract-document) .contract-preview,
+  body:has(.contract-document) .contract-paper-stage {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  /* The sheet stops being a sheet and becomes the page. It is the paper's own
+     size — A4, exactly — and it carries the page's margin as its own padding,
+     which is the 16mm the document already insets its body by. The band's reach
+     past that margin is restated for the same measure, so it is the paper's
+     edge it meets and not the sheet's. */
+  .contract-sheet {
+    --doc-bleed: 16mm;
+
+    /* Paper is the one pane that always has room for the sheet: the preview's
+       fit-to-pane scale is for the screen and must never shrink what prints. */
+    zoom: 1 !important;
+    box-sizing: border-box !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 16mm 15mm !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  /* The letterhead, on the paper's edge. The band is the width of the paper
+     rather than the width of the text column: it takes the sheet's side padding
+     on top of its own width, and is pulled back over it by the same amount. */
+  .contract-hero {
+    width: calc(100% + (var(--doc-bleed) * 2)) !important;
+    margin-inline: calc(-1 * var(--doc-bleed)) !important;
+  }
+
+  /* --- Keeping blocks whole ---------------------------------------------
+     A panel, a signature block and a row of a table are read as one thing; a
+     page break through the middle of one loses its meaning. A table *longer*
+     than a page still has to flow, so it is the rows — never the table — that
+     are held together. */
+
+  .contract-hero,
+  .contract-parties,
+  .contract-panel,
+  .contract-facts > div,
+  .contract-terms-list > .contract-clause,
+  .contract-table thead,
+  .contract-table tr,
+  .contract-signatures,
+  .contract-signature,
+  .contract-foot {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* A heading never ends a page on its own. */
+  .contract-section-title,
+  .contract-clause-title {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* No link decoration, no clipped text, no sideways scroll. */
+  .contract-document a[href]::after { content: none !important; }
+  .contract-document { overflow: visible !important; overflow-wrap: anywhere; }
+}

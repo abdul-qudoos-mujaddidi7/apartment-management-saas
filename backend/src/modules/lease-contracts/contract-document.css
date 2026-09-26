@@ -1,0 +1,619 @@
+/* ==========================================================================
+   Lease contract document
+   ==========================================================================
+
+   One document, shared by the browser preview and the server PDF renderer. It
+   is laid out as the printed form the office works with:
+
+     * a hero band — the office's mark and name, then the document's own name in
+       large display type, with the contract number and issue date set against
+       it;
+     * a strip naming the two parties and the day the tenancy begins;
+     * the body, section by section, under display headings — what the unit is,
+       what the tenancy says, what falls due month by month, what the unit
+       charges, how long the term runs, what is held as deposit, how the unit is
+       handed over, the conditions the parties agreed, the notes that qualify
+       them and the signatures;
+     * the office's own contact line at the foot.
+
+   All tenancy data is written into the markup by the server before this
+   stylesheet sees it; nothing here decides what a document says.
+
+   Colours are the console's own: bands of the accent blue at its lightest
+   steps on white, near-black ink, a muted grey for the small print, and the
+   accent itself for the office's mark. They are *backgrounds*, so
+   the renderer prints them with `--print-color-adjust: exact` — see the
+   `table`/`panel` rules below — because a design whose panels vanish is not a
+   design.
+   ========================================================================== */
+
+.contract-sheet {
+  /* The console's own palette, so the sheet the office prints is the document
+     the office already works in: the ink and the muted grey are the app's text
+     roles, and the bands are drawn from its one accent ramp — the same blue as
+     the primary buttons and the active nav, taken at the two lightest steps.
+     A contract is a surface characters are read off, not a control, so the
+     band never carries the 600 fill; the 800 does the one job that has to be
+     read, the office's own name, at 6.7:1 on white. */
+  --doc-ink: #172033;         /* --ink-900 — the document's ink               */
+  --doc-muted: #6b7788;       /* --text-muted — 4.9:1 on white               */
+  --doc-tint: #e5f1ff;        /* --brand-100 — the bands and the panels      */
+  --doc-tint-deep: #cfe4ff;   /* --brand-200 — a table's head, a pill        */
+  --doc-chip: #eef1f6;        /* a chip with no state to report              */
+  --doc-rule: #e9edf2;        /* --border — the hairline                     */
+  --doc-rule-strong: #d3d9e0; /* --border-strong — a rule that must be seen   */
+  --doc-accent: #1c58b8;      /* --brand-800 — the office's mark and name    */
+  --doc-paid: #1f7a3d;
+  --doc-paid-soft: #e2f1e5;
+  --doc-due: #8a5f10;
+  --doc-due-soft: #faefd9;
+  --doc-late: #a5382f;
+  --doc-late-soft: #f7e4e2;
+  --doc-display: Georgia, 'Times New Roman', 'Vazirmatn', 'Noto Naskh Arabic', serif;
+
+  /* How far the hero band reaches past the sheet's own margin to meet the page
+     edge. It is the sheet's side padding, exactly: the paper's margin and the
+     band's reach are one measure, so the letterhead lands on the edge of the
+     page while the body beneath it stays inset by the same 16mm. Stated once
+     here, and restated by the two print renderers, which own the page box. */
+  --doc-bleed: 16mm;
+
+  /* The width of the photograph wherever it stands — filling the band's end, and
+     beside the description of the unit. Stated once, because the two are read
+     down the same edge of the page. It is a third of the paper rather than half
+     of it: what a reader looks for at the head of a contract is the office and
+     the name of the document, and the picture is there to say which building
+     the page is about. With the band's own reach added, the photograph covers
+     the last 73mm of the 210mm page. */
+  --doc-photo-width: 57mm;
+
+  box-sizing: border-box;
+  /* A page of A4, and nothing else, wherever it is drawn: its width is the
+     paper's, so its line breaks are the printed page's. It is never told to fit
+     the pane it sits in — a sheet squeezed to the console's width stops being
+     A4 (it loses width and keeps its 297mm of height) and every line then
+     breaks somewhere else than on the page the office signs. The preview,
+     whose pane is rarely exactly the paper's width, scales the whole sheet to it
+     instead; see `LeaseContract.svelte`. */
+  width: 210mm;
+  min-height: 297mm;
+  margin-inline: auto;
+  /* Nothing sits above the hero band: the sheet carries its margin at the sides
+     and the foot, and the band starts at its very top, as the printed form
+     starts at the top of the paper. */
+  padding: 0 16mm 15mm;
+  border: 1px solid #d9dee6;
+  background: #ffffff;
+  box-shadow: 0 24px 60px -32px rgba(15, 23, 42, 0.42);
+  color: var(--doc-ink);
+  font-family: 'Vazirmatn', 'Noto Sans Arabic', Tahoma, Arial, sans-serif;
+  font-size: 10.25pt;
+  line-height: 1.75;
+}
+
+.contract-sheet *,
+.contract-sheet *::before,
+.contract-sheet *::after {
+  box-sizing: border-box;
+}
+
+.contract-frame {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(297mm - 15mm);
+}
+
+/* --- The hero band ------------------------------------------------------ */
+
+/* The band is two panels: the office and the document's own name on the tinted
+   one, and the building the workspace is about on the other — the same
+   photograph the sign-in screen opens on, filling the band edge to edge. */
+.contract-hero {
+  display: flex;
+  align-items: stretch;
+
+  /* The band is the width of the paper, not the width of the text column: it
+     reaches into the sheet's side margin on both sides, so the letterhead meets
+     the page's edge while the body beneath it keeps its inset. On paper the
+     sheet's margin *is* the paper's — the page box carries none — so these same
+     two numbers put the band on the edge of the A4 sheet as well. */
+  width: calc(100% + (var(--doc-bleed) * 2));
+  margin-inline: calc(-1 * var(--doc-bleed));
+  background: var(--doc-tint);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.contract-hero-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9mm var(--doc-bleed) 10mm;
+}
+
+.contract-hero-photo {
+  position: relative;
+  flex: 0 0 calc(var(--doc-photo-width) + var(--doc-bleed));
+  overflow: hidden;
+}
+
+.contract-hero-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.contract-brand {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  margin: 0;
+}
+
+/* The mark beside the office's name. An uploaded logo is drawn as it is; with
+   none, the name stands on a plain block in the letterhead's own green rather
+   than on nothing at all. */
+.contract-brand-logo {
+  display: block;
+  width: 8mm;
+  height: 8mm;
+  object-fit: contain;
+}
+
+.contract-brand-mark {
+  display: block;
+  flex: 0 0 auto;
+  width: 7mm;
+  height: 7mm;
+  background: var(--doc-accent);
+}
+
+.contract-brand-name {
+  margin: 0;
+  color: var(--doc-accent);
+  font-size: 9.5pt;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.contract-title {
+  margin: 7mm 0 0;
+  max-width: 14em;
+  color: var(--doc-ink);
+  font-family: var(--doc-display);
+  font-size: 30pt;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+
+/* The contract's own number and issue date, under the name of the document. */
+.contract-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2mm 8mm;
+  margin: 8mm 0 0;
+}
+
+.contract-hero-item {
+  margin: 0;
+  color: var(--doc-muted);
+  font-size: 9pt;
+  line-height: 1.7;
+}
+
+.contract-hero-label { font-weight: 600; }
+
+.contract-hero-value {
+  color: var(--doc-ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Landlord, tenant, start of the term -------------------------------- */
+
+.contract-parties {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8mm;
+  padding-block: 10mm 9mm;
+  border-block-end: 1pt solid var(--doc-rule);
+}
+
+.contract-party { min-width: 0; }
+
+/* The caption is set in the document's display face and the value under it in
+   the body face, with air between them — the form states who each column is
+   for, then what it answers, rather than running the two together. */
+.contract-party-label {
+  margin: 0;
+  color: var(--doc-ink);
+  font-family: var(--doc-display);
+  font-size: 11.5pt;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.contract-party-value {
+  margin: 6mm 0 0;
+  color: var(--doc-ink);
+  font-size: 10.5pt;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* A value the office reads at a glance — the day the tenancy starts — is set in
+   a pill rather than as more small print. */
+.contract-pill {
+  display: inline-block;
+  padding: 0.6mm 3.5mm;
+  border-radius: 4mm;
+  background: var(--doc-tint-deep);
+  color: var(--doc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The body, section by section --------------------------------------- */
+
+.contract-section {
+  margin-block-start: 8mm;
+}
+
+.contract-section-title {
+  margin: 0 0 3mm;
+  color: var(--doc-ink);
+  font-family: var(--doc-display);
+  font-size: 14pt;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* One quiet line under a heading, saying what the section holds, before the
+   section itself. It is set in the body face and in the muted ink, so it reads
+   as a caption rather than as part of the agreement. */
+.contract-section-hint {
+  margin: -1.5mm 0 4mm;
+  color: var(--doc-muted);
+  font-size: 10pt;
+  line-height: 1.6;
+}
+
+.contract-prose,
+.contract-clause-body,
+.contract-note-body {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+.contract-line {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.contract-line + .contract-line { margin-block-start: 1mm; }
+
+.contract-line-label {
+  color: var(--doc-muted);
+  font-weight: 600;
+}
+
+.contract-line-value {
+  color: var(--doc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A tinted box around a block — the unit's own description, the agreed
+   conditions. It is what the printed form uses to set a block apart from the
+   prose around it. */
+.contract-panel {
+  padding: 5mm 6mm;
+  background: var(--doc-tint);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* --- The unit's own facts -----------------------------------------------
+   One fact to a line, the caption in bold and the value after it, so the block
+   reads as a filled-in form rather than as a table of two columns. */
+
+.contract-facts {
+  display: grid;
+  gap: 2mm;
+  margin: 0;
+}
+
+.contract-fact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5mm;
+  min-width: 0;
+}
+
+.contract-fact-label {
+  color: var(--doc-ink);
+  font-weight: 700;
+}
+
+.contract-fact-value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* --- The unit, beside the building itself -------------------------------
+   The photograph that fills the band also stands beside the unit's own
+   description: the workspace's picture of what is being let. It is the end
+   column, as the band's picture is, and the same width, so the two line up down
+   the page — and it meets the description's panel with nothing between them, so
+   the two read as one block rather than as two things near each other. */
+
+.contract-premises {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--doc-photo-width);
+  align-items: stretch;
+  gap: 0;
+}
+
+.contract-premises-photo {
+  position: relative;
+  min-height: 55mm;
+  overflow: hidden;
+}
+
+.contract-premises-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* --- Tables: the rent schedule, the unit's charges ---------------------- */
+
+.contract-table {
+  width: 100%;
+  border-collapse: collapse;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.contract-table th {
+  padding: 2.5mm 3mm;
+  background: var(--doc-tint-deep);
+  color: var(--doc-ink);
+  font-size: 9pt;
+  font-weight: 700;
+  text-align: start;
+}
+
+.contract-table td {
+  padding: 2.5mm 3mm;
+  border-block-end: 0.8pt solid var(--doc-rule);
+  font-size: 9.5pt;
+  vertical-align: top;
+}
+
+.contract-table th,
+.contract-table td { overflow-wrap: anywhere; }
+
+.contract-table td:first-child,
+.contract-table th:first-child { padding-inline-start: 0; }
+
+.contract-table-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.contract-table-note {
+  display: block;
+  color: var(--doc-muted);
+  font-size: 8.5pt;
+  font-weight: 400;
+}
+
+/* How a month of the schedule stands: billed and settled, billed and owed,
+   billed and overdue. Anything not yet billed carries no chip. */
+.contract-status {
+  display: inline-block;
+  padding: 0.3mm 2.5mm;
+  border-radius: 3mm;
+  background: var(--doc-chip);
+  font-size: 8.5pt;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.contract-status--paid { color: var(--doc-paid); background: var(--doc-paid-soft); }
+.contract-status--due { color: var(--doc-due); background: var(--doc-due-soft); }
+.contract-status--late { color: var(--doc-late); background: var(--doc-late-soft); }
+.contract-status--muted { color: var(--doc-muted); }
+
+/* --- Conditions, and the notes under them ------------------------------- */
+
+.contract-terms-list,
+.contract-notes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contract-clause,
+.contract-note {
+  display: grid;
+  grid-template-columns: 7mm minmax(0, 1fr);
+  gap: 1.5mm;
+  padding-block: 1.25mm;
+}
+
+.contract-clause-num,
+.contract-note-num {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: start;
+}
+
+.contract-clause-text { min-width: 0; }
+
+.contract-clause-title {
+  margin: 0 0 0.5mm;
+  font-size: 10.25pt;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+/* --- Signatures --------------------------------------------------------- */
+
+.contract-signatures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6mm;
+}
+
+.contract-signature {
+  min-width: 0;
+  padding: 6mm 6mm 5mm;
+  background: var(--doc-tint);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.contract-signature-rule {
+  display: block;
+  margin-block-end: 3mm;
+  border-block-end: 0.8pt solid var(--doc-ink);
+}
+
+.contract-signature-role {
+  margin: 0;
+  color: var(--doc-ink);
+  font-weight: 700;
+}
+
+.contract-signature-name {
+  margin: 0.5mm 0 0;
+  color: var(--doc-muted);
+  font-size: 9.5pt;
+  overflow-wrap: anywhere;
+}
+
+.contract-signature-date {
+  display: inline-block;
+  margin: 2.5mm 0 0;
+  padding: 0.4mm 2.5mm;
+  border-radius: 3mm;
+  background: var(--doc-tint-deep);
+  color: var(--doc-muted);
+  font-size: 8.5pt;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The office's own line at the foot ---------------------------------- */
+
+/* `margin-block-start: auto` inside the frame's column rests this line on the
+   foot of the sheet when the contract leaves room, and carries it in the flow
+   when the contract runs long. */
+.contract-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2mm 6mm;
+  margin-block-start: auto;
+  padding-block-start: 10mm;
+  color: var(--doc-muted);
+  font-size: 8.5pt;
+  line-height: 1.7;
+}
+
+.contract-foot-item { margin: 0; overflow-wrap: anywhere; }
+
+.contract-foot-item + .contract-foot-item::before {
+  content: '·';
+  margin-inline-end: 6mm;
+  color: var(--doc-rule-strong);
+}
+
+/* The office's own closing line, when it has written one. It takes a line of its
+   own beneath the contact details rather than being separated from them. */
+.contract-foot-note {
+  flex: 1 0 100%;
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* --- Keeping blocks whole when the browser makes pages ------------------ */
+
+.contract-hero,
+.contract-parties,
+.contract-panel,
+.contract-signatures,
+.contract-signature,
+.contract-foot,
+.contract-table thead { break-inside: avoid; page-break-inside: avoid; }
+
+.contract-table tr { break-inside: avoid; page-break-inside: avoid; }
+
+.contract-section-title,
+.contract-clause-title { break-after: avoid; page-break-after: avoid; }
+
+/* The console's pane, not the paper.
+
+   A printed A4 page is 793.7 CSS px wide, so an unscoped `max-width` here also
+   matches while printing — and would lay the office's contract out as if it
+   were being read on a phone: the hero band stacked, the parties in one column
+   and the title at 20pt. `screen` keeps the narrow-pane rules to the panes they
+   were written for, and the width they begin at is a phone's: anywhere with
+   room for a page at all gets the page, scaled to the pane by the preview. */
+@media screen and (max-width: 640px) {
+  .contract-sheet {
+    --doc-bleed: 7mm;
+
+    /* A pane this narrow cannot show A4 legibly at any scale, so here the sheet
+       stops being paper and becomes a column of the document — and the
+       preview's fit is switched off, because a sheet told to fill its pane must
+       not also be zoomed to it. */
+    zoom: 1 !important;
+    width: 100%;
+    min-height: 0;
+    padding: 0 7mm 8mm;
+    font-size: 9.5pt;
+  }
+
+  .contract-frame { min-height: 0; }
+  .contract-title { max-width: none; font-size: 20pt; }
+  .contract-section-title { font-size: 12.5pt; }
+
+  .contract-hero { flex-direction: column; }
+  .contract-hero-photo { flex: 0 0 auto; height: 40mm; }
+  .contract-hero-meta { margin-block-start: 6mm; }
+
+  .contract-parties { grid-template-columns: minmax(0, 1fr); gap: 6mm; padding-block: 7mm; }
+  .contract-party-label { font-size: 10.5pt; }
+  .contract-party-value { margin-block-start: 3mm; }
+
+  .contract-premises { grid-template-columns: minmax(0, 1fr); }
+  .contract-premises-photo { min-height: 45mm; }
+  .contract-facts { grid-template-columns: minmax(0, 1fr); }
+  .contract-signatures { grid-template-columns: minmax(0, 1fr); }
+  .contract-table th,
+  .contract-table td { padding: 2mm; }
+}
+
+@media print {
+  /* Printing changes none of the layout: the page box carries no margin, so the
+     sheet keeps its own 16mm and the band keeps reaching through it to the
+     paper's edge, exactly as it reaches the sheet's edge on screen. What is
+     dropped is what exists only to make a sheet look like a sheet *on a screen*
+     — its border and its shadow — and the preview's fit-to-pane scale, because
+     paper is the one pane that always has room for the page. */
+  .contract-sheet {
+    zoom: 1;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+  }
+}

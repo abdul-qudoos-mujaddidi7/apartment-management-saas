@@ -41,6 +41,11 @@ const UPLOAD_KINDS = {
   'tenant-photo': { folder: 'tenants', prefix: 'photo' },
   'tenant-id-front': { folder: 'tenants', prefix: 'id-front' },
   'tenant-id-back': { folder: 'tenants', prefix: 'id-back' },
+  // The lease contract's own pictures: the office logo for the letterhead, and
+  // the lessor's photograph for the optional photo slot. They belong to the
+  // organization's contract settings, not to any one contract.
+  'contract-logo': { folder: 'contracts', prefix: 'logo' },
+  'contract-lessor-photo': { folder: 'contracts', prefix: 'lessor' },
 };
 
 const uploadKindNames = Object.keys(UPLOAD_KINDS);

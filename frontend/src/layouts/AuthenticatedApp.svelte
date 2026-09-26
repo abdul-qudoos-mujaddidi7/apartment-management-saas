@@ -15,6 +15,8 @@
   import Tenants from '../pages/Tenants.svelte';
   import TenantProfile from '../pages/TenantProfile.svelte';
   import Leases from '../pages/Leases.svelte';
+  import LeaseContract from '../pages/LeaseContract.svelte';
+  import LeaseContractSettings from '../pages/LeaseContractSettings.svelte';
   import SecurityDeposits from '../pages/SecurityDeposits.svelte';
   import Meters from '../pages/Meters.svelte';
   import MeterReadings from '../pages/MeterReadings.svelte';
@@ -40,6 +42,7 @@
     '/tenants': Tenants,
     '/tenants/:id': TenantProfile,
     '/leases': Leases,
+    '/leases/:leaseId/contract': LeaseContract,
     '/security-deposits': SecurityDeposits,
     '/meters': Meters,
     '/meter-readings': MeterReadings,
@@ -49,6 +52,7 @@
     '/journals': Journals,
     '/tenant-accounts': TenantAccounts,
     '/settings/currencies': Currencies,
+    '/settings/lease-contract': LeaseContractSettings,
     '*': NotFound,
   };
 

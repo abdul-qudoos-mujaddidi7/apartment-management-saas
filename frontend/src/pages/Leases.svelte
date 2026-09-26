@@ -13,6 +13,7 @@
   import { formatShortDate } from '../utils/formatters';
   import { sortRows } from '../utils/sortRows';
   import { onMount } from 'svelte';
+  import { push } from 'svelte-spa-router';
 
   import { api } from '../services/api';
   import { listFloors } from '../services/floors';
@@ -367,6 +368,10 @@
                   <i class="bi bi-eye" aria-hidden="true"></i>
                   {$locale.leases.details}
                 </button>
+                <button class="row-menu-item" type="button" on:click={() => push(`/leases/${lease.id}/contract`)}>
+                  <i class="bi bi-file-earmark-ruled" aria-hidden="true"></i>
+                  {$locale.leaseContract.viewContract}
+                </button>
                 <button class="row-menu-item" type="button" on:click={() => openEdit(lease)}>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
                   {$locale.common.actions.edit}
@@ -605,6 +610,12 @@
 
   <div slot="footer">
     <button class="btn btn-light" type="button" on:click={() => (detail = null)}>{$locale.leases.cancel}</button>
+    <!-- The contract is generated from this lease, so it is opened from here
+         rather than edited here: the dialog stays read-only. -->
+    <button class="btn btn-primary" type="button" on:click={() => { const id = detail?.id; detail = null; if (id) push(`/leases/${id}/contract`); }}>
+      <i class="bi bi-file-earmark-ruled" aria-hidden="true"></i>
+      {$locale.leaseContract.viewContract}
+    </button>
   </div>
 </Modal>
 

@@ -161,6 +161,8 @@ model Organization {
   apartmentAssets             ApartmentAsset[]
   currencies                  Currency[]
   exchangeRates               ExchangeRate[]
+  leaseContractSetting        LeaseContractSetting?
+  leaseContractClauses        LeaseContractClause[]
 
   @@index([deletedAt])
 }
@@ -501,6 +503,135 @@ model Lease {
   @@index([organizationId, deletedAt])
   @@index([tenantId, deletedAt])
   @@index([apartmentId, deletedAt])
+}
+
+/* --- Lease contract (قرارداد کرایه‌نامه) ---------------------------------
+ *
+ * The paper a lease is handed over on. Nothing here is a second copy of the
+ * tenancy: the tenant, the apartment, the building and the lease terms are all
+ * read from the records that own them. What lives in these two models is only
+ * what has no other home — who the contract is issued by, and the wording the
+ * organization wants around it.
+ *
+ * One settings row per organization, and one clause list per organization, so
+ * changing the wording once changes it for every contract opened afterwards.
+ */
+
+/// Organization-wide contract template: office header, lessor identity, the
+/// contract title in each language, the numbering prefix and the wording that
+/// surrounds the clauses.
+model LeaseContractSetting {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+
+  /// Office header. This address belongs to the *office* that issues the
+  /// contract — the address of the rented property is the building's own, and
+  /// the two are never interchangeable.
+  officeName    String? @db.VarChar(191)
+  officeAddress String? @db.Text
+  officePhone   String? @db.VarChar(64)
+  officeEmail   String? @db.VarChar(191)
+  licenseNumber String? @db.VarChar(191)
+  logoUrl       String? @db.VarChar(500)
+
+  /// Which language a contract opens in: "en", "fa" or "ps" — deliberately the
+  /// same codes the frontend's locale store uses, so the two never need a map.
+  defaultLanguage String @default("fa") @db.VarChar(5)
+
+  /// The document's own name in each language. A printed contract is titled in
+  /// the language it is printed in, not translated on the fly.
+  titleEn String @default("Lease Agreement") @db.VarChar(191)
+  titleFa String @default("قرارداد کرایه‌نامه") @db.VarChar(191)
+  titlePs String @default("د کرایې تړون") @db.VarChar(191)
+
+  /// The lessor/owner the contract is issued by. Free text, because the lessor
+  /// need not be the organization itself.
+  lessorName       String? @db.VarChar(191)
+  lessorPhone      String? @db.VarChar(64)
+  lessorNationalId String? @db.VarChar(64)
+  lessorAddress    String? @db.Text
+  lessorPhotoUrl   String? @db.VarChar(500)
+
+  /// The body of the document itself. Each of these is a template: the office
+  /// writes it once, in the languages it prints in, and the contract fills in
+  /// the `{{tokens}}` from the lease that is open.
+  ///
+  ///   * `preamble`  — the tenancy statement: who lets what, to whom, for how
+  ///     long, at what rent. This is where the apartment entered the sentence.
+  ///   * `inventory` — the condition the unit and its fittings are handed over
+  ///     in, and must be returned in.
+  ///   * `notes`     — one note per line, numbered by the document, printed
+  ///     under the signatures.
+  preambleEn  String? @db.Text
+  preambleFa  String? @db.Text
+  preamblePs  String? @db.Text
+  inventoryEn String? @db.Text
+  inventoryFa String? @db.Text
+  inventoryPs String? @db.Text
+  notesEn     String? @db.Text
+  notesFa     String? @db.Text
+  notesPs     String? @db.Text
+
+  /// The heading above the numbered terms and the one above the notes.
+  termsTitleEn String? @db.VarChar(191)
+  termsTitleFa String? @db.VarChar(191)
+  termsTitlePs String? @db.VarChar(191)
+  notesTitleEn String? @db.VarChar(191)
+  notesTitleFa String? @db.VarChar(191)
+  notesTitlePs String? @db.VarChar(191)
+
+  /// Printed before the lease's own contract number, e.g. `DBA-`.
+  contractNumberPrefix String? @db.VarChar(32)
+  footerText           String? @db.Text
+
+  /// What each signature line says, overriding the wording the interface uses
+  /// for the contract's language. Left blank, the document names the signer in
+  /// its own language rather than in whatever language the office typed here.
+  lessorSignatureLabel  String? @db.VarChar(191)
+  tenantSignatureLabel  String? @db.VarChar(191)
+  witnessSignatureLabel String? @db.VarChar(191)
+
+  /// Photographs are optional: a contract is complete without them, and a
+  /// missing file must never be a broken page.
+  showTenantPhoto Boolean @default(true)
+  showLessorPhoto Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+}
+
+/// One numbered term of the contract, in every language the workspace prints
+/// in. A blank translation falls back to English when the contract renders, so
+/// a clause is never missing from — or half-written in — a language.
+model LeaseContractClause {
+  id             String  @id @default(cuid())
+  organizationId String
+
+  /// Display order. Ties fall back to creation order, so the numbering is
+  /// stable even if two clauses are saved in the same millisecond.
+  sortOrder Int     @default(0)
+  isEnabled Boolean @default(true)
+
+  titleEn String @default("") @db.VarChar(191)
+  titleFa String @default("") @db.VarChar(191)
+  titlePs String @default("") @db.VarChar(191)
+
+  /// The clause itself. Multi-line, and may carry {{placeholder}} tokens, which
+  /// are resolved from this lease's own records when the contract is built.
+  bodyEn String @db.Text
+  bodyFa String? @db.Text
+  bodyPs String? @db.Text
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, sortOrder])
 }
 
 model Invoice {

@@ -16,7 +16,8 @@ export const navigationItems = [
   { key: 'invoices', icon: 'bi-receipt', href: '/invoices' },
   { key: 'accounts', icon: 'bi-bank', href: '/accounts' },
   { key: 'journals', icon: 'bi-journal-text', href: '/journals' },
-  { key: 'currencies', icon: 'bi-cash-coin', href: '/settings/currencies' }
+  { key: 'currencies', icon: 'bi-cash-coin', href: '/settings/currencies' },
+  { key: 'leaseContract', icon: 'bi-file-earmark-ruled', href: '/settings/lease-contract' }
 ];
 
 /**
@@ -35,7 +36,10 @@ const moduleAliases = [
   { prefix: '/apartments/', key: 'assets' },
   // Tenant accounts live under the Accounts module.
   { path: '/tenant-accounts', key: 'accounts' },
-  { prefix: '/tenant-accounts/', key: 'accounts' }
+  { prefix: '/tenant-accounts/', key: 'accounts' },
+  // A printed contract belongs to the lease it was raised on, so the chrome
+  // keeps naming the Leases module while the document is open.
+  { prefix: '/leases/', key: 'leases' }
 ];
 
 /**
