@@ -350,39 +350,22 @@
       ].filter(([, value]) => has(value))
     : [];
 
-  /* The months of the term, and the charges the unit carries. Both are built by
-     the server from this lease's own records. */
-  $: scheduleRows = contract?.schedule || [];
-  $: chargeRows = contract?.utilities || [];
-
   /*
-   * How a billed month stands. The tones are the statuses' own, and match the
-   * ones the PDF renderer draws for the same row.
+   * The charges the unit carries, built by the server from this lease's own
+   * records.
+   *
+   * The lease's month-by-month rent schedule is deliberately not drawn on the
+   * contract: what a tenancy falls due is a matter for the ledger, which keeps
+   * it up to date, and a schedule printed on a signed page goes stale the first
+   * time a payment is late. The contract states the term and what the unit is
+   * let for; the months live on the lease's own screen.
    */
-  const STATUS_TONES = {
-    PAID: 'contract-status--paid',
-    UNPAID: 'contract-status--due',
-    PARTIALLY_PAID: 'contract-status--due',
-    OVERDUE: 'contract-status--late',
-    CANCELLED: 'contract-status--muted',
-  };
-
-  /* A month's status column is drawn only when this lease has been billed in at
-     least one month; the months with no invoice show an em dash. */
-  $: billedMonths = scheduleRows.some((row) => has(row.status));
-
-  $: statusWord = (status) => doc.tenantProfile.invoiceStatuses[status] || '';
-  $: statusTone = (status) => STATUS_TONES[status] || 'contract-status--muted';
+  $: chargeRows = contract?.utilities || [];
 
   /* The words a charge is billed under, in the contract's own language. */
   $: chargeName = (key) => (key === 'SERVICE_FEE'
     ? doc.leases.serviceFee
     : doc.tenantProfile.utilities[key] || '');
-
-  /* The foot of the document: how to reach the office, in the office's order. */
-  $: officeContact = contract
-    ? [contract.office?.phone, contract.office?.email, contract.office?.address].filter(has)
-    : [];
 
   /** Notes are one line each. Lease-specific notes continue the same list. */
   $: documentNotes = contract
@@ -622,42 +605,6 @@
                 </section>
               {/if}
 
-              {#if scheduleRows.length > 0}
-                <section class="contract-section">
-                  <h2 class="contract-section-title">{doc.leaseContract.rentScheduleTitle}</h2>
-                  <table class="contract-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">{doc.leaseContract.month}</th>
-                        <th scope="col">{doc.leaseContract.rentAmount}</th>
-                        <th scope="col">{doc.leaseContract.dueDate}</th>
-                        {#if billedMonths}
-                          <th scope="col">{doc.leaseContract.paymentStatus}</th>
-                        {/if}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {#each scheduleRows as row (row.key)}
-                        <tr>
-                          <td>{digits(row.month[language] || row.month.en)}</td>
-                          <td class="contract-table-value">{digits(row.amountLabel)}</td>
-                          <td class="contract-table-value">{digits(row.dueDateLabel)}</td>
-                          {#if billedMonths}
-                            <td>
-                              {#if statusWord(row.status)}
-                                <span class="contract-status {statusTone(row.status)}">{statusWord(row.status)}</span>
-                              {:else}
-                                <span class="contract-status contract-status--muted">—</span>
-                              {/if}
-                            </td>
-                          {/if}
-                        </tr>
-                      {/each}
-                    </tbody>
-                  </table>
-                </section>
-              {/if}
-
               {#if chargeRows.length > 0}
                 <section class="contract-section">
                   <h2 class="contract-section-title">{doc.leaseContract.utilitiesTitle}</h2>
@@ -771,15 +718,15 @@
                 </section>
               {/if}
 
-              {#if officeContact.length > 0 || contract.footerText}
+              <!-- The foot carries the office's own closing line and nothing
+                   else: a tenant who needs the office reaches it from the
+                   lease, and contact details printed on every contract are one
+                   more place for them to go stale. The office writes this line
+                   in Settings › Lease Contract; a contract without one simply
+                   ends at its signatures. -->
+              {#if contract.footerText}
                 <footer class="contract-foot">
-                  {#each officeContact as item (item)}
-                    <p class="contract-foot-item">{item}</p>
-                  {/each}
-
-                  {#if contract.footerText}
-                    <p class="contract-foot-note">{contract.footerText}</p>
-                  {/if}
+                  <p class="contract-foot-note">{contract.footerText}</p>
                 </footer>
               {/if}
             </div>

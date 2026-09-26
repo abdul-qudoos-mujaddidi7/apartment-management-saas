@@ -10,10 +10,9 @@
        it;
      * a strip naming the two parties and the day the tenancy begins;
      * the body, section by section, under display headings — what the unit is,
-       what the tenancy says, what falls due month by month, what the unit
-       charges, how long the term runs, what is held as deposit, how the unit is
-       handed over, the conditions the parties agreed, the notes that qualify
-       them and the signatures;
+       what the tenancy says, what the unit charges, how long the term runs,
+       what is held as deposit, how the unit is handed over, the conditions the
+       parties agreed, the notes that qualify them and the signatures;
      * the office's own contact line at the foot.
 
    All tenancy data is written into the markup by the server before this
@@ -39,23 +38,16 @@
   --doc-muted: #6b7788;       /* --text-muted — 4.9:1 on white               */
   --doc-tint: #e5f1ff;        /* --brand-100 — the bands and the panels      */
   --doc-tint-deep: #cfe4ff;   /* --brand-200 — a table's head, a pill        */
-  --doc-chip: #eef1f6;        /* a chip with no state to report              */
   --doc-rule: #e9edf2;        /* --border — the hairline                     */
-  --doc-rule-strong: #d3d9e0; /* --border-strong — a rule that must be seen   */
   --doc-accent: #1c58b8;      /* --brand-800 — the office's mark and name    */
-  --doc-paid: #1f7a3d;
-  --doc-paid-soft: #e2f1e5;
-  --doc-due: #8a5f10;
-  --doc-due-soft: #faefd9;
-  --doc-late: #a5382f;
-  --doc-late-soft: #f7e4e2;
   --doc-display: Georgia, 'Times New Roman', 'Vazirmatn', 'Noto Naskh Arabic', serif;
 
   /* How far the hero band reaches past the sheet's own margin to meet the page
      edge. It is the sheet's side padding, exactly: the paper's margin and the
      band's reach are one measure, so the letterhead lands on the edge of the
-     page while the body beneath it stays inset by the same 16mm. Stated once
-     here, and restated by the two print renderers, which own the page box. */
+     page while the body beneath it stays inset by the same 16mm. Each renderer
+     restates it — the two that open a page box have to, since the page box is
+     where that margin is given up. */
   --doc-bleed: 16mm;
 
   /* The width of the photograph wherever it stands — filling the band's end, and
@@ -373,7 +365,12 @@
   object-fit: cover;
 }
 
-/* --- Tables: the rent schedule, the unit's charges ---------------------- */
+/* --- Tables: the charges the unit carries -------------------------------
+   One table, one purpose: what the tenant pays for on top of the rent. There
+   is deliberately no table of months here — a schedule of what falls due is
+   the ledger's to keep current, and a printed one is wrong the first time a
+   payment is late. */
+
 
 .contract-table {
   width: 100%;
@@ -404,34 +401,13 @@
 .contract-table td:first-child,
 .contract-table th:first-child { padding-inline-start: 0; }
 
-.contract-table-value {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
+/* The small print under a charge — the rate, or the meter it is read from. */
 .contract-table-note {
   display: block;
   color: var(--doc-muted);
   font-size: 8.5pt;
   font-weight: 400;
 }
-
-/* How a month of the schedule stands: billed and settled, billed and owed,
-   billed and overdue. Anything not yet billed carries no chip. */
-.contract-status {
-  display: inline-block;
-  padding: 0.3mm 2.5mm;
-  border-radius: 3mm;
-  background: var(--doc-chip);
-  font-size: 8.5pt;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.contract-status--paid { color: var(--doc-paid); background: var(--doc-paid-soft); }
-.contract-status--due { color: var(--doc-due); background: var(--doc-due-soft); }
-.contract-status--late { color: var(--doc-late); background: var(--doc-late-soft); }
-.contract-status--muted { color: var(--doc-muted); }
 
 /* --- Conditions, and the notes under them ------------------------------- */
 
@@ -514,13 +490,15 @@
 
 /* --- The office's own line at the foot ---------------------------------- */
 
-/* `margin-block-start: auto` inside the frame's column rests this line on the
+/* The office's closing line, and the only thing the foot carries: the workspace
+   holds the office's phone, email and address, but they are not printed here — a
+   signed contract outlives them, and a stale number on paper sends a tenant to
+   the wrong place.
+
+   `margin-block-start: auto` inside the frame's column rests the line on the
    foot of the sheet when the contract leaves room, and carries it in the flow
    when the contract runs long. */
 .contract-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2mm 6mm;
   margin-block-start: auto;
   padding-block-start: 10mm;
   color: var(--doc-muted);
@@ -528,18 +506,8 @@
   line-height: 1.7;
 }
 
-.contract-foot-item { margin: 0; overflow-wrap: anywhere; }
-
-.contract-foot-item + .contract-foot-item::before {
-  content: '·';
-  margin-inline-end: 6mm;
-  color: var(--doc-rule-strong);
-}
-
-/* The office's own closing line, when it has written one. It takes a line of its
-   own beneath the contact details rather than being separated from them. */
+/* Set as it was typed: the office may write one line or three. */
 .contract-foot-note {
-  flex: 1 0 100%;
   margin: 0;
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -604,15 +572,37 @@
 }
 
 @media print {
-  /* Printing changes none of the layout: the page box carries no margin, so the
-     sheet keeps its own 16mm and the band keeps reaching through it to the
-     paper's edge, exactly as it reaches the sheet's edge on screen. What is
-     dropped is what exists only to make a sheet look like a sheet *on a screen*
-     — its border and its shadow — and the preview's fit-to-pane scale, because
-     paper is the one pane that always has room for the page. */
+  /* The sheet's own measurements on paper, stated once for both renderers — the
+     browser's Print command and the server's PDF.
+
+     Printing changes none of the document's layout. The page box gives up its
+     margin at the top and the sides (see the print stylesheet, and the renderer's
+     own `@page`), so the sheet keeps its own 16mm and the band keeps reaching
+     through it to the paper's edge, exactly as it reaches the sheet's edge on
+     screen.
+
+     The foot is the one measure that moves: the paper's 15mm replaces the
+     sheet's, so the sheet gives its own bottom padding up here. Padding is part
+     of the box, and a box is what the browser breaks across pages — carried on
+     the sheet, those 15mm would follow the contract onto a page of its own
+     whenever the contract ended near the foot of one, and on every page but the
+     last the type would run to the paper's very edge. A page's own margin cannot
+     do either.
+
+     What else is dropped is what exists only to make a sheet look like a sheet
+     on a *screen*: the border and the shadow, and the preview's fit-to-pane
+     scale — printed `!important` because the preview writes it on the element
+     itself, and paper is the one pane that always has room for the full page. */
   .contract-sheet {
-    zoom: 1;
+    zoom: 1 !important;
+    box-sizing: border-box;
+    width: 210mm;
+    /* The paper's content area: A4 less the foot margin the page box keeps. The
+       frame's own minimum is the same measure, so the office's contact line
+       rests on the foot of the last page when the contract leaves room. */
+    min-height: calc(297mm - 15mm);
     margin: 0;
+    padding: 0 16mm;
     border: 0;
     box-shadow: none;
   }

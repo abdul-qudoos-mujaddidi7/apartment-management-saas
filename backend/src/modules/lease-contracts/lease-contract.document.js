@@ -26,9 +26,11 @@ const { toDocumentDigits } = require('./lease-contract.format');
  * The document is laid out as the printed form the office issues: a hero band
  * naming the office and the document, the two parties and the day the tenancy
  * begins, then a section for each part of the agreement — the unit, the
- * tenancy statement, the months of the term, the charges the unit carries, the
- * term and the deposit, the condition the unit is handed over in, the numbered
- * conditions, the notes under them, and the signatures.
+ * tenancy statement, the charges the unit carries, the term and the deposit,
+ * the condition the unit is handed over in, the numbered conditions, the notes
+ * under them, and the signatures. A month-by-month rent schedule is not part of
+ * it: the contract states the term, and what falls due month by month is the
+ * ledger's business.
  *
  * Every value is HTML-escaped on the way in. A section is the reason: its text
  * mixes organization-written wording with tenant data, and a value that happened
@@ -63,15 +65,6 @@ const HERO_PHOTO = path.resolve(
   __dirname,
   '../../../../frontend/public/images/home/hero-tall.jpg',
 );
-
-/** How each month of the rent schedule stands, as an invoice reports it. */
-const STATUS_TONES = {
-  PAID: 'contract-status--paid',
-  UNPAID: 'contract-status--due',
-  PARTIALLY_PAID: 'contract-status--due',
-  OVERDUE: 'contract-status--late',
-  CANCELLED: 'contract-status--muted',
-};
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -289,7 +282,8 @@ function line(label, value) {
 
 /**
  * A ruled table. A cell is either `{ text }` — escaped here — or `{ html }`,
- * for the one cell that carries a chip rather than a value.
+ * for a cell that is more than a value: the fixed part of a charge, with the
+ * small print that qualifies it under it.
  */
 function table(head, rows) {
   if (rows.length === 0) return '';
@@ -300,24 +294,11 @@ function table(head, rows) {
 
   const bodyRows = rows
     .map((cells) => `<tr>${cells
-      .map((cell) => {
-        const className = cell.className ? ` class="${cell.className}"` : '';
-        return `<td${className}>${has(cell.html) ? cell.html : escapeHtml(cell.text)}</td>`;
-      })
+      .map((cell) => `<td>${has(cell.html) ? cell.html : escapeHtml(cell.text)}</td>`)
       .join('')}</tr>`)
     .join('');
 
   return `<table class="contract-table"><thead><tr>${headCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
-}
-
-/** How a billed month stands, said in the document's own language. */
-function statusChip(status, labels) {
-  const words = labels?.invoiceStatuses || {};
-  const word = words[status];
-  if (!has(status) || !has(word)) return '';
-
-  return `<span class="contract-status ${STATUS_TONES[status] || 'contract-status--muted'}">`
-    + `${escapeHtml(word)}</span>`;
 }
 
 /** The words one charge is billed under: the service fee, or a metered utility. */
@@ -373,20 +354,19 @@ function signaturePanel({ role, name, date }) {
 }
 
 /**
- * The office's own contact details and closing line, resting on the foot of the
- * sheet: how a tenant reaches the office after the contract is signed.
+ * The office's own closing line, resting on the foot of the sheet.
+ *
+ * It is the office's wording, not a field of the tenancy: the contact details the
+ * workspace holds for the office are deliberately not printed here. A contract
+ * that is signed, scanned and filed outlives a phone number, and every stale
+ * number on paper is a tenant sent to the wrong place. A tenant who needs the
+ * office has the lease itself.
  */
-function footLine(items, note) {
-  const drawn = items
-    .filter(has)
-    .map((item) => `<p class="contract-foot-item">${escapeHtml(item)}</p>`)
-    .join('');
-
-  if (!drawn && !has(note)) return '';
+function footNote(note) {
+  if (!has(note)) return '';
 
   return '<footer class="contract-foot">'
-    + drawn
-    + (has(note) ? `<p class="contract-foot-note">${escapeHtml(note)}</p>` : '')
+    + `<p class="contract-foot-note">${escapeHtml(note)}</p>`
     + '</footer>';
 }
 
@@ -436,43 +416,20 @@ function buildDocument({ contract, language, labels = {} }) {
   ].join('');
 
   /*
-   * The status column is drawn only when this lease has been billed in at least
-   * one of its months. A contract for a tenancy that has not been billed yet is
-   * a schedule of what falls due, not a column of blanks — and a month that has
-   * no invoice among months that do gets an em dash rather than an empty cell.
-   */
-  /*
    * The workspace's own photograph of the property — the building the sign-in
    * screen opens on — inlined once and used in both places it appears: the band
    * at the head of the document, and beside the unit's description.
    */
   const buildingPhoto = heroPhoto();
 
-  const billedMonths = contract.schedule.some((row) => has(row.status));
-
-  const scheduleHead = [labels.month, labels.rentAmount, labels.dueDate];
-  if (billedMonths) scheduleHead.push(labels.paymentStatus);
-
-  const schedule = table(
-    scheduleHead,
-    contract.schedule.map((row) => {
-      const cells = [
-        { text: digits(row.month[language] || row.month.en) },
-        { text: digits(row.amountLabel), className: 'contract-table-value' },
-        { text: digits(row.dueDateLabel), className: 'contract-table-value' },
-      ];
-
-      if (billedMonths) {
-        cells.push({
-          html: statusChip(row.status, labels)
-            || '<span class="contract-status contract-status--muted">—</span>',
-        });
-      }
-
-      return cells;
-    }),
-  );
-
+  /*
+   * The charges the unit carries, as the office's form lists them. The lease's
+   * month-by-month rent schedule is deliberately *not* drawn: what a tenancy
+   * falls due is a matter for the ledger, which keeps it current, and a table of
+   * months and payment states printed on a signed page goes stale the first time
+   * a payment is late. The contract states the term and what the unit is let
+   * for; the months live on the lease's own screen.
+   */
   const charges = table(
     [labels.service, labels.paidBy],
     contract.utilities.map((row) => [
@@ -502,7 +459,6 @@ function buildDocument({ contract, language, labels = {} }) {
       ],
     }),
     section(labels.statementTitle, `<p class="contract-prose">${escapeHtml(text('preamble'))}</p>`),
-    section(labels.rentScheduleTitle, schedule),
     section(labels.utilitiesTitle, charges),
     section(labels.termTitle, terms, { panel: true }),
     section(labels.maintenanceTitle, `<p class="contract-prose">${escapeHtml(text('inventory'))}</p>`),
@@ -526,14 +482,27 @@ ${fontFaces()}
 html,body{margin:0;padding:0;background:#fff;}
 body{font-family:'Vazirmatn',system-ui,sans-serif;color:#172033;}
 ${stylesheet()}
-/* The sheet's margin is the paper's margin — except at the top of the first
-   page, where the hero band is meant to meet the edge the way it meets the
-   sheet's own edge on screen. Only the first page gives its top margin up: a
-   page of type should never start against the paper. */
-@page{size:A4 portrait;margin:14mm 13mm;}
-@page:first{margin-top:0;}
-.contract-sheet{--doc-bleed:13mm;width:auto;min-height:0;margin:0;padding:0;border:0;box-shadow:none;}
-.contract-frame{min-height:282mm;}
+/* The page box: A4, with no margin at the top or the sides. The letterhead band
+   is drawn to the paper's edge, and the sheet takes the 16mm its own body is
+   inset by on top of its width to reach it — so the band bleeds and the body
+   beneath it does not, which is the relationship the page has on screen too.
+
+The foot is the one margin that stays on the page rather than on the sheet. A
+page's own margin is the one clearance that cannot push a page; carried as the
+sheet's padding it would follow the contract onto a blank page of its own
+whenever the contract ended near the foot of one.
+
+These are the paper's measurements, and they are stated unconditionally rather
+than inside a print media query, so the sheet is A4 whatever media the renderer
+resolves. The sheet's own rules for paper live in the document's shared
+stylesheet, which is inlined above and is the same one the browser's Print
+command reads. */
+@page{size:A4 portrait;margin:0 0 15mm;}
+.contract-sheet{--doc-bleed:16mm;zoom:1 !important;box-sizing:border-box;width:210mm;min-height:calc(297mm - 15mm);margin:0;padding:0 16mm;border:0;box-shadow:none;}
+.contract-hero{width:calc(100% + (var(--doc-bleed) * 2));margin-inline:calc(-1 * var(--doc-bleed));}
+/* The frame is the sheet less the foot the page keeps clear, so the office's
+   contact line rests on the foot of the last page when the contract leaves room. */
+.contract-frame{min-height:calc(297mm - 15mm);}
 </style>
 </head>
 <body>
@@ -559,10 +528,7 @@ ${partiesStrip([
 
 ${sections.join('\n')}
 
-${footLine(
-  [contract.office.phone, contract.office.email, contract.office.address],
-  contract.footerText,
-)}
+${footNote(contract.footerText)}
 
 </div>
 </article>

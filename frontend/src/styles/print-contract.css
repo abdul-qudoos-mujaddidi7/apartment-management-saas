@@ -13,32 +13,56 @@
         tint all become plain flowing paper;
      2. the chrome and anything interactive (`.no-print` — toolbars, language
         chips, buttons, alerts) is removed, so the sheet is all that is left;
-    3. the page is A4, with no margin of its own — the sheet's own 16mm of side
-       padding is the paper's margin, so the hero band, which reaches through
-       that padding, lands on the edge of the paper and the body stays inset;
+    3. the contract's page is A4 with no margin at the top or the sides, so the
+       hero band — which the document draws to the edge of the sheet by
+       reaching through the sheet's own 16mm of side padding — meets the edge
+       of the paper, while the body beneath it stays inset. Its foot margin is
+       the one that stays on the page, because a page's own margin is the one
+       clearance that cannot push a page;
     4. the page's blocks are kept whole: a heading stays with what it
        introduces, and a row of a table or a signature panel is never sliced in
        half by a page break.
 
-   Everything is scoped to `body:has(.contract-document)`. Any other page still
-   prints its own content, and the page size is stated once, for all of them.
+   Everything else is scoped to `body:has(.contract-document)`: any other page
+   still prints its own content, on the application's own page box, which this
+   file is the only place to state.
    ========================================================================== */
 
 @media print {
-  /* The paper has no margin of its own, and it is the same page box the
-     server's PDF renderer states, so the sheet the office prints here and the
-     sheet it downloads are one page rather than two that differ by a
-     millimetre of margin.
+  /* Two page boxes, because this stylesheet is loaded by the whole console.
 
-     The margin is not missing, it has merely moved: the sheet carries it, as
-     the 16mm of padding the document already sets for its own sides. Stating
-     it on the page box *and* on the sheet would double it — the body would sit
-     32mm in from the paper, and the hero band, which reaches 16mm past the
-     sheet's edge, would stop a margin short of the paper's edge instead of
-     landing on it. */
+     The default one is what every other page of the application prints on: A4,
+     with the margins a page of the application deserves. The contract does not
+     use it — its body asks for the one named `contract` instead (below), and its
+     own stylesheet gives the sheet the measurements that go with it. */
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 14mm 13mm;
+  }
+
+  /* The contract's page box: no margin at the top or the sides, because the
+     letterhead band is drawn to the paper's edge and a margin there is exactly
+     what used to stop it a centimetre short of it. The band reaches that edge by
+     taking the sheet's own 16mm of side padding on top of its width, so the body
+     beneath it keeps its inset and only the band bleeds — the same relationship
+     the page has on screen.
+
+     The foot is the one margin that stays on the page. A page's own margin is
+     the one clearance that cannot push a page; carried as the sheet's padding it
+     would follow the contract onto a blank page of its own whenever the contract
+     ended near the foot of one, and on every page but the last the type would
+     run to the paper's very edge. */
+  @page contract {
+    size: A4 portrait;
+    margin: 0 0 15mm;
+  }
+
+  /* The contract's pages are the page box above; everything the console prints
+     keeps the default one. Set on the body rather than on the sheet so that
+     nothing in the shell before the sheet — an empty wrapper is still a box —
+     opens a page of its own in the other context. */
+  body:has(.contract-document) {
+    page: contract;
   }
 
   html,
@@ -83,34 +107,13 @@
     box-shadow: none !important;
   }
 
-  /* The sheet stops being a sheet and becomes the page. It is the paper's own
-     size — A4, exactly — and it carries the page's margin as its own padding,
-     which is the 16mm the document already insets its body by. The band's reach
-     past that margin is restated for the same measure, so it is the paper's
-     edge it meets and not the sheet's. */
-  .contract-sheet {
-    --doc-bleed: 16mm;
-
-    /* Paper is the one pane that always has room for the sheet: the preview's
-       fit-to-pane scale is for the screen and must never shrink what prints. */
-    zoom: 1 !important;
-    box-sizing: border-box !important;
-    width: 210mm !important;
-    min-height: 297mm !important;
-    margin: 0 !important;
-    padding: 0 16mm 15mm !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    background: #fff !important;
-  }
-
-  /* The letterhead, on the paper's edge. The band is the width of the paper
-     rather than the width of the text column: it takes the sheet's side padding
-     on top of its own width, and is pulled back over it by the same amount. */
-  .contract-hero {
-    width: calc(100% + (var(--doc-bleed) * 2)) !important;
-    margin-inline: calc(-1 * var(--doc-bleed)) !important;
-  }
+  /* Deliberately no rule for `.contract-sheet` itself. The sheet's measurements
+     on paper — its A4 width, its 16mm inset, the height of the frame that rests
+     the office's contact line on the foot — are stated once, in the document's
+     own stylesheet, because they are the paper's measurements for the server's
+     PDF renderer as much as for this one, and that renderer never reads this
+     file. The sheet the office prints here and the sheet it downloads are
+     therefore one page rather than two that agree today. */
 
   /* --- Keeping blocks whole ---------------------------------------------
      A panel, a signature block and a row of a table are read as one thing; a
