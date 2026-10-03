@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "predev": "prisma generate",
     "dev": "nodemon src/server.js",
     "seed": "node prisma/seed.js",
     "seed:asset-permissions": "node scripts/seed-asset-permissions.js --apply",

@@ -177,7 +177,6 @@
       signatureName: words.leaseContract.signatureName,
       lessorSignature: words.leaseContract.lessor,
       tenantSignature: words.leaseContract.tenant,
-      witnessSignature: words.leaseContract.witnessSignatureLabel,
       stamp: words.leaseContract.stamp,
 
       /* The document is a form of sections, and each section is captioned in
@@ -187,18 +186,10 @@
       addressSeparator: words.leaseContract.addressSeparator,
       statementTitle: words.leaseContract.statementTitle,
       rentScheduleTitle: words.leaseContract.rentScheduleTitle,
-      utilitiesTitle: words.leaseContract.utilitiesTitle,
-      termTitle: words.leaseContract.termTitle,
       maintenanceTitle: words.leaseContract.maintenanceTitle,
       signaturesTitle: words.leaseContract.signaturesTitle,
 
       leaseStartDate: words.leaseContract.leaseStartDate,
-      startDate: words.leases.startDate,
-      endDate: words.leases.endDate,
-      period: words.leases.period,
-      months: words.leaseContract.months,
-      securityDeposit: words.leases.securityDeposit,
-
       building: words.leaseContract.building,
       buildingAddress: words.leaseContract.buildingAddress,
       floor: words.leaseContract.floor,
@@ -211,7 +202,6 @@
       rentAmount: words.leaseContract.rentAmount,
       dueDate: words.leaseContract.dueDate,
       paymentStatus: words.leaseContract.paymentStatus,
-      service: words.leaseContract.service,
       paidBy: words.leaseContract.paidBy,
       serviceFee: words.leases.serviceFee,
       utilities: words.tenantProfile.utilities,
@@ -332,21 +322,6 @@
         [doc.leaseContract.area, digits(contract.apartment.areaLabel)],
         [doc.leaseContract.bedrooms, digits(contract.apartment.bedrooms)],
         [doc.leaseContract.bathrooms, digits(contract.apartment.bathrooms)],
-      ].filter(([, value]) => has(value))
-    : [];
-
-  /* How long the term runs, and what is held against it. */
-  $: termLines = contract
-    ? [
-        [doc.leases.startDate, digits(contract.lease.startDateLabel)],
-        [doc.leases.endDate, digits(contract.lease.endDateLabel)],
-        [
-          doc.leases.period,
-          has(contract.lease.durationMonths)
-            ? `${digits(contract.lease.durationMonths)} ${doc.leaseContract.months}`
-            : '',
-        ],
-        [doc.leases.securityDeposit, digits(contract.lease.securityDepositLabel)],
       ].filter(([, value]) => has(value))
     : [];
 
@@ -598,49 +573,27 @@
                 </section>
               {/if}
 
-              {#if has(sectionText('preamble'))}
+              {#if has(sectionText('preamble')) || chargeRows.length > 0}
                 <section class="contract-section">
                   <h2 class="contract-section-title">{doc.leaseContract.statementTitle}</h2>
-                  <p class="contract-prose">{sectionText('preamble')}</p>
-                </section>
-              {/if}
-
-              {#if chargeRows.length > 0}
-                <section class="contract-section">
-                  <h2 class="contract-section-title">{doc.leaseContract.utilitiesTitle}</h2>
-                  <table class="contract-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">{doc.leaseContract.service}</th>
-                        <th scope="col">{doc.leaseContract.paidBy}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  {#if has(sectionText('preamble'))}
+                    <p class="contract-prose">{sectionText('preamble')}</p>
+                  {/if}
+                  {#if chargeRows.length > 0}
+                    <ul class="contract-subject-charges">
                       {#each chargeRows as row (row.key)}
-                        <tr>
-                          <td>
-                            {digits(chargeName(row.key))}
-                            {#if has(row.detail)}<span class="contract-table-note">{digits(row.detail)}</span>{/if}
-                          </td>
-                          <td>{doc.leaseContract.tenant}</td>
-                        </tr>
+                        <li class="contract-subject-charge">
+                          <strong class="contract-subject-charge-name">{digits(chargeName(row.key))}:</strong>
+                          {#if has(row.detail)}
+                            <span class="contract-subject-charge-detail">{digits(row.detail)}</span>
+                          {/if}
+                          <span class="contract-subject-charge-payer">
+                            {doc.leaseContract.paidBy}: {doc.leaseContract.tenant}
+                          </span>
+                        </li>
                       {/each}
-                    </tbody>
-                  </table>
-                </section>
-              {/if}
-
-              {#if termLines.length > 0}
-                <section class="contract-section">
-                  <h2 class="contract-section-title">{doc.leaseContract.termTitle}</h2>
-                  <div class="contract-panel">
-                    {#each termLines as [label, value] (label)}
-                      <p class="contract-line">
-                        <span class="contract-line-label">{label}</span>
-                        <span class="contract-line-value">{value}</span>
-                      </p>
-                    {/each}
-                  </div>
+                    </ul>
+                  {/if}
                 </section>
               {/if}
 
@@ -680,22 +633,13 @@
                 <div class="contract-signatures">
                   <div class="contract-signature">
                     <span class="contract-signature-rule" aria-hidden="true"></span>
-                    <p class="contract-signature-role">{contract.signatureLabels.tenant || doc.leaseContract.tenant}</p>
-                    <p class="contract-signature-name">{contract.tenant.fullName}</p>
-                    <p class="contract-signature-date">{digits(contract.generatedAtLabel)}</p>
-                  </div>
-
-                  <div class="contract-signature">
-                    <span class="contract-signature-rule" aria-hidden="true"></span>
                     <p class="contract-signature-role">{contract.signatureLabels.lessor || doc.leaseContract.lessor}</p>
-                    <p class="contract-signature-name">{contract.lessor.name || contract.office.name || contract.organization.name}</p>
                     <p class="contract-signature-date">{digits(contract.generatedAtLabel)}</p>
                   </div>
 
                   <div class="contract-signature">
                     <span class="contract-signature-rule" aria-hidden="true"></span>
-                    <p class="contract-signature-role">{contract.signatureLabels.witness || doc.leaseContract.witnessSignatureLabel}</p>
-                    <p class="contract-signature-name">&nbsp;</p>
+                    <p class="contract-signature-role">{contract.signatureLabels.tenant || doc.leaseContract.tenant}</p>
                     <p class="contract-signature-date">{digits(contract.generatedAtLabel)}</p>
                   </div>
                 </div>

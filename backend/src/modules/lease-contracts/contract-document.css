@@ -10,9 +10,9 @@
        it;
      * a strip naming the two parties and the day the tenancy begins;
      * the body, section by section, under display headings — what the unit is,
-       what the tenancy says, what the unit charges, how long the term runs,
-       what is held as deposit, how the unit is handed over, the conditions the
-       parties agreed, the notes that qualify them and the signatures;
+       what the tenancy says, what the unit charges, how the unit is handed
+       over, the conditions the parties agreed, the notes that qualify them and
+       the signatures;
      * the office's own contact line at the foot.
 
    All tenancy data is written into the markup by the server before this
@@ -283,23 +283,6 @@
   text-justify: inter-word;
 }
 
-.contract-line {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.contract-line + .contract-line { margin-block-start: 1mm; }
-
-.contract-line-label {
-  color: var(--doc-muted);
-  font-weight: 600;
-}
-
-.contract-line-value {
-  color: var(--doc-ink);
-  font-variant-numeric: tabular-nums;
-}
-
 /* A tinted box around a block — the unit's own description, the agreed
    conditions. It is what the printed form uses to set a block apart from the
    prose around it. */
@@ -372,43 +355,41 @@
    payment is late. */
 
 
-.contract-table {
-  width: 100%;
-  border-collapse: collapse;
-  print-color-adjust: exact;
-  -webkit-print-color-adjust: exact;
+.contract-subject-charges {
+  display: grid;
+  gap: 1.5mm;
+  margin: 4mm 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.contract-table th {
-  padding: 2.5mm 3mm;
-  background: var(--doc-tint-deep);
+.contract-subject-charge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1mm 2mm;
+  padding-block-start: 1.5mm;
+  border-block-start: 0.8pt solid var(--doc-rule);
+  overflow-wrap: anywhere;
+}
+
+.contract-subject-charge-name {
   color: var(--doc-ink);
-  font-size: 9pt;
   font-weight: 700;
-  text-align: start;
 }
 
-.contract-table td {
-  padding: 2.5mm 3mm;
-  border-block-end: 0.8pt solid var(--doc-rule);
-  font-size: 9.5pt;
-  vertical-align: top;
+.contract-subject-charge-detail {
+  color: var(--doc-ink);
+  font-variant-numeric: tabular-nums;
 }
 
-.contract-table th,
-.contract-table td { overflow-wrap: anywhere; }
-
-.contract-table td:first-child,
-.contract-table th:first-child { padding-inline-start: 0; }
+.contract-subject-charge-payer {
+  margin-inline-start: auto;
+  color: var(--doc-muted);
+  font-size: 9pt;
+}
 
 /* The small print under a charge — the rate, or the meter it is read from. */
-.contract-table-note {
-  display: block;
-  color: var(--doc-muted);
-  font-size: 8.5pt;
-  font-weight: 400;
-}
-
 /* --- Conditions, and the notes under them ------------------------------- */
 
 .contract-terms-list,
@@ -451,40 +432,43 @@
 }
 
 .contract-signature {
+  display: flex;
   min-width: 0;
-  padding: 6mm 6mm 5mm;
-  background: var(--doc-tint);
+  min-height: 30mm;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 3mm 7mm 4mm;
+  background: transparent;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
 
 .contract-signature-rule {
   display: block;
-  margin-block-end: 3mm;
+  width: 100%;
+  margin-block-end: 2.5mm;
   border-block-end: 0.8pt solid var(--doc-ink);
 }
 
 .contract-signature-role {
   margin: 0;
   color: var(--doc-ink);
+  font-size: 11pt;
   font-weight: 700;
-}
-
-.contract-signature-name {
-  margin: 0.5mm 0 0;
-  color: var(--doc-muted);
-  font-size: 9.5pt;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
 .contract-signature-date {
   display: inline-block;
-  margin: 2.5mm 0 0;
-  padding: 0.4mm 2.5mm;
-  border-radius: 3mm;
-  background: var(--doc-tint-deep);
-  color: var(--doc-muted);
-  font-size: 8.5pt;
+  align-self: flex-start;
+  margin: 2mm 0 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--doc-ink);
+  font-size: 9.5pt;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 
@@ -521,9 +505,7 @@
 .contract-signatures,
 .contract-signature,
 .contract-foot,
-.contract-table thead { break-inside: avoid; page-break-inside: avoid; }
-
-.contract-table tr { break-inside: avoid; page-break-inside: avoid; }
+.contract-subject-charge { break-inside: avoid; page-break-inside: avoid; }
 
 .contract-section-title,
 .contract-clause-title { break-after: avoid; page-break-after: avoid; }
@@ -567,8 +549,7 @@
   .contract-premises-photo { min-height: 45mm; }
   .contract-facts { grid-template-columns: minmax(0, 1fr); }
   .contract-signatures { grid-template-columns: minmax(0, 1fr); }
-  .contract-table th,
-  .contract-table td { padding: 2mm; }
+  .contract-subject-charge-payer { width: 100%; margin-inline-start: 0; }
 }
 
 @media print {

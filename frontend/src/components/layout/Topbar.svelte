@@ -133,6 +133,10 @@
   </div>
 
   <div class="app-topbar-actions">
+    <span class="app-version" aria-label={`System version ${__APP_VERSION__}`}>
+      v{__APP_VERSION__}
+    </span>
+
     <LanguageSwitcher />
 
     <!-- Identity, not a menu: the name and address are the whole point of the
@@ -204,6 +208,22 @@
   }
 
   .app-topbar-user .app-user { min-width: 0; }
+
+  .app-version {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding-inline: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text-secondary);
+    background: var(--surface);
+    font-family: var(--font-data);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+    white-space: nowrap;
+  }
 
   @media (max-width: 767.98px) {
     /* Below the shell's breakpoint the address is the first thing to go: the

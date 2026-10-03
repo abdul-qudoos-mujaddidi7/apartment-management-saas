@@ -1,5 +1,8 @@
 require('dotenv').config();
 
+
+const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const express = require('express');
@@ -42,7 +45,7 @@ if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || !proces
 
 const developmentOrigins = process.env.NODE_ENV === 'production'
   ? []
-  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+  : ['http://localhost:5173', 'http://127.0.0.1:5173','https://ap.zenoerp.com'];
 const allowedOrigins = [process.env.CLIENT_URL, ...developmentOrigins].filter(Boolean);
 
 function validateRequestOrigin(req, res, next) {
@@ -59,6 +62,9 @@ function validateRequestOrigin(req, res, next) {
 
   return next();
 }
+
+const publicDir = path.resolve(__dirname, '..', 'public');
+const indexFile = path.join(publicDir, 'index.html');
 
 app.use(helmet());
 app.use(
@@ -119,6 +125,18 @@ app.get('/api/health', (req, res) => {
     message: 'Apartment Management API is running',
   });
 });
+
+
+app.use(express.static(publicDir));
+
+app.get(/^\/(?!api).*/, (req, res, next) => {
+  if (req.method !== 'GET') return next();
+  if (fs.existsSync(indexFile)) {
+    return res.sendFile(indexFile);
+  }
+  return next();
+});
+
 
 app.use(notFound);
 app.use(errorHandler);

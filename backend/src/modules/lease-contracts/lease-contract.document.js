@@ -26,11 +26,10 @@ const { toDocumentDigits } = require('./lease-contract.format');
  * The document is laid out as the printed form the office issues: a hero band
  * naming the office and the document, the two parties and the day the tenancy
  * begins, then a section for each part of the agreement — the unit, the
- * tenancy statement, the charges the unit carries, the term and the deposit,
- * the condition the unit is handed over in, the numbered conditions, the notes
+ * tenancy statement, the charges the unit carries, the condition the unit is
+ * handed over in, the numbered conditions, the notes
  * under them, and the signatures. A month-by-month rent schedule is not part of
- * it: the contract states the term, and what falls due month by month is the
- * ledger's business.
+ * it: what falls due month by month is the ledger's business.
  *
  * Every value is HTML-escaped on the way in. A section is the reason: its text
  * mixes organization-written wording with tenant data, and a value that happened
@@ -270,41 +269,35 @@ function premisesSection({ title, hint, photo, items }) {
     + '</div></section>';
 }
 
-/** One labelled value on its own line, for a section that states a term. */
-function line(label, value) {
-  if (!has(value)) return '';
-
-  return '<p class="contract-line">'
-    + (has(label) ? `<span class="contract-line-label">${escapeHtml(label)}</span> ` : '')
-    + `<span class="contract-line-value">${escapeHtml(value)}</span>`
-    + '</p>';
-}
-
 /**
  * A ruled table. A cell is either `{ text }` — escaped here — or `{ html }`,
  * for a cell that is more than a value: the fixed part of a charge, with the
  * small print that qualifies it under it.
  */
-function table(head, rows) {
-  if (rows.length === 0) return '';
-
-  const headCells = head
-    .map((cell) => `<th scope="col">${escapeHtml(cell)}</th>`)
-    .join('');
-
-  const bodyRows = rows
-    .map((cells) => `<tr>${cells
-      .map((cell) => `<td>${has(cell.html) ? cell.html : escapeHtml(cell.text)}</td>`)
-      .join('')}</tr>`)
-    .join('');
-
-  return `<table class="contract-table"><thead><tr>${headCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
-}
-
 /** The words one charge is billed under: the service fee, or a metered utility. */
 function chargeName(key, labels) {
   if (key === 'SERVICE_FEE') return labels?.serviceFee || '';
   return labels?.utilities?.[key] || '';
+}
+
+/** Dynamic charges stated as contract facts inside the subject of the lease. */
+function chargeFacts(rows, labels, digits) {
+  const payer = has(labels.paidBy) && has(labels.tenant)
+    ? `${escapeHtml(labels.paidBy)}: ${escapeHtml(labels.tenant)}`
+    : '';
+
+  const items = rows.map((row) => {
+    const name = digits(chargeName(row.key, labels));
+    const detail = has(row.detail) ? digits(row.detail) : '';
+
+    return '<li class="contract-subject-charge">'
+      + (has(name) ? `<strong class="contract-subject-charge-name">${escapeHtml(name)}:</strong>` : '')
+      + (has(detail) ? `<span class="contract-subject-charge-detail">${escapeHtml(detail)}</span>` : '')
+      + (has(payer) ? `<span class="contract-subject-charge-payer">${payer}</span>` : '')
+      + '</li>';
+  }).join('');
+
+  return items ? `<ul class="contract-subject-charges">${items}</ul>` : '';
 }
 
 /** The numbered conditions. A condition with a heading prints it; others do not. */
@@ -341,14 +334,13 @@ function noteList(text, digits) {
 }
 
 /**
- * One signature panel: room to sign, who is signing, the name that goes with
- * it, and the day the contract was drawn.
+ * One signature panel: room to sign, who is signing, and the day the contract
+ * was drawn.
  */
-function signaturePanel({ role, name, date }) {
+function signaturePanel({ role, date }) {
   return '<div class="contract-signature">'
     + '<span class="contract-signature-rule" aria-hidden="true"></span>'
     + `<p class="contract-signature-role">${escapeHtml(role)}</p>`
-    + (has(name) ? `<p class="contract-signature-name">${escapeHtml(name)}</p>` : '')
     + (has(date) ? `<p class="contract-signature-date">${escapeHtml(date)}</p>` : '')
     + '</div>';
 }
@@ -389,9 +381,8 @@ function buildDocument({ contract, language, labels = {} }) {
    * a Dari contract names its signers in Dari even though a caption typed into
    * the settings page can only be in one language.
    */
-  const signatureFor = (role, override, name) => signaturePanel({
+  const signatureFor = (role, override) => signaturePanel({
     role: has(override) ? override : role,
-    name,
     date: digits(contract.generatedAtLabel),
   });
 
@@ -405,16 +396,6 @@ function buildDocument({ contract, language, labels = {} }) {
     .filter(has)
     .join('\n');
 
-  const terms = [
-    line(labels.startDate, digits(lease.startDateLabel)),
-    line(labels.endDate, digits(lease.endDateLabel)),
-    line(
-      labels.period,
-      has(lease.durationMonths) ? `${digits(lease.durationMonths)} ${labels.months || ''}`.trim() : '',
-    ),
-    line(labels.securityDeposit, digits(lease.securityDepositLabel)),
-  ].join('');
-
   /*
    * The workspace's own photograph of the property — the building the sign-in
    * screen opens on — inlined once and used in both places it appears: the band
@@ -422,24 +403,13 @@ function buildDocument({ contract, language, labels = {} }) {
    */
   const buildingPhoto = heroPhoto();
 
-  /*
-   * The charges the unit carries, as the office's form lists them. The lease's
-   * month-by-month rent schedule is deliberately *not* drawn: what a tenancy
-   * falls due is a matter for the ledger, which keeps it current, and a table of
-   * months and payment states printed on a signed page goes stale the first time
-   * a payment is late. The contract states the term and what the unit is let
-   * for; the months live on the lease's own screen.
-   */
-  const charges = table(
-    [labels.service, labels.paidBy],
-    contract.utilities.map((row) => [
-      {
-        html: escapeHtml(digits(chargeName(row.key, labels)))
-          + (has(row.detail) ? `<span class="contract-table-note">${escapeHtml(digits(row.detail))}</span>` : ''),
-      },
-      { text: labels.tenant },
-    ]),
-  );
+  /* Charges are terms of the tenancy, so they continue the subject statement
+     instead of becoming a second, disconnected table. */
+  const preamble = text('preamble');
+  const subject = [
+    has(preamble) ? `<p class="contract-prose">${escapeHtml(preamble)}</p>` : '',
+    chargeFacts(contract.utilities, labels, digits),
+  ].filter(has).join('');
 
   /*
    * The document, section by section. A section with nothing to say is not
@@ -458,17 +428,14 @@ function buildDocument({ contract, language, labels = {} }) {
         [labels.bathrooms, digits(apartment.bathrooms)],
       ],
     }),
-    section(labels.statementTitle, `<p class="contract-prose">${escapeHtml(text('preamble'))}</p>`),
-    section(labels.utilitiesTitle, charges),
-    section(labels.termTitle, terms, { panel: true }),
+    section(labels.statementTitle, subject),
     section(labels.maintenanceTitle, `<p class="contract-prose">${escapeHtml(text('inventory'))}</p>`),
     section(heading('termsTitle'), clauseList(clauses), { panel: true }),
     section(heading('notesTitle'), noteList(notes, digits)),
     `<section class="contract-section"><h2 class="contract-section-title">${escapeHtml(labels.signaturesTitle || '')}</h2>`
       + '<div class="contract-signatures">'
-      + signatureFor(labels.tenantSignature, contract.signatureLabels.tenant, renter.fullName)
-      + signatureFor(labels.lessorSignature, contract.signatureLabels.lessor, lessor.name || contract.office.name || contract.organization.name)
-      + signatureFor(labels.witnessSignature, contract.signatureLabels.witness, '')
+      + signatureFor(labels.lessorSignature, contract.signatureLabels.lessor)
+      + signatureFor(labels.tenantSignature, contract.signatureLabels.tenant)
       + '</div></section>',
   ].filter(has);
 

@@ -340,14 +340,21 @@
   async function saveAndContinue() {
     if (editingId) return;
     if (!validateForm()) return;
-    if (!floorId) { modalError = $locale.apartments.notFound; return; }
+    const targetFloorId = floorId || formFloorId;
+    if (!targetFloorId) {
+      formErrors = {
+        ...formErrors,
+        floorId: translate('apartments.required', { field: $locale.apartments.floor })
+      };
+      return;
+    }
 
     saving = true;
     modalError = '';
     errorMessage = '';
 
     try {
-      const response = await createApartment({ floorId, ...buildApartmentPayload() });
+      const response = await createApartment({ floorId: targetFloorId, ...buildApartmentPayload() });
       await push(`/apartments/${response.apartment.id}/assets`);
     } catch (error) {
       applyModalError(error);
