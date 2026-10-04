@@ -57,18 +57,21 @@
     value = shamsiPartsToGregorian(viewYear, viewMonth, day);
     open = false;
     dispatch('change', { value });
+    picker?.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function selectToday() {
     value = todayGregorian();
     open = false;
     dispatch('change', { value });
+    picker?.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function clearDate() {
     value = '';
     open = false;
     dispatch('change', { value });
+    picker?.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function handleOutsideClick(event) {
@@ -76,11 +79,11 @@
   }
 
   function handleKeydown(event) {
-    if (event.key === 'Escape') open = false;
+    if (event.key === 'Escape' && open && !event.defaultPrevented) { event.preventDefault(); open = false; picker?.querySelector('.picker-trigger')?.focus(); }
   }
 </script>
 
-<svelte:window on:mousedown={handleOutsideClick} on:keydown={handleKeydown} />
+<svelte:window on:pointerdown={handleOutsideClick} on:keydown|capture={handleKeydown} />
 
 <div class="shamsi-picker" bind:this={picker}>
   <button

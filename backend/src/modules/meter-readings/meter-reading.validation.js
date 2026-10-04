@@ -6,6 +6,7 @@ const requiredDate = z
   .string()
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine(value => { const date = new Date(`${value}T00:00:00Z`); return !Number.isNaN(date.getTime()) && date.toISOString().slice(0,10) === value; }, 'Invalid calendar date.')
   .transform((value) => new Date(`${value}T00:00:00.000Z`))
   .refine((value) => !Number.isNaN(value.getTime()), 'Invalid date.');
 
@@ -14,7 +15,7 @@ const optionalText = z.preprocess(
   z.string().trim().max(5000).nullable().optional(),
 );
 
-const currentReading = z.coerce.number().finite().min(0).max(999999999999);
+const currentReading = z.preprocess(value => value === '' || value === null ? NaN : value, z.coerce.number().finite().min(0).max(999999999999.999).multipleOf(0.001));
 const optionalFilter = (schema) =>
   z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
 
@@ -22,13 +23,24 @@ const createMeterReadingSchema = z.object({
   meterId: z.string().trim().min(1),
   readingDate: requiredDate,
   currentReading,
+  leaseId: z.string().trim().min(1),
+  periodStart: requiredDate,
+  unitPrice: z.coerce.number().finite().positive().max(99999999999).multipleOf(0.0001),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/),
+  readingKind: z.enum(['BILLING', 'HANDOVER', 'MOVE_IN', 'RESET']).default('BILLING'),
+  resetBaseline: currentReading.optional(),
   notes: optionalText,
-});
+}).refine(data => data.periodStart <= data.readingDate, { path: ['periodStart'], message: 'Period start must not follow the reading date.' })
+  .refine(data => data.readingKind !== 'RESET' || (data.resetBaseline !== undefined && Boolean(data.notes)), { path: ['resetBaseline'], message: 'Reset requires a new baseline and a reason.' });
 
 const updateMeterReadingSchema = z
   .object({
     readingDate: requiredDate.optional(),
     currentReading: currentReading.optional(),
+    leaseId: z.string().trim().min(1).optional(),
+    periodStart: requiredDate.optional(),
+    unitPrice: z.coerce.number().finite().positive().max(99999999999).multipleOf(0.0001).optional(),
+    currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
     notes: optionalText,
   })
   .refine((data) => Object.keys(data).length > 0, {

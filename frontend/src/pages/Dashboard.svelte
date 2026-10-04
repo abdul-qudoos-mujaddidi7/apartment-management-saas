@@ -14,6 +14,7 @@
    * RTL locales the app ships with.
    */
   import { onMount } from 'svelte';
+  import { user } from '../stores/auth';
   import { link } from 'svelte-spa-router';
 
   import { getDashboard } from '../services/dashboard';
@@ -691,14 +692,15 @@
       {/if}
     </section>
 
+    {#if $user?.permissions?.includes('LEASE_VIEW')}
     <section class="card" aria-labelledby="dash-expiring">
       <header class="card-head">
         <div class="card-head-copy">
           <h3 id="dash-expiring">
             <i class="bi bi-hourglass-split card-icon card-icon-warning" aria-hidden="true"></i>
-            {$locale.dashboard.expiringLeases}
+            {$locale.workflow.expiringSoon}
           </h3>
-          <p>{$locale.dashboard.expiringLeasesDescription}</p>
+          <p>{$locale.workflow.reminderRule}</p>
         </div>
 
         <a class="card-link" use:link href="/leases">
@@ -712,7 +714,7 @@
           {#each data.expiringLeases as lease (lease.id)}
             <li class="row">
               <div class="row-main">
-                <a class="row-title" use:link href="/leases">{tenantName(lease.tenant)}</a>
+                <a class="row-title" use:link href={`/leases?detail=${encodeURIComponent(lease.id)}`}>{tenantName(lease.tenant)}</a>
                 <p class="row-meta">{location(lease.apartment)} · {lease.contractNumber}</p>
               </div>
 
@@ -728,6 +730,7 @@
       {/if}
     </section>
 
+    {/if}
     <section class="card" aria-labelledby="dash-payments">
       <header class="card-head">
         <div class="card-head-copy">

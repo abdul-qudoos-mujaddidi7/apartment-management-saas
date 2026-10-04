@@ -1,15 +1,20 @@
 <script>
   import { onDestroy, onMount } from 'svelte';
+  import { activeCurrencies, baseCurrency } from '../stores/currency';
+  import { createInvoice } from '../services/invoices';
+  import { user } from '../stores/auth';
   import { api } from '../services/api';
   import { listApartments } from '../services/apartments';
   import { listFloors } from '../services/floors';
   import { listMeters } from '../services/meters';
-  import { createMeterReading, deleteMeterReading, listMeterReadings, updateMeterReading } from '../services/meterReadings';
+  import { readingBaseline, createMeterReading, deleteMeterReading, getMeterReading, listMeterReadings, updateMeterReading } from '../services/meterReadings';
+  import DocumentPreview from '../components/printing/DocumentPreview.svelte';
   import PageLayout from '../components/ui/PageLayout.svelte';
   import DataTable from '../components/ui/DataTable.svelte';
   import Checkbox from '../components/ui/Checkbox.svelte';
   import PageToolbar from '../components/ui/PageToolbar.svelte';
   import Pagination from '../components/ui/Pagination.svelte';
+  import UtilityReadingTerms from '../components/meters/UtilityReadingTerms.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
@@ -25,8 +30,57 @@
   import { formatMoney } from '../utils/formatters';
 
   const utilities = ['ELECTRICITY', 'WATER', 'GAS'];
-  const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', meterId: '', readingDate: new Date().toISOString().slice(0, 10), currentReading: '', notes: '' });
+  const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', meterId: '', readingDate: new Date().toISOString().slice(0, 10), currentReading: '', periodStart: '', leaseId: '', unitPrice: '', currency: $baseCurrency, readingKind: 'BILLING', resetBaseline: '', notes: '' });
   let readings = [];
+  let printReading = null;
+  async function openPrint(reading) {
+    try { printReading = (await getMeterReading(reading.id)).meterReading; }
+    catch (error) { errorMessage = error.message; }
+  }
+  let leaseOptions = [];
+  let billReading = null;
+  let billError = '';
+  let issuing = false;
+  let invoiceDate = new Date().toISOString().slice(0,10);
+  async function issueBill() {
+    if (!billReading || issuing) return;
+    issuing = true; billError = '';
+    try {
+      await createInvoice({ leaseId: billReading.leaseId, invoiceDate, dueDate: null, items: [{ type: billReading.meter.utilityType, meterReadingId: billReading.id }] });
+      billReading = null; notifySuccess($locale.invoices.saved); await loadReadings();
+    } catch (e) { billError = e.message; } finally { issuing = false; }
+  }
+  let history = [];
+  let previewPrevious = 0;
+  let baseline = null;
+  let previewLoading = false;
+  let previewVersion = 0;
+  async function updatePreview() {
+    const meter = meters.find(m => m.id === form.meterId);
+    if (!meter || !form.readingDate) return;
+    const version = ++previewVersion;
+    baseline = null;
+    previewLoading = true;
+    try {
+      const result = await readingBaseline(meter, form.readingDate, editingId);
+      if (version !== previewVersion) return;
+      baseline = result;
+      if (result?.periodStart && form.readingKind !== 'MOVE_IN') form = { ...form, periodStart: result.periodStart };
+    } catch (e) { modalError = e.message; } finally { if (version === previewVersion) previewLoading = false; }
+  }
+  $: selectedMeter = meters.find(m => m.id === form.meterId);
+  $: previewPrevious = baseline?.previousReading ?? selectedMeter?.initialReading ?? 0;
+  $: previewConsumption = form.readingKind === 'MOVE_IN' ? 0 : Number(form.currentReading) - Number(previewPrevious);
+  $: previewAmount = Math.round((previewConsumption * Number(form.unitPrice) + Number.EPSILON) * 100) / 100;
+  async function meterChanged() {
+    try {
+      const meter = meters.find(m => m.id === form.meterId);
+      history = (await listMeterReadings({ meterId: form.meterId, pageSize: 100 })).items || [];
+      leaseOptions = (await api.get('/leases?apartmentId=' + encodeURIComponent(form.apartmentId) + '&pageSize=100')).items || [];
+      const prior = history.find(r => r.readingDate.slice(0,10) < form.readingDate);
+      form = { ...form, periodStart: prior?.readingDate.slice(0,10) || meter?.installationDate?.slice(0,10) || '', unitPrice: meter?.defaultUnitPrice ?? '', leaseId: '' }; await updatePreview();
+    } catch (e) { modalError = e.message; }
+  }
   let sort = { key: null, dir: 'asc' };
   $: view = sortRows(readings, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
@@ -62,7 +116,7 @@
 
   function resetModal() { modalOpen = false; modalError = ''; formErrors = {}; }
   function closeModal() { if (!saving) resetModal(); }
-  function openCreate() { editingId = null; form = emptyForm(); floors = []; apartments = []; meters = []; modalError = ''; formErrors = {}; modalOpen = true; }
+  function openCreate() { baseline = null; previewVersion++; editingId = null; form = emptyForm(); floors = []; apartments = []; meters = []; modalError = ''; formErrors = {}; modalOpen = true; }
 
   async function loadFloors(buildingId) { floors = buildingId ? ((await listFloors({ buildingId, page: 1, pageSize: 100 })).items || []) : []; }
   async function loadApartments(floorId) { apartments = floorId ? ((await listApartments({ floorId, page: 1, pageSize: 100 })).items || []) : []; }
@@ -73,26 +127,32 @@
   async function apartmentChanged() { form = { ...form, meterId: '' }; try { await loadMetersForApartment(form.apartmentId); } catch (error) { modalError = error.message; } }
 
   async function openEdit(reading) {
+    baseline = null;
     const meter = reading.meter; const apartment = meter.apartment; const floor = apartment.floor;
     editingId = reading.id; modalError = ''; formErrors = {}; modalOpen = true;
-    form = { buildingId: floor.building.id, floorId: '', apartmentId: '', meterId: '', readingDate: reading.readingDate.slice(0, 10), currentReading: reading.currentReading, notes: reading.notes || '' };
-    try { await loadFloors(floor.building.id); form = { ...form, floorId: floor.id }; await loadApartments(floor.id); form = { ...form, apartmentId: apartment.id }; await loadMetersForApartment(apartment.id, meter); form = { ...form, meterId: meter.id }; }
+    form = { buildingId: floor.building.id, floorId: '', apartmentId: '', meterId: '', readingDate: reading.readingDate.slice(0, 10), currentReading: reading.currentReading, notes: reading.notes || '', leaseId: reading.leaseId || '', periodStart: reading.periodStart?.slice(0,10) || '', unitPrice: reading.unitPrice, currency: reading.currency || $baseCurrency, readingKind: reading.readingKind || 'BILLING', resetBaseline: reading.resetBaseline ?? '' };
+    try { await loadFloors(floor.building.id); form = { ...form, floorId: floor.id }; await loadApartments(floor.id); form = { ...form, apartmentId: apartment.id }; await loadMetersForApartment(apartment.id, meter); form = { ...form, meterId: meter.id }; history = (await listMeterReadings({ meterId: meter.id, pageSize: 100 })).items || []; leaseOptions = (await api.get('/leases?apartmentId=' + encodeURIComponent(apartment.id) + '&pageSize=100')).items || []; await updatePreview(); }
     catch (error) { modalError = error.message; }
   }
 
   function validateForm() {
     const copy = $locale.meterReadings; const errors = {};
+    if (!form.leaseId) errors.leaseId = $locale.workflow.periodHelp;
+    if (form.readingKind !== 'MOVE_IN' && (!form.periodStart || form.periodStart > form.readingDate)) errors.periodStart = $locale.workflow.periodHelp;
+    if (!(Number(form.unitPrice) > 0) || !Number.isFinite(Number(form.unitPrice))) errors.unitPrice = $locale.workflow.rate;
+    if (Number(form.currentReading) < Number(previewPrevious)) errors.currentReading = copy.currentReadingTooLow;
+    if (form.readingKind === 'RESET' && (form.resetBaseline === '' || Number(form.resetBaseline) < 0 || !form.notes.trim())) errors.resetBaseline = $locale.workflow.resetHelp;
     if (!form.meterId) errors.meterId = translate('meterReadings.required', { field: copy.meter });
     if (!form.readingDate) errors.readingDate = translate('meterReadings.required', { field: copy.date });
-    if (form.currentReading === '' || Number(form.currentReading) < 0) errors.currentReading = translate('meterReadings.notNegative', { field: copy.currentReading });
+    if (form.currentReading === '' || !Number.isFinite(Number(form.currentReading)) || Number(form.currentReading) < 0) errors.currentReading = translate('meterReadings.notNegative', { field: copy.currentReading });
     formErrors = errors;
     return Object.keys(errors).length === 0;
   }
 
   async function saveReading() {
-    if (!validateForm()) return;
+    if (previewLoading || !baseline || !validateForm()) return;
     saving = true; modalError = ''; errorMessage = '';
-    const payload = { readingDate: form.readingDate, currentReading: Number(form.currentReading), notes: form.notes.trim() || null };
+    const payload = { ...(editingId && form.readingKind === 'MOVE_IN' ? {} : { leaseId: form.leaseId, periodStart: form.readingKind === 'MOVE_IN' ? form.readingDate : form.periodStart }), unitPrice: Number(form.unitPrice), currency: form.currency, ...(editingId ? {} : { readingKind: form.readingKind, ...(form.readingKind === 'RESET' ? { resetBaseline: Number(form.resetBaseline) } : {}) }), ...(editingId && form.readingKind === 'MOVE_IN' ? {} : { readingDate: form.readingDate }), currentReading: Number(form.currentReading), notes: form.notes.trim() || null };
     try {
       if (editingId) { await updateMeterReading(editingId, payload); notifySuccess($locale.meterReadings.updated); }
       else { await createMeterReading({ meterId: form.meterId, ...payload }); notifySuccess($locale.meterReadings.saved); }
@@ -141,6 +201,8 @@
   function clearFilters() { filters = { ...filters, buildingId: '', utilityType: '', dateFrom: '', dateTo: '' }; loadReadings(1); }
 </script>
 
+<DocumentPreview record={printReading} kind="reading" on:close={() => printReading = null} />
+
 <svelte:head><title>{$locale.meterReadings.title} | {$locale.common.apartmentPro}</title></svelte:head>
 
 <PageLayout>
@@ -149,7 +211,7 @@
       bind:search={filters.search}
       searchPlaceholder={$locale.meterReadings.search}
       onSearch={queueSearch}
-      addLabel={$locale.meterReadings.add}
+      showAdd={$user?.permissions?.includes('UTILITY_MANAGE')} addLabel={$locale.meterReadings.add}
       onAdd={openCreate}
       filtersLabel={$locale.common.filters}
       filtersCount={activeFilterCount}
@@ -196,7 +258,7 @@
       <tbody>{#each view as reading (reading.id)}
         <tr class:is-selected={selectedIds.has(reading.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(reading.id)} label={$locale.common.selectRow} on:change={() => toggleRow(reading.id)} /></td>
-          <td class="date-cell">{formatShortDate(reading.readingDate)}</td>
+          <td class="date-cell">{formatShortDate(reading.readingDate)}<small class="cell-sub">{reading.periodStart ? formatShortDate(reading.periodStart) : ""} → {formatShortDate(reading.readingDate)} · {$locale.workflow[{ BILLING: "billing", HANDOVER: "handover", MOVE_IN: "moveIn", RESET: "reset" }[reading.readingKind] || "billing"]}</small></td>
           <td class="meter-number">{reading.meter.meterNumber}</td>
           <td>{utilityLabel(reading.meter.utilityType)}</td>
           <td>{reading.meter.apartment.floor.building.name}</td>
@@ -205,12 +267,16 @@
           <td class="reading-cell">{formatReading(reading.previousReading)}</td>
           <td class="reading-cell">{formatReading(reading.currentReading)}</td>
           <td class="reading-cell">{formatReading(reading.consumption)} {reading.meter.unit}</td>
-          <td class="amount-cell">{formatMoney(reading.unitPrice)} / {reading.meter.unit}</td>
-          <td class="amount-cell">{formatMoney(reading.amount)}</td>
-          <td><StatusBadge label={billingLabel(reading.billingStatus)} tone={billingTone(reading.billingStatus)} /></td>
+          <td class="amount-cell">{formatMoney(reading.unitPrice, reading.currency || $baseCurrency)} / {reading.meter.unit}</td>
+          <td class="amount-cell">{formatMoney(reading.amount, reading.currency || $baseCurrency)}</td>
+          <td><StatusBadge label={billingLabel(reading.billingStatus)} tone={billingTone(reading.billingStatus)} /><small class="cell-sub">{$locale.workflow.paid}: {formatMoney(reading.paidAmount, reading.currency || $baseCurrency)} · {$locale.workflow.outstanding}: {formatMoney(reading.outstanding, reading.currency || $baseCurrency)}</small></td>
           <td class="actions-cell">
             <RowActions label={$locale.meterReadings.edit}>
-              <button class="row-menu-item" type="button" on:click={() => openEdit(reading)} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.edit : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.meterReadings.edit}</button>
+              <button class="row-menu-item" type="button" on:click={() => openPrint(reading)}><i class="bi bi-printer" aria-hidden="true"></i>{$locale.printing.print}</button>
+              {#if $user?.permissions?.includes('INVOICE_MANAGE') && reading.billingStatus === 'UNBILLED' && reading.leaseId && reading.readingKind !== 'MOVE_IN'}
+                <button class="row-menu-item" type="button" on:click={() => { billReading = reading; billError = ''; }}><i class="bi bi-receipt" aria-hidden="true"></i>{$locale.workflow.issueBill}</button>
+              {/if}
+              <button class="row-menu-item" type="button" on:click={() => openEdit(reading)} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.edit : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED' || !$user?.permissions?.includes('UTILITY_MANAGE')}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.meterReadings.edit}</button>
               <button class="row-menu-item danger" type="button" on:click={() => removeReading(reading)} title={reading.billingStatus === 'UNBILLED' ? $locale.meterReadings.delete : $locale.meterReadings.alreadyBilled} disabled={reading.billingStatus !== 'UNBILLED'}><i class="bi bi-trash3" aria-hidden="true"></i>{$locale.meterReadings.delete}</button>
             </RowActions>
           </td>
@@ -231,20 +297,33 @@
       <div class="col-sm-6 col-lg-3"><BuildingSelect selectId="reading-building" label={$locale.meterReadings.building} buildings={buildings} icon="bi-building" bind:value={form.buildingId} on:change={buildingChanged} placeholder={$locale.meterReadings.selectBuilding} disabled={Boolean(editingId)} /></div>
       <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-floor">{$locale.meterReadings.floor}</label><div class="field-control"><i class="bi bi-layers" aria-hidden="true"></i><select class="form-select" id="reading-floor" bind:value={form.floorId} on:change={floorChanged} disabled={!form.buildingId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectFloor}</option>{#each floors as floor (floor.id)}<option value={floor.id}>{floor.name || floor.floorNumber}</option>{/each}</select></div></div>
       <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-apartment">{$locale.meterReadings.apartment}</label><div class="field-control"><i class="bi bi-door-open" aria-hidden="true"></i><select class="form-select" id="reading-apartment" bind:value={form.apartmentId} on:change={apartmentChanged} disabled={!form.floorId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectApartment}</option>{#each apartments as apartment (apartment.id)}<option value={apartment.id}>{apartment.apartmentNumber}{apartment.name ? ` — ${apartment.name}` : ''}</option>{/each}</select></div></div>
-      <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-meter">{$locale.meterReadings.meter}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><select class:is-invalid={formErrors.meterId} class="form-select" id="reading-meter" bind:value={form.meterId} disabled={!form.apartmentId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectMeter}</option>{#each meters as meter (meter.id)}<option value={meter.id}>{meterLabel(meter)}</option>{/each}</select></div>{#if formErrors.meterId}<div class="invalid-feedback">{formErrors.meterId}</div>{/if}</div>
+      <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-meter">{$locale.meterReadings.meter}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><select class:is-invalid={formErrors.meterId} class="form-select" id="reading-meter" bind:value={form.meterId} on:change={meterChanged} disabled={!form.apartmentId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectMeter}</option>{#each meters as meter (meter.id)}<option value={meter.id}>{meterLabel(meter)}</option>{/each}</select></div>{#if formErrors.meterId}<div class="invalid-feedback">{formErrors.meterId}</div>{/if}</div>
     </div></fieldset>
     <fieldset><legend class="section-label">{$locale.meterReadings.reading}</legend><div class="row g-3">
-      <div class="col-sm-6"><label class="form-label" for="reading-date">{$locale.meterReadings.date}</label><ShamsiDatePicker invalid={Boolean(formErrors.readingDate)} id="reading-date" bind:value={form.readingDate} />{#if formErrors.readingDate}<div class="invalid-feedback">{formErrors.readingDate}</div>{/if}</div>
+      <div class="col-sm-6"><label class="form-label" for="reading-date">{$locale.meterReadings.date}</label><ShamsiDatePicker invalid={Boolean(formErrors.readingDate)} id="reading-date" bind:value={form.readingDate} on:change={updatePreview} disabled={Boolean(editingId) && form.readingKind === 'MOVE_IN'} />{#if formErrors.readingDate}<div class="invalid-feedback">{formErrors.readingDate}</div>{/if}</div>
       <div class="col-sm-6"><label class="form-label" for="reading-current">{$locale.meterReadings.currentReading}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><input class:is-invalid={formErrors.currentReading} class="form-control" id="reading-current" type="number" min="0" step="0.001" bind:value={form.currentReading} /></div>{#if formErrors.currentReading}<div class="invalid-feedback">{formErrors.currentReading}</div>{/if}</div>
+      <UtilityReadingTerms bind:form {formErrors} {leaseOptions} {previewPrevious} expectedStart={baseline?.periodStart || ''} unit={selectedMeter?.unit || ""} editing={Boolean(editingId)} />
       <div class="col-12"><label class="form-label" for="reading-notes">{$locale.meterReadings.notes}</label><textarea class="form-control" id="reading-notes" rows="3" bind:value={form.notes}></textarea></div>
     </div></fieldset>
   </form>
   <div slot="footer">
     <button class="btn btn-light" type="button" on:click={closeModal} disabled={saving}>{$locale.meterReadings.cancel}</button>
-    <button class="btn btn-primary" type="submit" form="meter-reading-form" disabled={saving}>{saving ? $locale.meterReadings.loading : editingId ? $locale.meterReadings.update : $locale.meterReadings.save}</button>
+    <button class="btn btn-primary" type="submit" form="meter-reading-form" disabled={saving || previewLoading || !baseline}>{saving ? $locale.meterReadings.loading : editingId ? $locale.meterReadings.update : $locale.meterReadings.save}</button>
   </div>
 </Modal>
 
+<Modal open={Boolean(billReading)} title={$locale.workflow.billReview} busy={issuing} on:close={() => billReading = null} closeLabel={$locale.meterReadings.cancel}>
+  {#if billReading}
+    {#if billError}<p class="alert alert-danger" role="alert">{billError}</p>{/if}
+    <p>{billReading.meter.meterNumber} · {billReading.meter.apartment.apartmentNumber}</p>
+    <p>{billReading.lease?.contractNumber || ''} · {billReading.lease?.tenant?.firstName || ''} {billReading.lease?.tenant?.lastName || ''}</p>
+    <p>{formatShortDate(billReading.periodStart)} → {formatShortDate(billReading.readingDate)}</p>
+    <p>{formatReading(billReading.currentReading)} − {formatReading(billReading.previousReading)} = {formatReading(billReading.consumption)} {billReading.meter.unit}</p>
+    <p>{formatReading(billReading.consumption)} × {billReading.unitPrice} = <strong>{formatMoney(billReading.amount, billReading.currency || $baseCurrency)}</strong></p>
+    <label class="form-label" for="utility-invoice-date">{$locale.invoices.invoiceDate}</label><ShamsiDatePicker id="utility-invoice-date" bind:value={invoiceDate} />
+  {/if}
+  <div slot="footer"><button type="button" class="btn btn-light" disabled={issuing} on:click={() => billReading = null}>{$locale.meterReadings.cancel}</button><button type="button" class="btn btn-primary" disabled={issuing || !invoiceDate} on:click={issueBill}>{$locale.workflow.issueBill}</button></div>
+</Modal>
 <style>
   .cell-sub { display: block; color: var(--text-muted); font-size: var(--text-xs); font-weight: var(--weight-medium); }
 </style>

@@ -28,6 +28,8 @@ import './i18n';
 import { replace } from 'svelte-spa-router';
 
 import App from './App.svelte';
+import { installNumericInputs } from './utils/numericInput';
+installNumericInputs();
 
 /*
  * svelte-spa-router routes on the URL hash, so a deep link written as a path

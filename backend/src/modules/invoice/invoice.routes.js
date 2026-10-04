@@ -5,7 +5,9 @@ const invoiceController = require('./invoice.controller');
 
 const router = express.Router();
 
+const { requirePermission } = require('../../middleware/permission');
 router.use(requireAuth);
+router.use((req, res, next) => requirePermission('INVOICE_' + (req.method === 'GET' ? 'VIEW' : 'MANAGE'))(req, res, next));
 router.get('/', invoiceController.list);
 router.get('/:id', invoiceController.get);
 router.post('/', invoiceController.create);

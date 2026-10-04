@@ -1,6 +1,31 @@
 import en from './en';
 
 const translations = {
+  workflow: {
+    moveIn: "د راتګ لومړنۍ شمېره (بې لګښته)",
+    issueBill: "بل صادرول",
+    billReview: "د برېښنا بل کتنه",
+  "discardChanges": "ناخوندي بدلونونه ړنګ شي؟",
+  "notifications": "د قرارداد خبرتیاوې",
+  "expiringSoon": "ژر پای ته رسېدونکي قراردادونه",
+  "daysRemaining": "ورځې پاتې",
+  "periodStart": "د مصرف دورې پیل",
+  "lease": "د دې مصرف اړوند قرارداد",
+  "rate": "د هر کیلوواټ ساعت / واحد بیه",
+  "currency": "د پیسو واحد",
+  "kind": "د لوستلو ډول",
+  "billing": "میاشتنی بل",
+  "handover": "کرایه‌دار ته سپارل (راتګ / وتل)",
+  "reset": "د میټر بیا تنظیم / بدلول",
+  "resetBaseline": "د نوي میټر لومړنۍ شمېره",
+  "preview": "د لګښت کتنه",
+  "paid": "ورکړل شوی",
+  "outstanding": "پاتې پیسې",
+  "review": "د خوندي کولو مخکې مصرف، لګښت، د پیسو واحد او قرارداد وګورئ. د سپارلو لوستل تر دې نېټې مصرف محاسبه کوي.",
+  "resetHelp": "د زاړه میټر وروستۍ شمېره، د نوي میټر لومړنۍ شمېره او په یادښتونو کې دلیل ولیکئ.",
+  "periodHelp": "ټوله مصرف دوره باید د ټاکل شوي قرارداد اړوند وي. د کرایه‌دار د بدلون لپاره د سپارلو لوستل ثبت کړئ.",
+  "reminderRule": "فعال قراردادونه په وروستۍ تقویمي میاشت کې. خبرتیا له پای یوه میلادي میاشت مخکې پیلېږي؛ په لنډه میاشت کې وروستۍ ورځ کارول کېږي."
+},
   ...en,
   common: { ...en.common, previous: 'مخکینی', next: 'بل', page: 'پاڼه {page} له {totalPages}', actions: { view: 'کتل', edit: 'سمول', delete: 'حذف', cancel: 'لغوه', remove: 'لرې کول', pay: 'تادیه', void: 'باطل', activate: 'فعالول', deactivate: 'غیر فعالول', terminate: 'ختمول', details: 'تفصیلات', profile: 'پروفایل', spaces: 'ځایونه', rates: 'نرخونه' }, language: 'ژبه', signIn: 'ننوتل', getStarted: 'پیل وکړئ', logout: 'وتل', loggingOut: 'د وتلو په حال کې...', close: 'بندول', selectDate: 'نېټه وټاکئ', skipToContent: 'منځپانګې ته لاړ شئ', filters: 'فلټرونه', all: 'ټول', clearFilters: 'فلټرونه پاک کړئ', selectAll: 'ټولې کرښې وټاکئ', selectRow: 'کرښه وټاکئ', selectedCount: '{count} ټاکل شوي', required: 'اړین', irreversible: 'دا کار بېرته نه شي کېدای.' },
   uploads: { ...en.uploads, choose: 'انځور وټاکئ', dropHere: 'یا یې دلته خوشې کړئ', replace: 'بدلول', view: 'کتل', remove: 'لرې کول', uploading: 'پورته کېږي...', hint: 'JPEG، PNG یا WebP، تر ۵ مېګابایټ.', failed: 'انځور پورته نشو. بیا هڅه وکړئ.', missing: 'دا فایل نور په سرور کې نشته. بیا یې وټاکئ.', tooLarge: 'دا انځور له ۵ مېګابایټ ډېر دی.', wrongType: 'یو JPEG، PNG یا WebP انځور وټاکئ.' },
@@ -440,5 +465,7 @@ translations.apartments.types = {
   OFFICE: 'دفتر',
   OTHER: 'نور',
 };
+
+translations.printing = {"preview":"د چاپ مخکتنه","hint":"سند وګورئ، بیا یې د براوزر له لارې چاپ یا د PDF په توګه خوندي کړئ.","print":"چاپ / PDF خوندي کول","invoice":"بل","reading":"د میتر لوستل","unassigned":"قرارداد نه دی ټاکل شوی","currencyHint":"د بل ټولې پیسې په دې اسعارو ښودل کېږي:","baseline":"دا یوازې د کرایه‌دار د راتګ لومړنی لوستل دي. په دې لوستلو مصرف نه بل کېږي.","readingNotice":"دا د میتر د لوستلو سند دی، د پیسو رسید نه دی. د بل حالت پورته ښودل شوی.","recordCopy":"د خوندي شوي ریکارډ کاپي","error":"د چاپ سند چمتو نه شو. بیا هڅه وکړئ."};
 
 export default translations;

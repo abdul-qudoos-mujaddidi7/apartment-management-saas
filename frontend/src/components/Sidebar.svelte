@@ -109,6 +109,7 @@
         class="app-nav-item"
         aria-current={activeModule === item.key ? 'page' : undefined}
         title={collapsed ? label : undefined}
+        aria-label={label}
       >
         <i class={`bi ${item.icon}`} aria-hidden="true"></i>
         <span>{label}</span>
@@ -123,6 +124,7 @@
       on:click={handleLogout}
       disabled={loggingOut}
       title={collapsed ? logoutLabel : undefined}
+      aria-label={logoutLabel}
     >
       <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
       <span>{logoutLabel}</span>

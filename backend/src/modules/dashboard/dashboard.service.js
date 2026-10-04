@@ -2,8 +2,6 @@ const prisma = require('../../lib/prisma');
 
 /** Months of history the collections trend carries (current month included). */
 const TREND_MONTHS = 6;
-/** Leases ending within this window are surfaced as "needs attention". */
-const EXPIRING_WINDOW_DAYS = 60;
 /** How many rows each action list returns. */
 const LIST_LIMIT = 5;
 
@@ -49,12 +47,11 @@ function balanceOf(invoice) {
  * Every money figure here is in the organization's base currency, so nothing is
  * ever summed across currencies.
  */
-async function getDashboard(organizationId) {
+async function getDashboard(organizationId, canViewLeases = false) {
   const now = new Date();
   const monthStart = startOfMonth(now);
   const lastMonthStart = addMonths(monthStart, -1);
   const trendStart = addMonths(monthStart, -(TREND_MONTHS - 1));
-  const expiringBy = new Date(now.getTime() + EXPIRING_WINDOW_DAYS * 86_400_000);
 
   const orgScope = { organizationId, deletedAt: null };
   // Payments are immutable: they are voided (voidedAt), never soft-deleted, so
@@ -73,7 +70,6 @@ async function getDashboard(organizationId) {
     postedPayments,
     openInvoices,
     recentPayments,
-    expiringLeases,
   ] = await prisma.$transaction([
     prisma.organization.findUnique({ where: { id: organizationId }, select: { baseCurrency: true } }),
     prisma.building.count({ where: orgScope }),
@@ -137,26 +133,6 @@ async function getDashboard(organizationId) {
         paymentMethod: true,
         tenant: { select: { id: true, firstName: true, lastName: true } },
         lease: { select: { contractNumber: true } },
-      },
-    }),
-    prisma.lease.findMany({
-      where: { ...orgScope, status: 'ACTIVE', endDate: { gte: now, lte: expiringBy } },
-      orderBy: { endDate: 'asc' },
-      take: LIST_LIMIT,
-      select: {
-        id: true,
-        contractNumber: true,
-        endDate: true,
-        monthlyRent: true,
-        currency: true,
-        tenant: { select: { id: true, firstName: true, lastName: true, phone: true } },
-        apartment: {
-          select: {
-            apartmentNumber: true,
-            name: true,
-            floor: { select: { name: true, building: { select: { name: true } } } },
-          },
-        },
       },
     }),
   ]);
@@ -265,16 +241,7 @@ async function getDashboard(organizationId) {
       tenant: invoice.lease?.tenant || null,
       apartment: invoice.lease?.apartment || null,
     })),
-    expiringLeases: expiringLeases.map((lease) => ({
-      id: lease.id,
-      contractNumber: lease.contractNumber,
-      endDate: lease.endDate,
-      monthlyRent: toNumber(lease.monthlyRent),
-      currency: lease.currency,
-      daysLeft: Math.max(Math.ceil((new Date(lease.endDate) - now) / 86_400_000), 0),
-      tenant: lease.tenant,
-      apartment: lease.apartment,
-    })),
+    expiringLeases: canViewLeases ? await require('../leases/lease-reminders').expiringLeases(organizationId) : [],
   };
 }
 

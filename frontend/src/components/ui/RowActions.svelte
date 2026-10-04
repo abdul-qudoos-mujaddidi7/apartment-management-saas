@@ -82,6 +82,7 @@
   function onWindowKeydown(event) {
     if (!open) return;
     if (event.key === 'Escape') {
+      event.preventDefault();
       event.stopPropagation();
       close(true);
       return;
@@ -103,12 +104,12 @@
   }
 
   onMount(() => {
-    window.addEventListener('mousedown', onWindowPointerDown, true);
+    window.addEventListener('pointerdown', onWindowPointerDown, true);
     window.addEventListener('keydown', onWindowKeydown, true);
     window.addEventListener('resize', onViewportChange);
     window.addEventListener('scroll', onViewportChange, true);
     return () => {
-      window.removeEventListener('mousedown', onWindowPointerDown, true);
+      window.removeEventListener('pointerdown', onWindowPointerDown, true);
       window.removeEventListener('keydown', onWindowKeydown, true);
       window.removeEventListener('resize', onViewportChange);
       window.removeEventListener('scroll', onViewportChange, true);
@@ -138,7 +139,6 @@
       role="menu"
       bind:this={menuEl}
       style={menuPos}
-      on:click={() => close()}
     >
       <slot />
     </div>

@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const permissions = [
+  ...['LEASE_VIEW', 'LEASE_MANAGE', 'UTILITY_VIEW', 'UTILITY_MANAGE', 'INVOICE_VIEW', 'INVOICE_MANAGE'].map(code => ({ code, name: code.replaceAll('_', ' ') })),
   {
     name: 'View organization',
     code: 'ORGANIZATION_VIEW',

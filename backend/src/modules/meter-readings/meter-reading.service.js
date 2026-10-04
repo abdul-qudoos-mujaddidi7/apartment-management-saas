@@ -3,6 +3,9 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../../lib/prisma');
 const { shamsiMonthKey, shamsiMonthLabel } = require('../../lib/shamsi');
 const Decimal = Prisma.Decimal;
+const writeTransaction = callback => prisma.$transaction(callback, { isolationLevel: 'ReadCommitted' });
+const { calculateCharge, coversPeriod, assertLeaseOwnsInterval } = require('./reading-workflow');
+
 
 function serviceError(code, message) {
   const error = new Error(message);
@@ -31,20 +34,21 @@ function readingSelect() {
   return {
     id: true, meterId: true, readingDate: true, previousReading: true,
     currentReading: true, consumption: true, unitPrice: true, amount: true,
-    notes: true, createdAt: true, updatedAt: true,
+    notes: true, createdAt: true, updatedAt: true, leaseId: true, periodStart: true, currency: true, readingKind: true, resetBaseline: true,
+    lease: { select: { id: true, contractNumber: true, tenant: { select: { firstName: true, lastName: true } } } },
     invoiceItem: {
       select: {
         id: true,
         amount: true,
         paymentAllocations: {
-          select: { amount: true, voidedAt: true },
+          where: { payment: { status: 'POSTED' } }, select: { appliedAmount: true, amount: true, voidedAt: true },
         },
-        invoice: { select: { status: true, deletedAt: true } },
+        invoice: { select: { id: true, invoiceNumber: true, status: true, deletedAt: true } },
       },
     },
     meter: {
       select: {
-        id: true, meterNumber: true, utilityType: true, unit: true,
+        id: true, apartmentId: true, meterNumber: true, utilityType: true, unit: true, initialReading: true, installationDate: true, defaultUnitPrice: true,
         apartment: {
           select: {
             id: true, apartmentNumber: true, name: true,
@@ -70,6 +74,8 @@ function formatReading(reading) {
     consumption: Number(reading.consumption),
     unitPrice: Number(reading.unitPrice),
     amount: Number(reading.amount),
+    paidAmount: Number((reading.invoiceItem?.paymentAllocations || []).filter(a => !a.voidedAt).reduce((sum, a) => sum.plus(a.appliedAmount ?? a.amount), new Decimal(0))),
+    outstanding: isActivelyBilled(reading.invoiceItem) ? Math.max(0, Number(reading.amount) - Number((reading.invoiceItem?.paymentAllocations || []).filter(a => !a.voidedAt).reduce((sum, a) => sum.plus(a.appliedAmount ?? a.amount), new Decimal(0)))) : Number(reading.amount),
     billingStatus: billingStatus(reading.invoiceItem),
   };
 }
@@ -83,7 +89,7 @@ function billingStatus(invoiceItem) {
   const Decimal = Prisma.Decimal;
   const paid = (invoiceItem.paymentAllocations || []).reduce((sum, alloc) => {
     if (alloc.voidedAt) return sum;
-    return sum.plus(new Decimal(alloc.amount));
+    return sum.plus(new Decimal(alloc.appliedAmount ?? alloc.amount));
   }, new Decimal(0));
   const amount = new Decimal(invoiceItem.amount || 0);
   if (paid.greaterThanOrEqualTo(amount)) return 'PAID';
@@ -118,11 +124,11 @@ async function assertMonthIsFree(client, meterId, readingDate, ignoreId = null) 
       deletedAt: null,
       ...(ignoreId ? { id: { not: ignoreId } } : {}),
     },
-    select: { id: true, readingDate: true, periodMonth: true },
+    select: { id: true, readingDate: true, periodMonth: true, readingKind: true },
   });
 
   const clash = readings.find(
-    (reading) => (reading.periodMonth || shamsiMonthKey(reading.readingDate)) === periodMonth,
+    (reading) => (!reading.readingKind || reading.readingKind === 'BILLING') && (reading.periodMonth || shamsiMonthKey(reading.readingDate)) === periodMonth,
   );
 
   if (clash) {
@@ -142,10 +148,16 @@ async function assertMeterInOrganization(client, organizationId, meterId, requir
       ...meterScope(organizationId),
       ...(requireActive ? { status: 'ACTIVE' } : {}),
     },
-    select: { id: true, initialReading: true, defaultUnitPrice: true },
+    select: { id: true, apartmentId: true, installationDate: true, initialReading: true, defaultUnitPrice: true },
   });
   if (!meter) throw serviceError('METER_NOT_FOUND', 'Meter not found.');
   return meter;
+}
+
+async function assertPeriodStart(client, meter, date, start, kind, ignoreId = null) {
+  const prior = await client.meterReading.findFirst({ where: { meterId: meter.id, deletedAt: null, readingDate: { lt: date }, ...(ignoreId ? { id: { not: ignoreId } } : {}) }, orderBy: { readingDate: 'desc' }, select: { readingDate: true } });
+  const expected = kind === 'MOVE_IN' ? date : prior?.readingDate || meter.installationDate || start;
+  if (!start || !expected || start.toISOString().slice(0,10) !== expected.toISOString().slice(0,10)) throw serviceError('INVALID_READING_PERIOD', 'The usage period must start at the previous reading or installation date.');
 }
 
 // Rebuild the complete sequence after every write. This makes historical
@@ -153,14 +165,15 @@ async function assertMeterInOrganization(client, organizationId, meterId, requir
 async function recalculateMeterReadings(meterId, client) {
   const meter = await client.meter.findUnique({
     where: { id: meterId },
-    select: { initialReading: true },
+    select: { initialReading: true, installationDate: true, apartmentId: true },
   });
   let previous = new Decimal(meter?.initialReading || 0);
+  let previousDate = meter?.installationDate;
   const readings = await client.meterReading.findMany({
     where: { meterId, deletedAt: null },
     orderBy: [{ readingDate: 'asc' }, { createdAt: 'asc' }],      select: {
         id: true,
-        previousReading: true,
+        previousReading: true, readingDate: true, periodStart: true, leaseId: true, readingKind: true, resetBaseline: true,
         currentReading: true,
         consumption: true,
         unitPrice: true,
@@ -181,9 +194,15 @@ async function recalculateMeterReadings(meterId, client) {
     if (current.lessThan(previous)) {
       throw serviceError('CURRENT_READING_TOO_LOW', 'Current reading cannot be lower than the previous reading.');
     }
-    const consumption = current.minus(previous);
-    const amount = consumption.times(new Decimal(reading.unitPrice)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-    const changed = !new Decimal(reading.previousReading).equals(previous)
+    const { consumption, amount } = calculateCharge(reading.readingKind === 'MOVE_IN' ? current : previous, current, reading.unitPrice);
+    const start = reading.readingKind === 'MOVE_IN' ? reading.readingDate : previousDate || reading.periodStart || (isActivelyBilled(reading.invoiceItem) ? reading.readingDate : null);
+    if (!start || start > reading.readingDate) throw serviceError('INVALID_READING_PERIOD', 'A valid initial installation or period start date is required.');
+    if (reading.leaseId && (reading.periodStart || !isActivelyBilled(reading.invoiceItem))) {
+      const lease = await client.lease.findFirst({ where: { id: reading.leaseId, apartmentId: meter.apartmentId, deletedAt: null } });
+      if (!lease || !await assertLeaseOwnsInterval(client, lease.organizationId, lease, start, reading.readingDate)) throw serviceError('INVALID_READING_LEASE', 'The lease must cover the complete usage period. Record a handover reading to split usage between tenants.');
+    }
+    const frozenPrevious = reading.readingKind === 'MOVE_IN' ? current : previous;
+    const changed = (reading.periodStart && start.toISOString().slice(0,10) !== reading.periodStart.toISOString().slice(0,10)) || !new Decimal(reading.previousReading).equals(frozenPrevious)
       || !new Decimal(reading.consumption).equals(consumption)
       || !new Decimal(reading.amount).equals(amount);
 
@@ -191,13 +210,14 @@ async function recalculateMeterReadings(meterId, client) {
       throw serviceError('METER_READING_ALREADY_BILLED', 'A billed meter reading cannot be changed. Cancel the invoice first to release it.');
     }
 
-    if (changed) {
+    if (changed || (!reading.periodStart && !isActivelyBilled(reading.invoiceItem))) {
       await client.meterReading.update({
         where: { id: reading.id },
-        data: { previousReading: previous, consumption, amount },
+        data: { previousReading: frozenPrevious, consumption, amount, periodStart: start },
       });
     }
-    previous = current;
+    previous = reading.readingKind === 'RESET' ? new Decimal(reading.resetBaseline) : current;
+    previousDate = reading.readingDate;
   }
 }
 
@@ -253,17 +273,33 @@ async function getReadingFromTransaction(client, id) {
 }
 
 async function createMeterReading(organizationId, data) {
-  return prisma.$transaction(async (tx) => {
+  return writeTransaction(async (tx) => {
     const meter = await assertMeterInOrganization(tx, organizationId, data.meterId, true);
+    await tx.$queryRaw`SELECT id FROM Meter WHERE id = ${meter.id} FOR UPDATE`;
+    await assertPeriodStart(tx, meter, data.readingDate, data.periodStart, data.readingKind);
+    const lease = await tx.lease.findFirst({ where: { id: data.leaseId, organizationId, apartmentId: meter.apartmentId, deletedAt: null } });
+    if (!lease || !coversPeriod(lease, data.periodStart, data.readingDate)) throw serviceError('INVALID_READING_LEASE', 'Select a lease covering the entire billing period. Use a handover reading when tenants change.');
+    if (data.readingKind === 'MOVE_IN') {
+      if (lease.startDate.toISOString().slice(0,10) !== data.readingDate.toISOString().slice(0,10)) throw serviceError('INVALID_READING_LEASE', 'A move-in baseline must be dated on the lease start date.');
+      const prior = await tx.meterReading.findFirst({ where: { meterId: meter.id, deletedAt: null, readingDate: { lt: data.readingDate } }, orderBy: { readingDate: 'desc' } });
+      const from = prior?.readingDate || meter.installationDate;
+      if (from) {
+        const outgoing = await tx.lease.findFirst({ where: { organizationId, apartmentId: meter.apartmentId, id: { not: lease.id }, deletedAt: null, status: { not: 'DRAFT' }, startDate: { lt: data.readingDate }, endDate: { gt: from } } });
+        if (outgoing) throw serviceError('INVALID_READING_LEASE', 'Record the outgoing tenant handover reading first. A move-in baseline cannot discard another tenant\'s usage.');
+      }
+    }
+    const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { baseCurrency: true } });
+    const currency = await tx.currency.findFirst({ where: { organizationId, code: data.currency, isActive: true, deletedAt: null } });
+    if (!currency && data.currency !== org.baseCurrency) throw serviceError('INVALID_READING_CURRENCY', 'Currency is not enabled.');
     const active = await tx.meterReading.findFirst({
       where: { meterId: data.meterId, readingDate: data.readingDate, deletedAt: null }, select: { id: true },
     });
     if (active) throw serviceError('METER_READING_DATE_EXISTS', 'A reading already exists for this date.');
-    const periodMonth = await assertMonthIsFree(tx, data.meterId, data.readingDate);
+    const periodMonth = data.readingKind === 'BILLING' ? await assertMonthIsFree(tx, data.meterId, data.readingDate) : null;
     const removed = await tx.meterReading.findFirst({
       where: { meterId: data.meterId, readingDate: data.readingDate, deletedAt: { not: null } }, select: { id: true },
     });
-    const payload = { periodMonth, currentReading: new Decimal(data.currentReading), notes: data.notes ?? null, deletedAt: null };
+    const payload = { leaseId: data.leaseId, periodStart: data.periodStart, currency: data.currency, readingKind: data.readingKind, resetBaseline: data.resetBaseline ?? null, unitPrice: new Decimal(data.unitPrice), periodMonth, currentReading: new Decimal(data.currentReading), notes: data.notes ?? null, deletedAt: null };
     const reading = removed
       ? await tx.meterReading.update({ where: { id: removed.id }, data: payload })
       : await tx.meterReading.create({
@@ -283,27 +319,38 @@ async function createMeterReading(organizationId, data) {
 }
 
 async function updateMeterReading(organizationId, id, data) {
-  return prisma.$transaction(async (tx) => {
+  return writeTransaction(async (tx) => {
     const existing = await tx.meterReading.findFirst({
       where: { id, deletedAt: null, ...readingScope(organizationId) },
       select: {
-        id: true, meterId: true, readingDate: true, currentReading: true, notes: true,
+        id: true, meterId: true, readingDate: true, currentReading: true, notes: true, readingKind: true, leaseId: true, periodStart: true,
         invoiceItem: { select: { id: true, invoice: { select: { status: true, deletedAt: true } } } },
       },
     });
     if (!existing) throw serviceError('METER_READING_NOT_FOUND', 'Meter reading not found.');
+    await tx.$queryRaw`SELECT id FROM Meter WHERE id = ${existing.meterId} FOR UPDATE`;
+    if (data.currency) {
+      const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { baseCurrency: true } });
+      if (data.currency !== org.baseCurrency && !await tx.currency.findFirst({ where: { organizationId, code: data.currency, isActive: true, deletedAt: null } })) throw serviceError('INVALID_READING_CURRENCY', 'Currency is not enabled.');
+    }
+    if (existing.readingKind === 'MOVE_IN' && (data.readingDate || data.leaseId || data.periodStart)) throw serviceError('INVALID_READING_LEASE', 'Move-in baselines cannot be reassigned or moved. Delete and recreate an unbilled baseline.');
     if (isActivelyBilled(existing.invoiceItem)) {
       throw serviceError('METER_READING_ALREADY_BILLED', 'A billed meter reading cannot be changed. Cancel the invoice first to release it.');
     }
     const nextDate = data.readingDate || existing.readingDate;
+    if (data.readingDate || data.periodStart) {
+      const meter = await assertMeterInOrganization(tx, organizationId, existing.meterId);
+      await assertPeriodStart(tx, meter, nextDate, data.periodStart || existing.periodStart, existing.readingKind, id);
+    }
     const conflict = await tx.meterReading.findFirst({
       where: { meterId: existing.meterId, readingDate: nextDate, deletedAt: null, id: { not: id } }, select: { id: true },
     });
     if (conflict) throw serviceError('METER_READING_DATE_EXISTS', 'A reading already exists for this date.');
     // Moving a reading into a month that already has one is the same duplicate,
     // and the unique index would refuse it anyway — with a message no one can act on.
-    const periodMonth = await assertMonthIsFree(tx, existing.meterId, nextDate, id);
+    const periodMonth = existing.readingKind === 'BILLING' ? await assertMonthIsFree(tx, existing.meterId, nextDate, id) : null;
     const payload = {
+      ...data,
       readingDate: nextDate,
       periodMonth,
       currentReading: data.currentReading === undefined ? existing.currentReading : new Decimal(data.currentReading),
@@ -328,12 +375,13 @@ async function updateMeterReading(organizationId, id, data) {
 }
 
 async function softDeleteMeterReading(organizationId, id) {
-  return prisma.$transaction(async (tx) => {
+  return writeTransaction(async (tx) => {
     const reading = await tx.meterReading.findFirst({
       where: { id, deletedAt: null, ...readingScope(organizationId) },
       select: { id: true, meterId: true, invoiceItem: { select: { id: true, invoice: { select: { status: true, deletedAt: true } } } } },
     });
     if (!reading) throw serviceError('METER_READING_NOT_FOUND', 'Meter reading not found.');
+    await tx.$queryRaw`SELECT id FROM Meter WHERE id = ${reading.meterId} FOR UPDATE`;
     if (isActivelyBilled(reading.invoiceItem)) {
       throw serviceError('METER_READING_ALREADY_BILLED', 'A billed meter reading cannot be deleted. Cancel the invoice first to release it.');
     }

@@ -4,7 +4,7 @@ const organizationId = (req) => req.user.organizationId;
 
 async function summary(req, res, next) {
   try {
-    return res.json({ success: true, dashboard: await service.getDashboard(organizationId(req)) });
+    return res.json({ success: true, dashboard: await service.getDashboard(organizationId(req), await require('../../middleware/permission').hasPermission(req.user, 'LEASE_VIEW')) });
   } catch (error) {
     return next(error);
   }

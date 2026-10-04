@@ -97,6 +97,7 @@
 
   function onKeydown(event) {
     if (event.key === 'Escape') {
+      if (open) event.preventDefault();
       open = false;
       return;
     }

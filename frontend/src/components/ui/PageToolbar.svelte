@@ -43,7 +43,8 @@
   }
 
   function handleDocumentKeydown(event) {
-    if (event.key === 'Escape' && filtersOpen) {
+    if (event.key === 'Escape' && filtersOpen && !event.defaultPrevented) {
+      event.preventDefault();
       filtersOpen = false;
       filtersAnchor?.querySelector('.filters-button')?.focus();
     }

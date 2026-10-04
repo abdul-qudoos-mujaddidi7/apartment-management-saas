@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import LeaseNotifications from '../LeaseNotifications.svelte';
   import LanguageSwitcher from '../LanguageSwitcher.svelte';
   import { user } from '../../stores/auth';
   import { locale } from '../../i18n';
@@ -137,6 +138,7 @@
       v{__APP_VERSION__}
     </span>
 
+    <LeaseNotifications />
     <LanguageSwitcher />
 
     <!-- Identity, not a menu: the name and address are the whole point of the

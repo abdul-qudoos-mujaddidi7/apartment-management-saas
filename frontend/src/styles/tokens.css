@@ -59,7 +59,7 @@
      few points of chroma — enough that the desk reads as the same family as the
      accent without ever competing with it. The topbar paints from this same
      token, so the bar and the page below it stay one surface. */
-  --canvas: #f5f7fa;
+  --canvas: #f4f7fb;
   --card-border: #eef0f4;
   --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   --card-shadow-raised: 0 2px 8px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
@@ -82,9 +82,7 @@
      scrolling under it stays masked. */
   --wash-left: rgba(100, 116, 139, 0.055);
   --wash-right: rgba(53, 134, 255, 0.07);
-  --shell-wash:
-    radial-gradient(85% 820px at 0% 0%, var(--wash-left), rgba(100, 116, 139, 0) 74%),
-    radial-gradient(85% 900px at 100% 0%, var(--wash-right), rgba(53, 134, 255, 0) 76%);
+  --shell-wash: none;
 
   --surface-sunken: #ffffff;
   --surface-muted: #ffffff; /* same as --surface-sunken: one white surface */
@@ -160,35 +158,41 @@
   --neutral-soft: #eff1f5;
   --neutral-border: #e0e4ea;
 
-  /* --- Sidebar: white rail, one solid accent pill for the current module ---
-     The rail is white, closed by a hairline, so it reads as the same sheet the
-     cards sit on while the grey working area shows between them. Ink on the
-     rail is #0d0d0d — near-black, 19.7:1 — with the icons one step dimmer at
-     4.9:1 so the eye lands on the word rather than on the glyph. The current
-     module is a *filled* accent pill carrying `--sidebar-active-text`: the only
-     saturated colour on the rail, and therefore the answer to "where am I".
-     Hover is a light grey wash. The pill sits inside the rail's own padding —
-     nothing runs off the content edge — which is why `--sidebar-tab-fillet` is
-     0: the concave-fillet rules in the stylesheet key off it and collapse to
-     nothing. */
+  /* --- Sidebar: white rail, one pale blue tab for the current module --------
+     The rail is styled by *interaction* rather than by ink — this is the Zeno
+     ERP's sidebar, carried over whole: nothing on it is a solid fill, so the
+     only tinted row is the one you are on. The rail is white and closed by a
+     soft cast shadow instead of a hairline, so it stands a hair above the grey
+     working area. Rows carry label and icon in the same slate (#526176,
+     6.3:1 on white), so the word leads on weight rather than on being darker
+     than the glyph. Hover puts a pale blue wash under a blue label and nudges
+     the row one pixel; the current module is the same idea one wash deeper.
+     The rows sit inside the rail's own padding — nothing runs off the content
+     edge — which is why `--sidebar-tab-fillet` is 0: the concave-fillet rules
+     in the stylesheet key off it and collapse to nothing. */
   --sidebar-bg: #ffffff;
-  --sidebar-divider: #eef0f4;
+  /* The rail's cast. The ERP throws it 10px sideways; thrown evenly instead,
+     the edge reads the same and survives the RTL flip without a second rule. */
+  --sidebar-shadow: 0 0 24px rgba(15, 23, 42, 0.05);
   --sidebar-accent: var(--accent); /* focus ring reads on white */
-  --sidebar-icon: #6b7788;
-  --sidebar-text: #0d0d0d;
+  --sidebar-icon: #526176; /* the ERP's rail slate — 6.3:1 on white */
+  --sidebar-text: #526176; /* label and icon alike: one voice, one weight */
   /* The identity block's second line, which sits on the wash in the topbar —
-     not on the rail, so it is a mid grey rather than the rail's near-black.
+     not on the rail, so it is a mid grey rather than the rail's slate.
      #64748b only reaches 4.4:1 against the tinted end of that wash, so this is
      one step deeper: 4.9:1 there, 5.3:1 on the white below it. */
   --sidebar-text-muted: #5f6d80;
   --sidebar-text-strong: #0d0d0d;
-  --sidebar-hover-bg: #f5f7fa;
-  --sidebar-hover-text: #0d0d0d;
-  --sidebar-active-bg: var(--accent);
-  --sidebar-active-text: #f5ffff; /* ~white, one step cool of it on the fill */
-  /* The pill's lift: the accent, spread and blurred downward, so the fill reads
-     as sitting *on* the rail rather than being printed into it. */
-  --sidebar-active-shadow: 0 8px 16px -8px rgba(53, 134, 255, 0.55);
+  --sidebar-hover-bg: #f4f8ff; /* the ERP's hover wash */
+  /* The ERP paints this #0f6efd, which reaches only 4.2:1 on these two washes —
+     under AA at the 11px/800 label. One step deeper in the same hue keeps the
+     vivid blue and clears it: 4.8:1 on the tab, 5.0:1 on the hover wash. */
+  --sidebar-hover-text: #1e63e0;
+  --sidebar-active-bg: #eaf3ff; /* the ERP's tab — one wash deeper than hover */
+  --sidebar-active-text: var(--sidebar-hover-text); /* hover and "you are here" are one colour */
+  /* The tab sits flat on the rail — the wash is the whole cue, so nothing is
+     blurred under it to lift it off. Kept as a hook in case that changes. */
+  --sidebar-active-shadow: none;
   /* Retired: the active pill no longer reaches the content edge, so there are
      no fillets to size. Kept at 0 rather than deleted so the rules that read
      it stay valid CSS. */
@@ -198,17 +202,17 @@
      happened to sit over. */
   --sidebar-control-bg: var(--white);
   --sidebar-control-border: var(--border);
-  --sidebar-control-text: var(--accent);
+  --sidebar-control-text: var(--ink-500); /* grey at rest, blue on hover — the ERP's chip */
   /* Sizes are quoted in rem against a 14px root, which is what this console
      sets, so the rendered numbers stay the ones the rail is drawn to: an ~8px
      corner and a ~38px row. The row sits on a ~40px pitch (item + 2px of air,
-     set by `.app-nav-item`'s block margin): eleven modules on one screen with
+     set by `.app-nav-item`'s block margin): twelve modules on one screen with
      no scrolling, without the rows touching — a rail that needs a scrollbar to
      reach the last module costs more than the air is worth. `--sidebar-gutter`
-     is the air either side of a row, and it is generous on purpose — the rail
-     reads as a column of pills floating in the panel rather than rows wired to
-     its edges. */
-  --sidebar-gutter: 2.4rem;
+     is the shell's own inline padding — the ERP's 1rem — so rows run wide and
+     the icons land on the edge they do there, instead of floating in a column
+     of pills with a hand's width of air either side of them. */
+  --sidebar-gutter: 1rem;
   /* The ERP's own rail geometry: a 0.7rem corner on a 2.75rem row, which is
      ~38px against this console's 14px root (~36px against the ERP's 13.1px). */
   --sidebar-item-radius: 0.7rem;
@@ -290,12 +294,12 @@
      space between the sheet and the viewport, and it is also what caps the
      sheet's height, so it appears in both the width and the height sums. */
   --modal-gutter: clamp(0.75rem, 2vw, 1.5rem);
-  --modal-width: 560px;
-  /* Wide enough for the two-column field grid a form dialog is laid out on:
-     at ~420px per column a select shows its whole option and a date its whole
-     date, which is what the grid is for. */
-  --modal-width-lg: 920px;
-  --modal-width-xl: 1040px;
+  --modal-width: 480px;
+  /* Compact forms, two-column forms, and table-based workflows respectively. */
+  --modal-width-lg: 680px;
+  --modal-width-xl: 840px;
+  --modal-padding: clamp(1rem, 2vw, 1.5rem);
+  --modal-radius: 16px;
   --modal-backdrop: rgba(17, 24, 39, 0.55);
   --modal-shadow:
     0 24px 60px -12px rgba(16, 24, 40, 0.3),
@@ -332,7 +336,7 @@
   /* Wide enough to pay for the gutter and keep the longest label whole:
      "Assets & Furniture" needs ~126px at the label size, and "صورت‌حساب‌ها"
      ~98px. */
-  --sidebar-width-expanded: 260px;
+  --sidebar-width-expanded: clamp(14rem, 15vw, 15.25rem);
   --sidebar-width-collapsed: 4.25rem;
   --sidebar-width: var(--sidebar-width-expanded);
   --topbar-height: 68px;

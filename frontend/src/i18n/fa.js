@@ -1,6 +1,31 @@
 import en from './en';
 
 const translations = {
+  workflow: {
+    moveIn: "قرائت ورود (بدون هزینه)",
+    issueBill: "صدور بل",
+    billReview: "بررسی بل برق",
+  "discardChanges": "تغییرات ذخیره‌نشده حذف شوند؟",
+  "notifications": "اطلاعیه‌های قرارداد",
+  "expiringSoon": "قراردادهای نزدیک به ختم",
+  "daysRemaining": "روز باقی‌مانده",
+  "periodStart": "شروع دوره مصرف",
+  "lease": "قرارداد مسئول این مصرف",
+  "rate": "قیمت هر کیلووات ساعت / واحد",
+  "currency": "واحد پول",
+  "kind": "نوع قرائت",
+  "billing": "بل ماهانه",
+  "handover": "تحویل به مستأجر (ورود / خروج)",
+  "reset": "تنظیم مجدد / تعویض میتر",
+  "resetBaseline": "قرائت اولیه میتر جدید",
+  "preview": "پیش‌نمایش هزینه",
+  "paid": "پرداخت‌شده",
+  "outstanding": "باقی‌مانده",
+  "review": "قبل از ذخیره، مصرف، هزینه، واحد پول و قرارداد را بررسی کنید. قرائت تحویل، مصرف تا این تاریخ را محاسبه می‌کند.",
+  "resetHelp": "قرائت نهایی میتر قبلی، قرائت اولیه میتر جدید و دلیل را در یادداشت‌ها وارد کنید.",
+  "periodHelp": "تمام دوره مصرف باید مربوط به قرارداد انتخاب‌شده باشد. برای تغییر مستأجر قرائت تحویل ثبت کنید.",
+  "reminderRule": "قراردادهای فعال در ماه تقویمی آخر. یادآوری یک ماه میلادی قبل از ختم آغاز می‌شود؛ در ماه کوتاه‌تر، آخرین روز ماه استفاده می‌شود."
+},
   ...en,
   common: { ...en.common, previous: 'قبلی', next: 'بعدی', page: 'صفحه {page} از {totalPages}', actions: { view: 'مشاهده', edit: 'ویرایش', delete: 'حذف', cancel: 'لغو', remove: 'برداشتن', pay: 'پرداخت', void: 'ابطال', activate: 'فعال‌سازی', deactivate: 'غیرفعال‌سازی', terminate: 'ختم', details: 'جزئیات', profile: 'پروفایل', spaces: 'فضاها', rates: 'نرخ‌ها' }, language: 'زبان', signIn: 'ورود', getStarted: 'شروع کنید', logout: 'خروج', loggingOut: 'در حال خروج...', close: 'بستن', selectDate: 'انتخاب تاریخ', skipToContent: 'رفتن به محتوا', filters: 'فیلترها', all: 'همه', clearFilters: 'پاک کردن فیلترها', selectAll: 'انتخاب همه سطرها', selectRow: 'انتخاب سطر', selectedCount: '{count} انتخاب‌شده', required: 'الزامی', irreversible: 'این کار قابل بازگشت نیست.' },
   uploads: { ...en.uploads, choose: 'انتخاب تصویر', dropHere: 'یا اینجا رها کنید', replace: 'تغییر', view: 'مشاهده', remove: 'حذف', uploading: 'در حال بارگذاری...', hint: 'JPEG، PNG یا WebP، حداکثر ۵ مگابایت.', failed: 'بارگذاری تصویر انجام نشد. دوباره تلاش کنید.', missing: 'این فایل دیگر روی سرور نیست. دوباره انتخاب کنید.', tooLarge: 'حجم این تصویر بیشتر از ۵ مگابایت است.', wrongType: 'یک تصویر JPEG، PNG یا WebP انتخاب کنید.' },
@@ -444,5 +469,7 @@ translations.apartments.types = {
   OFFICE: 'دفتر',
   OTHER: 'سایر',
 };
+
+translations.printing = {"preview":"پیش‌نمایش چاپ","hint":"سند را بررسی کنید، سپس با مرورگر چاپ یا به صورت PDF ذخیره کنید.","print":"چاپ / ذخیره PDF","invoice":"بل","reading":"قرائت میتر","unassigned":"قرارداد تعیین نشده","currencyHint":"مجموع بل به این ارز نمایش داده می‌شود:","baseline":"فقط قرائت ابتدایی هنگام ورود مستأجر است. مصرفی توسط این قرائت بل نمی‌شود.","readingNotice":"این سند قرائت میتر است و رسید پرداخت نیست. وضعیت بل در بالا نشان داده شده است.","recordCopy":"کاپی سابقهٔ ذخیره‌شده","error":"آماده‌سازی سند چاپ ممکن نشد. دوباره کوشش کنید."};
 
 export default translations;

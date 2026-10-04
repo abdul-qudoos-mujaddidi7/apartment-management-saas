@@ -118,7 +118,7 @@ html hr {
 }
 
 /* ==========================================================================
-   3. Sidebar — white rail, one solid accent pill for the current module
+   3. Sidebar — white rail, one pale blue tab for the current module
    ========================================================================== */
 
 .app-sidebar {
@@ -129,10 +129,10 @@ html hr {
   width: var(--sidebar-width);
   min-height: 100%;
   color: var(--sidebar-text);
-  /* White like the cards, separated from them by a hairline and from the grey
-     working area by its own edge; the active item carries all of the colour. */
+  /* White like the cards, standing a hair above the grey working area on the
+     ERP's soft cast: the shadow is the edge, so no rule is drawn on it. */
   background: var(--sidebar-bg);
-  border-inline-end: 1px solid var(--sidebar-divider);
+  box-shadow: var(--sidebar-shadow);
   border-radius: 0;
   /* Visible so the collapse toggle can straddle the panel edge; the menu
      scrolls on its own. */
@@ -161,7 +161,8 @@ html hr {
   min-width: 0;
   /* Tightened with the nav below it: the wordmark wants air under it, not a
      band of its own. ~19px above the mark and ~24px below, versus 22/28. */
-  padding: 1.35rem var(--sidebar-gutter) 1.7rem;
+  padding: 1rem var(--sidebar-gutter) 0.75rem;
+  min-height: 5rem;
   border-block-end: 0;
 }
 
@@ -184,7 +185,7 @@ html hr {
 
 .app-sidebar-name {
   color: var(--sidebar-text-strong);
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: var(--weight-heavy);
   letter-spacing: var(--tracking-tight);
   overflow: hidden;
@@ -237,7 +238,7 @@ html hr {
      root the ERP's spacing would make a 41px row out of an 11px label, which
      is the airy rail this was meant to fix. Inline padding is untouched, so
      the text inset still matches. */
-  padding: 0.42rem 0.9rem;
+  padding: 0.52rem 0.9rem;
   border-radius: var(--sidebar-item-radius);
   background: transparent;
   color: var(--sidebar-text);
@@ -276,12 +277,16 @@ html hr {
   white-space: nowrap;
 }
 
-/* Hover: a light grey wash and the same near-black label. No nudge — a movement
-   on a stationary rail reads as a layout shift rather than a response. */
+/* Hover: the ERP's pale blue wash under a blue label and icon, with a one
+   pixel nudge toward the content side — LTR slides right, RTL slides left, so
+   the row answers the pointer instead of sitting still under it. */
 .app-nav-item:hover {
   background: var(--sidebar-hover-bg);
   color: var(--sidebar-hover-text);
+  transform: translateX(1px);
 }
+
+[dir='rtl'] .app-nav-item:hover { transform: translateX(-1px); }
 
 .app-nav-item:hover > i { color: var(--sidebar-hover-text); }
 
@@ -289,11 +294,11 @@ html hr {
 .app-nav-item:active { background: var(--sidebar-hover-bg); }
 
 /* --------------------------------------------------------------------------
-   Active item: the accent as a solid fill with `--sidebar-active-text` on it,
-   lifted off the rail by its own tinted shadow. A filled pill is the only thing
-   on the rail that carries the accent, which is what makes the current module
-   unmistakable against a white column without a second shade of blue. The old
-   white tab with concave fillets is gone, and so is the soft tint.
+   Active item: the ERP's tab — a pale blue wash, a blue label and a blue icon,
+   no fill and no shadow under it. It is the only tinted row on a white rail,
+   so "you are here" is answered by hue rather than by weight of ink, and the
+   row keeps the same heavy cut as its neighbours so it is not the thinnest
+   thing on the rail.
    -------------------------------------------------------------------------- */
 
 .app-nav-item.is-active,
@@ -304,21 +309,19 @@ html hr {
   color: var(--sidebar-active-text);
   border-radius: var(--sidebar-item-radius);
   box-shadow: var(--sidebar-active-shadow);
-  /* Not lighter than its neighbours: the fill says "you are here", and dropping
-     the weight here would make the current item the thinnest text on the rail. */
   font-weight: var(--weight-heavy);
 }
 
 .app-nav-item.is-active > i,
 .app-nav-item.active > i { color: var(--sidebar-active-text); }
 
-/* Keep the pill intact (not the flat hover wash) while it is hovered, and drop
-   its lift to the pressed-in look — the row is already the current one. */
+/* The tab keeps its own wash while hovered — the hover fill is the same idea
+   one shade lighter, so swapping between the two would flicker. It still
+   nudges with the rest of the rows: the current one is not exempt. */
 .app-nav-item.is-active:hover,
 .app-nav-item.active:hover {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
-  transform: none;
 }
 
 .app-nav-item.is-active::before,
@@ -378,18 +381,27 @@ html hr {
    bottom. It carries the nav's own inset so its icon lines up with the icons
    above it, and it is the last thing on the rail rather than a card — the
    person's name and address live in the topbar, which is the one place they
-   are needed next to the module title.
+   are needed next to the module title. The hairline divides it from the rows
+   above, as the ERP's profile block does.
    -------------------------------------------------------------------------- */
 
 .app-sidebar-foot {
-  padding: 0.28rem var(--sidebar-gutter) 0.75rem;
+  margin-block-start: 0.5rem;
+  padding: 0.65rem var(--sidebar-gutter) 0.75rem;
+  border-block-start: 1px solid var(--card-border);
 }
+
+.app-sidebar-foot .app-nav-item--action { color: var(--danger); margin-block-start: 0.35rem; }
+.app-sidebar-foot .app-nav-item--action > i { color: inherit; }
+.app-sidebar-foot .app-nav-item--action:hover { background: var(--danger-soft); }
 
 /* A nav row that acts instead of navigating. It is a <button>, so it needs the
    reset an <a> never did; the rest of the row is .app-nav-item's. */
 .app-nav-item--action {
   width: 100%;
-  padding: 0.52rem 0.9rem;
+  /* Same block padding as the rows above it, so the foot row lands on the same
+     ~38px height instead of a few pixels taller. */
+  padding: 0.42rem 0.9rem;
   border: 0;
   background: transparent;
   font-family: inherit;
@@ -1374,6 +1386,7 @@ textarea.form-control {
    the dialog's parent alone. */
 .modal.d-block .modal-dialog {
   max-width: var(--modal-width);
+  width: 100%;
   /* A definite height, not a `min-height`: the sheet caps itself from a
      percentage, and a percentage only resolves against a parent whose height
      is definite. With `min-height` alone the cap is ignored and a tall dialog
@@ -1402,7 +1415,7 @@ textarea.form-control {
   border: 1px solid var(--card-border);
   /* 12px against the 8px of the controls inside it: the sheet reads as a
      surface *above* them rather than one more box in the grid. */
-  border-radius: var(--radius-lg);
+  border-radius: var(--modal-radius);
   box-shadow: var(--modal-shadow);
   overflow: hidden;
   /* A dialog is the one place the app has room to breathe: its fields and
@@ -1414,7 +1427,7 @@ textarea.form-control {
      through the chain. */
   --control-height: var(--control-height-dialog);
   --button-height: var(--control-height-dialog);
-  animation: modal-sheet-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: modal-sheet-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes modal-sheet-in {
@@ -1427,8 +1440,8 @@ textarea.form-control {
 .modal-header {
   flex: 0 0 auto;
   align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-6);
+  gap: 0.85rem;
+  padding: var(--modal-padding);
   border-block-end: 1px solid var(--card-border);
   background: var(--surface);
 }
@@ -1465,7 +1478,8 @@ textarea.form-control {
 .modal-title {
   margin: 0;
   color: var(--text-strong);
-  font-size: var(--text-2xl);
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
   font-weight: var(--weight-heavy);
   letter-spacing: var(--tracking-tight);
   line-height: 1.25;
@@ -1484,13 +1498,13 @@ textarea.form-control {
 .modal-header .btn-close {
   flex: 0 0 auto;
   box-sizing: border-box;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 44px;
+  height: 44px;
   padding: 0;
   margin: 0;
   background-size: 0.85rem;
   border-radius: var(--radius-lg);
-  background-color: var(--grey-200);
+  background-color: var(--surface-hover);
   opacity: 1;
   transition: background-color 0.15s ease, opacity 0.15s ease;
 }
@@ -1513,7 +1527,8 @@ textarea.form-control {
 .modal-body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: var(--space-6);
+  padding: var(--modal-padding);
+  container-type: inline-size;
   overflow-y: auto;
   /* A dialog body that reaches its end should not hand the scroll on to the
      page behind it. */
@@ -1539,7 +1554,13 @@ textarea.form-control {
    the same roomy two-column gutter, so fields line up column by column
    instead of drifting apart dialog by dialog. */
 .modal-body .row { --bs-gutter-x: var(--space-6); --bs-gutter-y: var(--space-5); }
-.modal-body .field-grid { column-gap: var(--space-6); row-gap: var(--space-5); }
+.modal-body .field-grid { column-gap: 1.25rem; row-gap: 1.25rem; }
+
+@container (max-width: 520px) {
+  .modal-body .field-grid { grid-template-columns: minmax(0, 1fr); }
+  .modal-body .row > .col-md-6,
+  .modal-body .row > .col-sm-6 { flex: 0 0 100%; width: 100%; }
+}
 
 .modal-body .field + .field,
 .modal-body .field + .field-grid,
@@ -1605,12 +1626,19 @@ textarea.form-control {
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-6);
+  padding: 1rem var(--modal-padding);
   border-block-start: 1px solid var(--card-border);
-  background: var(--surface);
+  background: var(--surface-hover);
 }
 
 .modal-footer > * { margin: 0; }
+.modal-footer > div:not(.modal-footer-note) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.modal-footer .btn { min-height: 44px; }
 
 /* A footer is a band only when it holds something. A dialog that offers no
    actions (a read-only detail sheet) would otherwise end on an empty strip
@@ -1667,13 +1695,13 @@ textarea.form-control {
   background: var(--sidebar-control-bg);
   /* A solid white chip: the collapse toggle straddles the rail's edge, so a
      translucent one would half-vanish against the white working area. */
-  box-shadow: 0 6px 16px rgba(3, 40, 95, 0.22);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.1);
   transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease,
     box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .sidebar-collapse {
-  top: 0.7rem;
+  top: 2.45rem;
   inset-inline-end: -0.8rem;
   width: 1.7rem;
   height: 1.7rem;
@@ -1690,10 +1718,10 @@ textarea.form-control {
 
 .sidebar-collapse:hover,
 .sidebar-close:hover {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--sidebar-control-bg);
   color: var(--sidebar-active-text);
-  box-shadow: 0 8px 20px rgba(12, 50, 80, 0.26);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
   transform: translateY(-1px);
 }
 

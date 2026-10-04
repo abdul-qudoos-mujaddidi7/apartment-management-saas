@@ -11,6 +11,7 @@
   import Checkbox from '../components/ui/Checkbox.svelte';
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
+  import DocumentPreview from '../components/printing/DocumentPreview.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
@@ -69,6 +70,11 @@
   let modalOpen = false;
   let detailsOpen = false;
   let detailsInvoice = null;
+  let printInvoice = null;
+  async function openPrint(invoice) {
+    try { printInvoice = (await getInvoice(invoice.id)).invoice; }
+    catch (error) { await handleRequestError(error); }
+  }
   let paymentInvoice = null;
   let paymentModalOpen = false;
   let editingId = null;
@@ -106,7 +112,7 @@
    */
   async function openCreate() {
     editingId = null; readings = []; modalError = ''; formErrors = {}; form = emptyForm(); modalOpen = true;
-    try { const response = await listLeases({ status: 'ACTIVE', page: 1, pageSize: 100 }); leases = response.items || []; }
+    try { const response = await listLeases({ page: 1, pageSize: 100 }); leases = response.items || []; }
     catch (error) { modalError = error.message; }
   }
 
@@ -133,7 +139,7 @@
       const response = await listMeterReadings({ apartmentId, unbilled: true, page: 1, pageSize: 100 });
       // Oldest first: the reading that has been waiting longest is the one a
       // utility line is filled from.
-      readings = (response.items || []).slice().sort((a, b) => String(a.readingDate).localeCompare(String(b.readingDate)));
+      readings = (response.items || []).filter(r => r.readingKind !== 'MOVE_IN' && r.leaseId === form.leaseId).slice().sort((a, b) => String(a.readingDate).localeCompare(String(b.readingDate)));
     } catch (error) { modalError = error.message; }
     finally { readingsLoading = false; }
   }
@@ -164,7 +170,7 @@
    * currency the meter was priced in, and a typed charge is base too.
    */
   function lineCurrency(item) {
-    if (item.meterReadingId) return $baseCurrency;
+    if (item.meterReadingId) return readings.find(r => r.id === item.meterReadingId)?.currency || item.currency || $baseCurrency;
     if (item.type === 'RENT') return chosenLease?.currency || $baseCurrency;
     if (item.type === 'SERVICE_FEE') return chosenLease?.serviceFeeCurrency || chosenLease?.currency || $baseCurrency;
     return $baseCurrency;
@@ -181,6 +187,7 @@
       ...item,
       type: reading.meter.utilityType,
       meterReadingId: reading.id,
+      currency: reading.currency || $baseCurrency,
       description: utilityDescription(reading),
       quantity: Number(reading.consumption),
       unitPrice: Number(reading.unitPrice),
@@ -389,6 +396,7 @@
           <td class="actions-cell">
             <RowActions label={$locale.invoices.view}>
               <button class="row-menu-item" type="button" on:click={() => openDetails(invoice)}><i class="bi bi-eye" aria-hidden="true"></i>{$locale.common.actions.view}</button>
+              <button class="row-menu-item" type="button" on:click={() => openPrint(invoice)}><i class="bi bi-printer" aria-hidden="true"></i>{$locale.printing.print}</button>
               {#if invoice.status !== 'PAID' && invoice.status !== 'CANCELLED'}
                 <button class="row-menu-item" type="button" on:click={() => openReceivePayment(invoice)}><i class="bi bi-credit-card-2-front" aria-hidden="true"></i>{$locale.payments.receivePayment}</button>
               {/if}
@@ -538,10 +546,12 @@
         <i class="bi bi-credit-card-2-front" aria-hidden="true"></i>{$locale.payments.receivePayment}
       </button>
     {/if}
+    <button class="btn btn-outline-secondary" type="button" on:click={() => openPrint(detailsInvoice)}><i class="bi bi-printer" aria-hidden="true"></i>{$locale.printing.print}</button>
     <button class="btn btn-light" type="button" on:click={closeDetails}>{$locale.common.close}</button>
   </div>
 </Modal>
 
+<DocumentPreview record={printInvoice} kind="invoice" on:close={() => printInvoice = null} />
 <ReceivePaymentModal open={paymentModalOpen} invoice={paymentInvoice} on:close={closeReceivePayment} on:saved={async () => { notifySuccess($locale.payments.saved); closeReceivePayment(); await loadInvoices(pagination.page); }} />
 
 <style>

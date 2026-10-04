@@ -392,6 +392,11 @@ model Meter {
 model MeterReading {
   id              String    @id @default(cuid())
   meterId         String
+  leaseId         String?
+  periodStart     DateTime? @db.Date
+  currency        String? @db.VarChar(3)
+  readingKind     String @default("BILLING") @db.VarChar(20)
+  resetBaseline   Decimal? @db.Decimal(15, 3)
   readingDate     DateTime
   /// The Shamsi month the reading belongs to, as `YYYY-MM` (e.g. `1405-06`).
   /// A meter is read once a month, and the unique index below is what holds
@@ -410,11 +415,13 @@ model MeterReading {
   deletedAt       DateTime?
 
   meter       Meter        @relation(fields: [meterId], references: [id], onDelete: Restrict)
+  lease       Lease?       @relation(fields: [leaseId], references: [id], onDelete: Restrict)
   invoiceItem InvoiceItem?
 
   @@unique([meterId, readingDate])
   @@unique([meterId, periodMonth])
   @@index([meterId])
+  @@index([leaseId])
   @@index([readingDate])
   @@index([deletedAt])
   @@index([meterId, readingDate])
@@ -491,6 +498,8 @@ model Lease {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   deletedAt       DateTime?
+
+  meterReadings MeterReading[]
 
   organization                Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   tenant                      Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)

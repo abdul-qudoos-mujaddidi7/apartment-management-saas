@@ -41,6 +41,7 @@ function formatUser(user) {
     // Every authenticated request is scoped from this server-derived value.
     // Keep the legacy organizations array for existing UI consumers.
     organizationId: user.organization.id,
+    permissions: (user.role.rolePermissions || []).map(r => r.permission.code),
     organizations: [
       {
         id: user.organization.id,
@@ -65,7 +66,7 @@ async function findActiveUser(where) {
     },
     include: {
       organization: true,
-      role: true,
+      role: { include: { rolePermissions: { where: { deletedAt: null, permission: { deletedAt: null } }, include: { permission: true } } } },
     },
   });
 }

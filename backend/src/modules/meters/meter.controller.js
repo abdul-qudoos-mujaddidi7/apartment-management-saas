@@ -31,7 +31,7 @@ function handleServiceError(error, res, next) {
     });
   }
 
-  if (error.code === 'METER_NUMBER_EXISTS') {
+  if (['METER_NUMBER_EXISTS', 'METER_HAS_READINGS'].includes(error.code)) {
     return res.status(409).json({
       success: false,
       code: error.code,

@@ -5,7 +5,9 @@ const meterController = require('./meter.controller');
 
 const router = express.Router();
 
+const { requirePermission } = require('../../middleware/permission');
 router.use(requireAuth);
+router.use((req, res, next) => requirePermission('UTILITY_' + (req.method === 'GET' ? 'VIEW' : 'MANAGE'))(req, res, next));
 router.get('/', meterController.list);
 router.get('/:id', meterController.get);
 router.post('/', meterController.create);

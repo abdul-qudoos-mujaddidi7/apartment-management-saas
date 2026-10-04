@@ -2,6 +2,7 @@ const { Prisma } = require('@prisma/client');
 
 const prisma = require('../../lib/prisma');
 const Decimal = Prisma.Decimal;
+const { assertLeaseOwnsInterval } = require('../meter-readings/reading-workflow');
 const { fromBase, toBase } = require('../../lib/money');
 const { priceDocument } = require('../currency/currency.service');
 const { ensureDefaultAccounts } = require('../financials/financial-account.service');
@@ -247,6 +248,15 @@ async function prepareInvoiceItems(client, organizationId, lease, sourceItems, {
   const utilityReadingIds = new Set();
   const rates = new Map();
   const items = [];
+  // Same lock order as reading edits: meter, then reading. Otherwise an invoice
+  // can freeze a charge while a concurrent historical edit changes its baseline.
+  const readingIds = sourceItems.filter(item => item.meterReadingId).map(item => item.meterReadingId);
+  if (readingIds.length) {
+    const candidates = await client.meterReading.findMany({ where: { id: { in: readingIds }, meter: { apartment: { organizationId } } }, select: { meterId: true } });
+    for (const meterId of [...new Set(candidates.map(r => r.meterId))].sort()) {
+      await client.$queryRaw`SELECT id FROM Meter WHERE id = ${meterId} FOR UPDATE`;
+    }
+  }
 
   // One rate lookup per currency for the whole invoice, not one per line.
   async function rateFor(currency) {
@@ -313,7 +323,7 @@ async function prepareInvoiceItems(client, organizationId, lease, sourceItems, {
         },
       },
       select: {
-        id: true,
+        id: true, readingDate: true, periodStart: true, leaseId: true, currency: true, readingKind: true,
         consumption: true,
         unitPrice: true,
         amount: true,
@@ -324,6 +334,8 @@ async function prepareInvoiceItems(client, organizationId, lease, sourceItems, {
     if (!reading) {
       throw serviceError('METER_READING_NOT_AVAILABLE', 'Meter reading is unavailable, already billed, or belongs to another apartment.');
     }
+    if (reading.readingKind === 'MOVE_IN') throw serviceError('METER_READING_NOT_AVAILABLE', 'A move-in baseline is not a billable charge.');
+    if ((reading.leaseId && reading.leaseId !== lease.id) || !reading.periodStart || !await assertLeaseOwnsInterval(client, organizationId, lease, reading.periodStart, reading.readingDate)) throw serviceError('METER_READING_NOT_AVAILABLE', 'This reading must be billed to the lease covering its complete usage period. Legacy readings require a verified period start; use a handover to split tenant usage.');
     if (new Decimal(reading.unitPrice).lessThanOrEqualTo(0)) {
       throw serviceError('METER_READING_PRICE_REQUIRED', 'Set a positive meter unit price before billing this reading.');
     }
@@ -337,11 +349,11 @@ async function prepareInvoiceItems(client, organizationId, lease, sourceItems, {
       meterReadingId: reading.id,
       ...stored(
         { ...item, type: reading.meter.utilityType, description: utilityDescription(reading) },
-        baseCurrency,
+        reading.currency || baseCurrency,
         new Decimal(reading.consumption),
         new Decimal(reading.unitPrice),
         new Decimal(reading.amount),
-        await rateFor(baseCurrency),
+        await rateFor(reading.currency || baseCurrency),
       ),
     });
   }
@@ -362,7 +374,7 @@ function calculateTotals(items) {
 async function assertLeaseInOrganization(client, organizationId, leaseId) {
   const lease = await client.lease.findFirst({
     where: { id: leaseId, ...leaseScope(organizationId) },
-    select: { id: true, tenantId: true, apartmentId: true, currency: true, serviceFee: true, serviceFeeCurrency: true },
+    select: { id: true, startDate: true, endDate: true, status: true, tenantId: true, apartmentId: true, currency: true, serviceFee: true, serviceFeeCurrency: true },
   });
   if (!lease) throw serviceError('LEASE_NOT_FOUND', 'Lease not found.');
   return lease;
@@ -604,7 +616,7 @@ async function createInvoice(organizationId, data) {
       });
       await postInvoiceJournal(tx, organizationId, created, lease.tenantId, items);
       return created;
-    });
+    }, { isolationLevel: 'ReadCommitted' });
   } catch (error) {
     if (error.code === 'P2002') {
       throw serviceError('METER_READING_NOT_AVAILABLE', 'Meter reading was billed by another invoice. Refresh and try again.');
@@ -724,6 +736,7 @@ async function softDeleteInvoice(organizationId, id) {
 }
 
 module.exports = {
+  prepareInvoiceItems,
   cancelInvoice,
   createInvoice,
   getInvoice,

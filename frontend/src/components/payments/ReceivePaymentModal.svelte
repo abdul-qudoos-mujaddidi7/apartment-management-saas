@@ -1,4 +1,5 @@
 <script>
+  import Modal from '../ui/Modal.svelte';
   import { createEventDispatcher } from 'svelte';
 
   import { listFinancialAccounts } from '../../services/financialAccounts';
@@ -179,8 +180,8 @@
     allocations = convertedAllocations;
   }
 
-  function close() {
-    if (saving) return;
+  function close(force = false) {
+    if (saving && force !== true) return;
     loadedKey = '';
     dispatch('close');
   }
@@ -254,7 +255,7 @@
         allocations: allocArray,
       });
       dispatch('saved');
-      close();
+      close(true);
     } catch (error) {
       if (error.data?.errors) {
         formErrors = Object.fromEntries(Object.entries(error.data.errors).map(([field, messages]) => [field, messages[0]]));
@@ -268,19 +269,8 @@
 </script>
 
 {#if open && contextLease()}
-  <button class="modal-backdrop fade show" type="button" on:click={close} aria-label={$locale.payments.cancel}></button>
-  <div class="modal fade show d-block" role="dialog" aria-modal="true" aria-labelledby="receive-payment-title">
-    <div class="modal-dialog modal-dialog-centered modal-xl"><div class="modal-content">
-      <div class="modal-header">
-        <div class="modal-icon"><i class="bi bi-cash-stack" aria-hidden="true"></i></div>
-        <div class="modal-heading">
-          <h2 class="modal-title" id="receive-payment-title">{$locale.payments.receivePayment}</h2>
-          <p class="modal-description">{$locale.payments.formHint}</p>
-        </div>
-        <button class="btn-close" type="button" on:click={close} aria-label={$locale.payments.cancel}></button>
-      </div>
-      <form on:submit|preventDefault={save} novalidate>
-        <div class="modal-body">
+  <Modal {open} title={$locale.payments.receivePayment} description={$locale.payments.formHint} icon="bi-cash-stack" size="modal-xl" busy={saving} closeLabel={$locale.payments.cancel} on:close={close}>
+      <form id="receive-payment-form" on:submit|preventDefault={save} novalidate>
           {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
           {#if loading}
             <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">{$locale.payments.loading}</span></div></div>
@@ -369,24 +359,12 @@
               {/each}
             </fieldset>
           {/if}
-        </div>
-        <div class="modal-footer"><button class="btn btn-light" type="button" on:click={close} disabled={saving}>{$locale.payments.cancel}</button><button class="btn btn-primary" type="submit" disabled={saving || loading}>{saving ? $locale.payments.saving : $locale.payments.save}</button></div>
       </form>
-    </div></div>
-  </div>
+    <div slot="footer"><button class="btn btn-light" type="button" on:click={close} disabled={saving}>{$locale.payments.cancel}</button><button class="btn btn-primary" type="submit" form="receive-payment-form" disabled={saving || loading}>{saving ? $locale.payments.saving : $locale.payments.save}</button></div>
+  </Modal>
 {/if}
 
 <style>
-  /* This modal's form wraps both the body and footer. Make that wrapper part of
-     the dialog's flex layout so the body receives a real height and can scroll
-     instead of pushing the footer below the viewport. */
-  .modal-content { height: 100%; }
-  .modal-content > form {
-    display: flex;
-    flex: 1 1 auto;
-    min-height: 0;
-    flex-direction: column;
-  }
   fieldset + fieldset { margin-top: 1.5rem; }
   .section-label { color: var(--text-secondary); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .tenancy-context { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem 1rem; margin: 0; }

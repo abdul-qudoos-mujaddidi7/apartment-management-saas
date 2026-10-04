@@ -193,6 +193,7 @@ async function createMeter(organizationId, data) {
       });
 
       if (removed) {
+        if (await prisma.meterReading.count({ where: { meterId: removed.id } })) throw createMeterError('METER_HAS_READINGS', 'This meter number has reading history. Restore its status through the existing meter instead of replacing its history.');
         const revived = await prisma.meter.update({
           where: { id: removed.id },
           data: { ...data, deletedAt: null },
@@ -210,21 +211,31 @@ async function createMeter(organizationId, data) {
 }
 
 async function updateMeter(organizationId, meterId, data) {
-  const meter = await prisma.meter.findFirst({
+  return prisma.$transaction(async (tx) => {
+  await tx.$queryRaw`SELECT id FROM Meter WHERE id = ${meterId} FOR UPDATE`;
+  const meter = await tx.meter.findFirst({
     where: { id: meterId, ...organizationScope(organizationId) },
-    select: { id: true },
+    select: { id: true, apartmentId: true, meterNumber: true, initialReading: true, installationDate: true, utilityType: true, unit: true },
   });
 
   if (!meter) {
     throw createMeterError('METER_NOT_FOUND', 'Meter not found.');
   }
 
+  const hasHistory = await tx.meterReading.count({ where: { meterId } });
+  const changed = ['apartmentId', 'meterNumber', 'utilityType', 'unit', 'initialReading', 'installationDate'].some(key => {
+    if (data[key] === undefined) return false;
+    if (key === 'installationDate') return (data[key]?.toISOString() || null) !== (meter[key]?.toISOString() || null);
+    return String(data[key] ?? '') !== String(meter[key] ?? '');
+  });
+  if (hasHistory && changed) throw createMeterError('METER_HAS_READINGS', 'Meter assignment and initial baseline cannot change after readings exist. Use a handover or reset reading, or install a separate replacement meter.');
+
   if (data.apartmentId) {
     await assertApartmentInOrganization(organizationId, data.apartmentId);
   }
 
   try {
-    const updated = await prisma.meter.update({
+    const updated = await tx.meter.update({
       where: { id: meterId },
       data,
       select: meterSelect(),
@@ -238,10 +249,16 @@ async function updateMeter(organizationId, meterId, data) {
 
     throw error;
   }
+  }, { isolationLevel: 'ReadCommitted' });
 }
 
 async function softDeleteMeter(organizationId, meterId) {
-  const result = await prisma.meter.updateMany({
+  return prisma.$transaction(async tx => {
+  await tx.$queryRaw`SELECT id FROM Meter WHERE id = ${meterId} FOR UPDATE`;
+  const meter = await tx.meter.findFirst({ where: { id: meterId, ...organizationScope(organizationId) }, select: { id: true } });
+  if (!meter) throw createMeterError('METER_NOT_FOUND', 'Meter not found.');
+  if (await tx.meterReading.count({ where: { meterId } })) throw createMeterError('METER_HAS_READINGS', 'A meter with reading history cannot be deleted. Set its status to inactive instead.');
+  const result = await tx.meter.updateMany({
     where: { id: meterId, ...organizationScope(organizationId) },
     data: { deletedAt: new Date() },
   });
@@ -251,6 +268,7 @@ async function softDeleteMeter(organizationId, meterId) {
   }
 
   return { id: meterId };
+  }, { isolationLevel: 'ReadCommitted' });
 }
 
 module.exports = {

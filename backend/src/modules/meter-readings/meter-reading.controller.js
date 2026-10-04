@@ -20,7 +20,8 @@ function handleError(error, res, next) {
   if (['METER_NOT_FOUND', 'METER_READING_NOT_FOUND'].includes(error.code)) {
     return res.status(404).json({ success: false, code: error.code, message: error.message });
   }
-  if (['METER_READING_DATE_EXISTS', 'METER_READING_MONTH_EXISTS', 'CURRENT_READING_TOO_LOW', 'METER_READING_ALREADY_BILLED'].includes(error.code)) {
+  if (error.code === 'P2002') return res.status(409).json({ success: false, code: 'METER_READING_MONTH_EXISTS', message: 'A reading already exists for this meter and period.' });
+  if (['INVALID_READING_PERIOD', 'INVALID_READING_LEASE', 'INVALID_READING_CURRENCY', 'METER_READING_DATE_EXISTS', 'METER_READING_MONTH_EXISTS', 'CURRENT_READING_TOO_LOW', 'METER_READING_ALREADY_BILLED'].includes(error.code)) {
     return res.status(409).json({ success: false, code: error.code, message: error.message });
   }
   return next(error);

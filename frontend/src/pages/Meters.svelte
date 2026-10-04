@@ -5,11 +5,14 @@
   import { listFloors } from '../services/floors';
   import { listApartments } from '../services/apartments';
   import { createMeter, deleteMeter, listMeters, updateMeter } from '../services/meters';
-  import { createMeterReading, listMeterReadings } from '../services/meterReadings';
+  import { readingBaseline, createMeterReading, listMeterReadings } from '../services/meterReadings';
   import PageToolbar from '../components/ui/PageToolbar.svelte';
   import DataTable from '../components/ui/DataTable.svelte';
   import Checkbox from '../components/ui/Checkbox.svelte';
   import Pagination from '../components/ui/Pagination.svelte';
+  import { baseCurrency } from '../stores/currency';
+  import { user } from '../stores/auth';
+  import UtilityReadingTerms from '../components/meters/UtilityReadingTerms.svelte';
   import Modal from '../components/ui/Modal.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
@@ -27,7 +30,7 @@
   const STATUSES = ['ACTIVE', 'INACTIVE', 'REPLACED'];
   const SUGGESTED_UNITS = { ELECTRICITY: 'kWh', WATER: 'm³', GAS: 'm³' };
   const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', meterNumber: '', utilityType: 'ELECTRICITY', unit: SUGGESTED_UNITS.ELECTRICITY, defaultUnitPrice: 0, initialReading: '', installationDate: '', status: 'ACTIVE', notes: '' });
-  const emptyReadingForm = () => ({ readingDate: new Date().toISOString().slice(0, 10), currentReading: '', notes: '' });
+  const emptyReadingForm = () => ({ readingDate: new Date().toISOString().slice(0, 10), currentReading: '', periodStart: '', leaseId: '', unitPrice: '', currency: $baseCurrency, readingKind: 'BILLING', resetBaseline: '', notes: '' });
 
   let meters = [];
   let sort = { key: null, dir: 'asc' };
@@ -48,6 +51,24 @@
   let readingModalOpen = false;
   let selectedMeter = null;
   let latestReading = null;
+  let quickLeases = [];
+  let quickExpectedStart = '';
+  let quickPreviewReady = false;
+  let quickPreviewVersion = 0;
+  async function updateQuickPreview() {
+    if (!selectedMeter || !readingForm.readingDate) return;
+    const version = ++quickPreviewVersion;
+    quickPreviewReady = false;
+    loadingLatestReading = true;
+    try {
+      const result = await readingBaseline(selectedMeter, readingForm.readingDate);
+      if (version !== quickPreviewVersion) return;
+      latestReading = { currentReading: result?.previousReading ?? 0 };
+      quickExpectedStart = result?.periodStart || '';
+      quickPreviewReady = Boolean(result);
+      if (result?.periodStart && readingForm.readingKind !== 'MOVE_IN') readingForm = { ...readingForm, periodStart: result.periodStart };
+    } catch (e) { readingModalError = e.message; } finally { if (version === quickPreviewVersion) loadingLatestReading = false; }
+  }
   let loadingLatestReading = false;
   let readingSaving = false;
   let readingModalError = '';
@@ -107,8 +128,10 @@
     if (!form.apartmentId) errors.apartmentId = translate('meters.required', { field: copy.apartment });
     if (!form.meterNumber.trim()) errors.meterNumber = translate('meters.required', { field: copy.meterNumber });
     if (!form.unit.trim()) errors.unit = translate('meters.required', { field: copy.unit });
+    if (!editingId && form.utilityType === 'ELECTRICITY' && (form.initialReading === '' || form.initialReading == null)) errors.initialReading = translate('meters.required', { field: copy.initialReading });
+    if (!editingId && form.utilityType === 'ELECTRICITY' && !form.installationDate) errors.installationDate = translate('meters.required', { field: copy.installationDate });
     if (form.initialReading !== '' && Number(form.initialReading) < 0) errors.initialReading = translate('meters.notNegative', { field: copy.initialReading });
-    if (form.defaultUnitPrice === '' || Number(form.defaultUnitPrice) < 0) errors.defaultUnitPrice = translate('meters.notNegative', { field: copy.defaultUnitPrice });
+    if (form.defaultUnitPrice === '' || !Number.isFinite(Number(form.defaultUnitPrice)) || Number(form.defaultUnitPrice) < 0) errors.defaultUnitPrice = translate('meters.notNegative', { field: copy.defaultUnitPrice });
     formErrors = errors;
     return Object.keys(errors).length === 0;
   }
@@ -137,8 +160,11 @@
   }
 
   async function openReadingModal(meter) {
+    quickPreviewReady = false;
+    quickExpectedStart = '';
+    quickLeases = [];
     selectedMeter = meter; latestReading = null; readingForm = emptyReadingForm(); readingFormErrors = {}; readingModalError = ''; readingModalOpen = true; loadingLatestReading = true;
-    try { const response = await listMeterReadings({ meterId: meter.id, page: 1, pageSize: 1 }); latestReading = response.items?.[0] || null; }
+    try { const response = await listMeterReadings({ meterId: meter.id, page: 1, pageSize: 1 }); latestReading = response.items?.[0] || null; readingForm = { ...readingForm, periodStart: latestReading?.readingDate.slice(0,10) || meter.installationDate?.slice(0,10) || '', unitPrice: meter.defaultUnitPrice }; quickLeases = (await api.get('/leases?apartmentId=' + encodeURIComponent(meter.apartmentId) + '&pageSize=100')).items || []; await updateQuickPreview(); }
     catch (error) { await handleRequestError(error); }
     finally { loadingLatestReading = false; }
   }
@@ -147,18 +173,23 @@
 
   function validateReadingForm() {
     const errors = {};
+    if (!readingForm.leaseId) errors.leaseId = $locale.workflow.periodHelp;
+    if (readingForm.readingKind !== 'MOVE_IN' && (!readingForm.periodStart || readingForm.periodStart > readingForm.readingDate)) errors.periodStart = $locale.workflow.periodHelp;
+    if (!(Number(readingForm.unitPrice) > 0) || !Number.isFinite(Number(readingForm.unitPrice))) errors.unitPrice = $locale.workflow.rate;
+    if (Number(readingForm.currentReading) < Number(displayedLatestReading())) errors.currentReading = $locale.meterReadings.currentReadingTooLow;
+    if (readingForm.readingKind === 'RESET' && (readingForm.resetBaseline === '' || Number(readingForm.resetBaseline) < 0 || !readingForm.notes.trim())) errors.resetBaseline = $locale.workflow.resetHelp;
     if (!selectedMeter) readingModalError = $locale.meterReadings.meterNotSelected;
     if (!readingForm.readingDate) errors.readingDate = translate('meterReadings.required', { field: $locale.meterReadings.readingDate });
-    if (readingForm.currentReading === '' || Number(readingForm.currentReading) < 0) errors.currentReading = translate('meterReadings.notNegative', { field: $locale.meterReadings.currentReading });
+    if (readingForm.currentReading === '' || !Number.isFinite(Number(readingForm.currentReading)) || Number(readingForm.currentReading) < 0) errors.currentReading = translate('meterReadings.notNegative', { field: $locale.meterReadings.currentReading });
     readingFormErrors = errors;
     return Boolean(selectedMeter) && Object.keys(errors).length === 0;
   }
 
   async function saveQuickReading() {
-    if (!validateReadingForm()) return;
+    if (loadingLatestReading || !quickPreviewReady || !validateReadingForm()) return;
     readingSaving = true; readingModalError = ''; errorMessage = '';
     try {
-      await createMeterReading({ meterId: selectedMeter.id, readingDate: readingForm.readingDate, currentReading: Number(readingForm.currentReading), notes: readingForm.notes.trim() || null });
+      await createMeterReading({ meterId: selectedMeter.id, leaseId: readingForm.leaseId, periodStart: readingForm.readingKind === 'MOVE_IN' ? readingForm.readingDate : readingForm.periodStart, unitPrice: Number(readingForm.unitPrice), currency: readingForm.currency, readingKind: readingForm.readingKind, ...(readingForm.readingKind === 'RESET' ? { resetBaseline: Number(readingForm.resetBaseline) } : {}), readingDate: readingForm.readingDate, currentReading: Number(readingForm.currentReading), notes: readingForm.notes.trim() || null });
       notifySuccess($locale.meterReadings.saved); closeReadingModal(true);
     } catch (error) {
       if (await handleRequestError(error)) return;
@@ -173,7 +204,7 @@
   const statusLabel = (status) => $locale.meters[status.toLowerCase()];
   const utilityIcon = (utilityType) => UTILITIES.find((utility) => utility.value === utilityType)?.icon;
   const formatReading = (value) => Number(value).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-  const displayedLatestReading = () => { if (latestReading) return latestReading.currentReading; return selectedMeter?.initialReading; };
+  const displayedLatestReading = () => { if (latestReading) return latestReading.resetBaseline ?? latestReading.currentReading; return selectedMeter?.initialReading; };
   function meterStatusTone(status) { switch (status) { case 'ACTIVE': return 'success'; case 'REPLACED': return 'warning'; default: return 'neutral'; } }
   $: resultSummary = `${$locale.meters.totalMeters}: ${pagination.total}`;
   // Leading checkbox column — ids of the rows currently rendered.
@@ -198,7 +229,7 @@
       bind:search={filters.search}
       searchPlaceholder={$locale.meters.search}
       onSearch={() => loadMeters(1)}
-      addLabel={$locale.meters.add}
+      showAdd={$user?.permissions?.includes('UTILITY_MANAGE')} addLabel={$locale.meters.add}
       onAdd={openCreate}
       filtersLabel={$locale.common.filters}
       filtersCount={activeFilterCount}
@@ -286,8 +317,9 @@
         <div><dt>{$locale.meterReadings.lastReading}</dt><dd class="reading-cell">{#if loadingLatestReading}<span class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">{$locale.meterReadings.loading}</span></span>{:else if displayedLatestReading() !== null && displayedLatestReading() !== undefined}{formatReading(displayedLatestReading())} {selectedMeter.unit}{:else}—{/if}</dd></div>
       </dl>
       <div class="row g-3">
-        <div class="col-sm-6"><label class="form-label" for="quick-reading-date">{$locale.meterReadings.readingDate}</label><ShamsiDatePicker invalid={Boolean(readingFormErrors.readingDate)} id="quick-reading-date" bind:value={readingForm.readingDate} />{#if readingFormErrors.readingDate}<div class="invalid-feedback">{readingFormErrors.readingDate}</div>{/if}</div>
+        <div class="col-sm-6"><label class="form-label" for="quick-reading-date">{$locale.meterReadings.readingDate}</label><ShamsiDatePicker invalid={Boolean(readingFormErrors.readingDate)} id="quick-reading-date" bind:value={readingForm.readingDate} on:change={updateQuickPreview} />{#if readingFormErrors.readingDate}<div class="invalid-feedback">{readingFormErrors.readingDate}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="quick-current-reading">{$locale.meterReadings.currentReading}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><input class:is-invalid={readingFormErrors.currentReading} class="form-control" id="quick-current-reading" type="number" min="0" step="0.001" bind:value={readingForm.currentReading} /></div>{#if readingFormErrors.currentReading}<div class="invalid-feedback">{readingFormErrors.currentReading}</div>{/if}</div>
+        <UtilityReadingTerms bind:form={readingForm} formErrors={readingFormErrors} leaseOptions={quickLeases} previewPrevious={displayedLatestReading() || 0} expectedStart={quickExpectedStart} unit={selectedMeter.unit} />
         <div class="col-12"><label class="form-label" for="quick-reading-notes">{$locale.meterReadings.notes}</label><textarea class="form-control" id="quick-reading-notes" rows="3" bind:value={readingForm.notes}></textarea></div>
       </div>
     </form>
@@ -320,7 +352,7 @@
         <div class="col-sm-3"><label class="form-label" for="meter-unit">{$locale.meters.unit}</label><div class="field-control"><i class="bi bi-rulers" aria-hidden="true"></i><input class:is-invalid={formErrors.unit} class="form-control" id="meter-unit" bind:value={form.unit} /></div>{#if formErrors.unit}<div class="invalid-feedback">{formErrors.unit}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="meter-reading">{$locale.meters.initialReading}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><input class:is-invalid={formErrors.initialReading} class="form-control" id="meter-reading" type="number" min="0" step="0.001" bind:value={form.initialReading} /></div>{#if formErrors.initialReading}<div class="invalid-feedback">{formErrors.initialReading}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="meter-default-unit-price">{$locale.meters.defaultUnitPrice}</label><div class="field-control"><i class="bi bi-currency-dollar" aria-hidden="true"></i><input class:is-invalid={formErrors.defaultUnitPrice} class="form-control" id="meter-default-unit-price" type="number" min="0" step="0.0001" bind:value={form.defaultUnitPrice} /></div><div class="form-text">{formatMoney(form.defaultUnitPrice || 0)} {$locale.meters.pricePerUnit} {form.unit || '—'}</div>{#if formErrors.defaultUnitPrice}<div class="invalid-feedback">{formErrors.defaultUnitPrice}</div>{/if}</div>
-        <div class="col-sm-3"><label class="form-label" for="meter-installed">{$locale.meters.installationDate}</label><ShamsiDatePicker id="meter-installed" bind:value={form.installationDate} /></div>
+        <div class="col-sm-3"><label class="form-label" for="meter-installed">{$locale.meters.installationDate}</label><ShamsiDatePicker id="meter-installed" bind:value={form.installationDate} invalid={Boolean(formErrors.installationDate)} />{#if formErrors.installationDate}<div class="text-danger">{formErrors.installationDate}</div>{/if}</div>
         <div class="col-sm-3"><label class="form-label" for="meter-status">{$locale.meters.status}</label><div class="field-control"><i class="bi bi-list-ul" aria-hidden="true"></i><select class="form-select" id="meter-status" bind:value={form.status}>{#each STATUSES as status (status)}<option value={status}>{statusLabel(status)}</option>{/each}</select></div></div>
         <div class="col-12"><label class="form-label" for="meter-notes">{$locale.meters.notes}</label><textarea class="form-control" id="meter-notes" rows="3" bind:value={form.notes}></textarea></div>
       </div>

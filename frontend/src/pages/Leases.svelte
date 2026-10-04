@@ -14,6 +14,19 @@
   import { sortRows } from '../utils/sortRows';
   import { onMount } from 'svelte';
   import { push } from 'svelte-spa-router';
+  let openedDetailId = '';
+  onMount(() => {
+    const reopen = event => { openedDetailId = ''; openLinkedDetail('detail=' + encodeURIComponent(event.detail)); };
+    window.addEventListener('apartmentpro:open-lease', reopen);
+    return () => window.removeEventListener('apartmentpro:open-lease', reopen);
+  });
+  function linkedDetailFromHash() { openLinkedDetail(window.location.hash.split('?')[1] || ''); }
+  async function openLinkedDetail(query) {
+    const id = new URLSearchParams(query).get('detail');
+    if (!id || id === openedDetailId) return;
+    openedDetailId = id;
+    try { detail = (await api.get('/leases/' + encodeURIComponent(id))).lease; } catch (error) { errorMessage = error.message; }
+  }
 
   import { api } from '../services/api';
   import { listFloors } from '../services/floors';
@@ -55,6 +68,7 @@
   let form = blankForm();
 
   onMount(async () => {
+    linkedDetailFromHash();
     try { await Promise.all([loadLeases(1), loadOptions()]); }
     catch (error) { errorMessage = error?.message || 'Unable to load leases.'; }
     // The currency list is supporting data: the page works without it.
@@ -73,6 +87,7 @@
       const response = await listLeases({ page, pageSize: pagination.pageSize, search: search.trim() });
       leases = response.items;
       pagination = response.pagination;
+      window.dispatchEvent(new Event('apartmentpro:leases-changed'));
     } catch (error) { errorMessage = error?.message || 'Unable to load leases.'; }
     finally { loading = false; }
   }
@@ -299,6 +314,7 @@
   function toggleAllRows() { selectedIds = toggleAllSelected(selectedIds, rowIds); }
 </script>
 
+<svelte:window on:hashchange={linkedDetailFromHash} />
 <svelte:head>
   <title>{$locale.leases.title} | {$locale.common.apartmentPro}</title>
 </svelte:head>

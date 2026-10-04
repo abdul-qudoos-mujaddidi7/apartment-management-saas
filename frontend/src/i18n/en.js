@@ -1,4 +1,29 @@
 const translations = {
+  workflow: {
+    moveIn: "Move-in baseline (no charge)",
+    issueBill: "Issue bill",
+    billReview: "Review electricity bill",
+  "discardChanges": "Discard unsaved changes?",
+  "notifications": "Lease notifications",
+  "expiringSoon": "Leases Expiring Soon",
+  "daysRemaining": "days remaining",
+  "periodStart": "Usage period start",
+  "lease": "Lease responsible for this usage",
+  "rate": "Price per kWh / unit",
+  "currency": "Currency",
+  "kind": "Reading purpose",
+  "billing": "Monthly billing",
+  "handover": "Tenant handover (move in / out)",
+  "reset": "Meter reset / replacement",
+  "resetBaseline": "New meter baseline (after final old reading)",
+  "preview": "Charge preview",
+  "paid": "Paid",
+  "outstanding": "Outstanding",
+  "review": "Review consumption, charge, currency and lease before saving. Handover bills usage up to this reading; subsequent usage starts here.",
+  "resetHelp": "Enter the final old-meter reading as current reading, the new-meter baseline below, and a reason in notes.",
+  "periodHelp": "Usage must belong entirely to the selected lease. Split tenant changes with a handover reading.",
+  "reminderRule": "Active leases in their final calendar month. The reminder starts one Gregorian calendar month before expiry, clamped to the last day of a shorter month."
+},
   // Image fields used by any record that attaches a file: a tenant's photograph
   // and identity card today, whatever comes next.
   uploads: {
@@ -666,5 +691,7 @@ translations.apartments.types = {
   OFFICE: 'Office',
   OTHER: 'Other',
 };
+
+translations.printing = {"preview":"Print preview","hint":"Review the document, then print or save as PDF using your browser.","print":"Print / Save PDF","invoice":"Invoice","reading":"Meter reading","unassigned":"No lease assigned","currencyHint":"Invoice totals are shown in","baseline":"Move-in baseline only. No usage is billed by this reading.","readingNotice":"This reading record is not a payment receipt. Billing status is shown above.","recordCopy":"Copy of the saved record","error":"Unable to prepare the print document. Please try again."};
 
 export default translations;
