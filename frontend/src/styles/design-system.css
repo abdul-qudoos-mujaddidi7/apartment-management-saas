@@ -500,24 +500,25 @@ html hr {
 }
 
 /* ==========================================================================
-   5. Topbar — minimal
+   5. Topbar
    ========================================================================== */
 
 .app-topbar {
   position: sticky;
-  inset-block-start: 0;
+  inset-block-start: var(--space-3);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   min-height: var(--topbar-height);
+  margin-block-start: var(--space-3);
+  margin-inline: var(--page-content-pad-inline);
   padding: 0 var(--page-content-pad-inline);
-  /* The same wash as the content canvas, anchored at the same top edge — so
-     the bar is simply the top of that bloom. Opaque so that content scrolling
-     underneath stays masked. */
-  background: var(--shell-wash), var(--canvas);
-  border-block-end: 0;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow-raised);
 }
 
 .app-topbar-module {
