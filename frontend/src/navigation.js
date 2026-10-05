@@ -21,6 +21,19 @@ export const navigationItems = [
 ];
 
 /**
+ * Sidebar sections that cluster related modules under one header the reader
+ * can collapse. A module may appear in at most one group; anything not named
+ * here stays a plain top-level row. The group is emitted at the position of
+ * its *last* member in `navigationItems`, so adding a module from further up
+ * the list folds it into the group without shuffling the rows in between.
+ *
+ * `key` matches a `dashboard.sidebarGroups` label in the i18n files.
+ */
+export const navigationGroups = [
+  { key: 'finance', items: ['securityDeposits', 'invoices', 'accounts', 'journals'] }
+];
+
+/**
  * Locations that render a module without being one of its item routes — a
  * apartment lists and a floor's apartments belong to the Buildings module.
  */

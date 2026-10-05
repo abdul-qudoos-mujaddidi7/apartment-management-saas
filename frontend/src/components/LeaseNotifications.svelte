@@ -27,8 +27,17 @@
 <svelte:window on:pointerdown={outside} on:keydown={keydown} />
 {#if allowed}
   <div class="lease-notifications" bind:this={container}>
-    <button type="button" class="btn btn-light" aria-label={$locale.workflow.notifications} aria-expanded={open} on:click={() => { open = !open; if (open) refresh(); }}>
-      <i class="bi bi-bell" aria-hidden="true"></i> {items.length || ''}
+    <button
+      type="button"
+      class="notification-bell"
+      aria-label={$locale.workflow.notifications}
+      aria-expanded={open}
+      on:click={() => { open = !open; if (open) refresh(); }}
+    >
+      <i class="bi bi-bell" aria-hidden="true"></i>
+      {#if items.length}
+        <span class="notification-count">{items.length > 99 ? '99+' : items.length}</span>
+      {/if}
     </button>
     {#if open}
       <section class="notification-panel card" aria-label={$locale.workflow.expiringSoon}>
@@ -48,6 +57,43 @@
 {/if}
 <style>
   .lease-notifications { position: relative; }
+  /* The same 36px square as the theme and language controls beside it, so the
+     trailing cluster is one rhythm; the count rides the top-right corner as a
+     pip rather than sitting inline as text. */
+  .notification-bell {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: var(--topbar-control);
+    height: var(--topbar-control);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    color: var(--topbar-icon);
+    background: transparent;
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: color var(--transition), background-color var(--transition);
+  }
+  .notification-bell:hover { color: var(--topbar-icon-hover); background: var(--topbar-control-hover); }
+  .notification-bell:focus-visible { outline: 0; box-shadow: var(--ring); }
+  .notification-count {
+    position: absolute;
+    top: -2px;
+    inset-inline-end: -2px;
+    min-width: 1.1rem;
+    padding-inline: 0.22rem;
+    border-radius: var(--radius-pill);
+    background: var(--topbar-badge-bg);
+    color: var(--topbar-badge-text);
+    font-family: var(--font-data);
+    font-size: 0.68rem;
+    font-weight: var(--weight-bold);
+    line-height: 1.1rem;
+    text-align: center;
+    /* The pip sits half outside the square, over the bar's own surface. */
+    box-shadow: 0 0 0 2px var(--canvas);
+  }
   .notification-panel { position: absolute; inset-inline-end: 0; top: 100%; z-index: 1040; padding: 1rem; width: min(24rem, 85vw); max-height: 70vh; overflow: auto; }
   a { display: grid; gap: .25rem; padding: .75rem 0; border-bottom: 1px solid var(--card-border); color: var(--text-strong); text-decoration: none; }
   span { font-size: .875rem; }

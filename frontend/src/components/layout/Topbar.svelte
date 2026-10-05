@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import LeaseNotifications from '../LeaseNotifications.svelte';
   import LanguageSwitcher from '../LanguageSwitcher.svelte';
+  import ThemeToggle from '../ThemeToggle.svelte';
   import { user } from '../../stores/auth';
   import { locale } from '../../i18n';
   import { moduleKeyForLocation } from '../../navigation';
@@ -9,12 +10,30 @@
   export let navigationOpen = false;
 
   const dispatch = createEventDispatcher();
+  let profileOpen = false;
+  let profileContainer;
+  let profileButton;
+
+  $: displayName = [$user?.firstName, $user?.lastName].filter(Boolean).join(' ') || $user?.email || '';
+  $: if (!$user) profileOpen = false;
+
+  function dismissProfile(event) {
+    if (profileOpen && !profileContainer?.contains(event.target)) profileOpen = false;
+  }
+
+  function onProfileKeydown(event) {
+    if (profileOpen && event.key === 'Escape') {
+      profileOpen = false;
+      profileButton?.focus();
+    }
+  }
 
   // Read the initial hash and keep it in sync via hashchange events.
   let currentPath = window.location.hash.slice(1).split('?')[0] || '/';
 
   function onHashChange() {
     currentPath = window.location.hash.slice(1).split('?')[0] || '/';
+    profileOpen = false;
   }
 
   onMount(() => {
@@ -54,6 +73,8 @@
   }
 
 </script>
+
+<svelte:window on:click={dismissProfile} on:focusin={dismissProfile} on:keydown={onProfileKeydown} />
 
 <header class="app-topbar">
   <div class="app-topbar-module">
@@ -134,24 +155,40 @@
   </div>
 
   <div class="app-topbar-actions">
-    <span class="app-version" aria-label={`System version ${__APP_VERSION__}`}>
-      v{__APP_VERSION__}
-    </span>
-
+    <ThemeToggle />
+    <LanguageSwitcher compact />
     <LeaseNotifications />
-    <LanguageSwitcher />
 
-    <!-- Identity, not a menu: the name and address are the whole point of the
-         block, and signing out lives at the foot of the rail, so a disclosure
-         chevron here would promise a menu that does not exist. -->
     {#if $user}
-      <span class="app-topbar-user">
-        <span class="app-avatar" aria-hidden="true">{initials()}</span>
-        <span class="app-user">
-          <span class="app-user-name">{$user.firstName || $user.email}</span>
-          <span class="app-user-meta">{$user.email}</span>
-        </span>
-      </span>
+      <div class="app-topbar-user" bind:this={profileContainer}>
+        <button
+          class="profile-trigger"
+          class:is-open={profileOpen}
+          type="button"
+          bind:this={profileButton}
+          on:click={() => profileOpen = !profileOpen}
+          aria-label={$locale.profile.menu}
+          aria-expanded={profileOpen}
+          aria-controls="topbar-profile"
+        >
+          <span class="app-avatar" aria-hidden="true">{initials()}</span>
+        </button>
+        {#if profileOpen}
+          <section id="topbar-profile" class="profile-panel" aria-label={$locale.profile.account}>
+            <div class="profile-identity">
+              <span class="app-avatar" aria-hidden="true">{initials()}</span>
+              <div class="profile-details">
+                <strong class="profile-name">{displayName}</strong>
+                <span class="profile-email" dir="ltr">{$user.email}</span>
+              </div>
+            </div>
+            <div class="profile-version">
+              <span>{$locale.profile.version}</span>
+              <span class="app-version" dir="ltr">v{__APP_VERSION__}</span>
+            </div>
+          </section>
+        {/if}
+      </div>
     {/if}
   </div>
 </header>
@@ -198,18 +235,85 @@
     border-block-end-color: var(--accent-text);
   }
 
-  /* Identity block: avatar, name, address — the same shape the rail's account
-     card uses, so the two read as one person in two places. */
   .app-topbar-user {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 0.65rem;
-    padding-inline-start: var(--space-2);
-    margin-inline-start: var(--space-1);
+    padding-inline-start: var(--space-3);
+    margin-inline-start: var(--space-2);
+    border-inline-start: 1px solid var(--border);
     min-width: 0;
   }
 
-  .app-topbar-user .app-user { min-width: 0; }
+  .profile-trigger {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+  }
+
+  .profile-trigger:hover,
+  .profile-trigger.is-open {
+    background: var(--surface);
+    border-color: var(--accent-border);
+  }
+
+  .profile-trigger:focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+
+  .profile-panel {
+    position: absolute;
+    inset-block-start: calc(100% + var(--space-2));
+    inset-inline-end: 0;
+    z-index: 10;
+    width: min(320px, calc(100vw - 2 * var(--space-3)));
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text-strong);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .profile-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .profile-details { display: grid; gap: var(--space-1); min-width: 0; }
+  .profile-name { font-size: var(--text-sm); overflow-wrap: anywhere; }
+  .profile-email { color: var(--text-secondary); font-size: var(--text-sm); overflow-wrap: anywhere; text-align: start; }
+
+  .profile-version {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    margin-block-start: var(--space-4);
+    padding-block-start: var(--space-3);
+    border-block-start: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  /* The trailing cluster: theme, language, bell, identity. One gap and one
+     control size for all of them, so the row reads as a single object rather
+     than as four things that happen to be near each other. */
+  .app-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
 
   .app-version {
     display: inline-flex;
@@ -227,14 +331,17 @@
     white-space: nowrap;
   }
 
-  @media (max-width: 767.98px) {
-    /* Below the shell's breakpoint the address is the first thing to go: the
-       name plus the avatar still identify the account. */
-    .app-topbar-user .app-user-meta { display: none; }
+  /* The avatar is a disc in the reference bar, not the console's rounded
+     square: at 36px it matches the icon controls' height, and a circle is what
+     distinguishes "this is a person" from the three glyphs beside it. */
+  .app-topbar-user .app-avatar {
+    width: var(--topbar-control);
+    height: var(--topbar-control);
+    border-radius: 50%;
+    font-size: var(--text-sm);
   }
 
   @media (max-width: 575.98px) {
     .subnav-item { font-size: var(--text-lg); }
-    .app-topbar-user .app-user { display: none; }
   }
 </style>

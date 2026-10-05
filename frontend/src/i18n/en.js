@@ -39,6 +39,7 @@ const translations = {
     tooLarge: 'That image is larger than 5 MB.',
     wrongType: 'Choose a JPEG, PNG or WebP image.'
   },
+  profile: {version: 'App version', "menu":"Profile menu","account":"Account","settings":"Settings","home":"Home","logoutFailed":"Could not sign out. Please try again."},
   common: {
     // One short verb per row action. A table row can carry five of them, so these
     // stay terse; the full phrase belongs in the page that owns the action.
@@ -59,6 +60,8 @@ const translations = {
       rates: 'Rates'
     },
     language: 'Language',
+    themeDark: 'Switch to dark mode',
+    themeLight: 'Switch to light mode',
     apartmentPro: 'ApartmentPro',
     signIn: 'Sign In',
     getStarted: 'Get Started',

@@ -218,6 +218,25 @@
   --sidebar-item-radius: 0.7rem;
   --sidebar-item-height: 2.75rem;
 
+  /* --- Topbar trailing controls ------------------------------------------
+     One square, one hit area, one icon colour for every control at the bar's
+     trailing edge: the theme switch, the language button, the bell. The
+     reference bar reads as a row of *icons*, not of boxes — no borders, no
+     fills at rest — so the shapes are drawn by the glyphs alone and a hover
+     washes the square. 36px is the target the whole cluster is built on. */
+  --topbar-control: 36px;
+  --topbar-icon: var(--text-secondary);
+  --topbar-icon-hover: var(--accent-text);
+  --topbar-control-hover: var(--accent-soft);
+  /* The unread pip on the bell: a coral, deliberately the one warm note in an
+     otherwise blue-and-slate shell, so "something is waiting" is not read as
+     just another accent chip. The reference bar's coral is #f2694a, which
+     carries white at only 3.1:1 — under AA at the 9px pip label. This is the
+     same hue taken one step down: 4.6:1 with white, and the hue is unchanged
+     enough that it still reads as coral rather than as red. */
+  --topbar-badge-bg: #cc4a24;
+  --topbar-badge-text: #ffffff;
+
   /* --- Typography -------------------------------------------------------
      One face for all three languages: Vazirmatn leads the stack, so English,
      Dari and Pashto are drawn by the same family rather than switching voice
@@ -372,6 +391,169 @@
   /* --- Motion ----------------------------------------------------------- */
   --transition: 150ms ease;
   --transition-slow: 240ms ease;
+}
+
+/* ==========================================================================
+   Dark theme
+   Every colour in the console already comes through a token, so the night
+   palette is a second set of values rather than a second stylesheet: a
+   component that reads `--surface` or `--text` follows the switch for free.
+
+   Two things are deliberately *not* here. The brand ramp, the status hues and
+   the sidebar's own slate keep their light values and are re-pointed below
+   instead, because a hex that measures 5.8:1 on a white card measures 2.4:1 on
+   a #131a26 one — the same colour is not the same colour on both sides. So the
+   ramp is re-anchored rather than reused: accents climb to the 300/400 steps
+   (which carry dark text), and the status words move to a light tint of their
+   hue while their fills become a deep tint of the same hue, so a badge keeps
+   reading as success/warning/danger rather than as a pale blob.
+
+   Surfaces are a *ladder*, not one value: canvas #0d1220 sits under the panel
+   #131a26, which sits under a raised control #1a2231. Elevation is therefore
+   lighter-in-front, the inverse of the light theme, and the hairlines are
+   white at 7-10% — the same "found by its edge" idea the light theme gets from
+   a grey canvas under a white card. */
+[data-theme='dark'] {
+  /* Neutrals, inverted: the ramp still runs dark-to-light, it is just anchored
+     at the other end now. */
+  --ink-900: #e8edf5;
+  --ink-800: #d3dbe7;
+  --ink-700: #b6c0d0;
+  --ink-600: #93a0b4;
+  --ink-500: #7b889d;
+  --ink-400: #5d6a7e;
+  --ink-300: #3a4557;
+  --grey-100: #131a26;
+  --grey-200: #182031;
+  --grey-300: #1f293b;
+  /* Not remapped to the dark surface: this is the *literal* white, and it is
+     the dark theme's text-on-accent — a #3586ff button carries white words on
+     either side of the switch. */
+  --white: #ffffff;
+
+  /* --- Surfaces & borders ------------------------------------------------ */
+  --canvas: #0d1220;
+  --surface: #131a26;
+  --surface-sunken: #0f1523;
+  --surface-muted: #161e2d;
+  --surface-hover: #1a2231;
+  --field-fill: #0f1523;
+  --border: #232c3d;
+  --border-strong: #33405a;
+  --card-border: #1e2738;
+  /* Elevation is a lift, not a cast: a dark shadow on a dark page is
+     invisible, so a panel is found by its hairline and by sitting a step
+     lighter than the canvas. The shadows stay for the two places they still
+     read — a dialog over the backdrop, and a dropdown over a panel. */
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --card-shadow-raised: 0 2px 10px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --control-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+
+  /* --- Shell wash --------------------------------------------------------
+     Both tints become *light*, not dark: the wash is light falling on the
+     sheet, and on a dark sheet that means a lift rather than a shade. The blue
+     is the accent at a higher alpha than the light theme's 7% so the top of
+     the page still reads as tinted rather than as noise. */
+  --wash-left: rgba(148, 163, 184, 0.06);
+  --wash-right: rgba(53, 134, 255, 0.10);
+
+  /* --- Text roles -------------------------------------------------------- */
+  --text-strong: #f2f5fa;   /* 15.4:1 on --surface */
+  --text: #d5dce8;          /* 11.6:1 */
+  --text-secondary: #b3bdcd; /* 8.3:1 */
+  --text-muted: #8b97ab;    /* 5.5:1 — still clears AA at 12px */
+  --text-disabled: #6b7789;
+  --text-placeholder: #6b7789;
+  --text-on-accent: #ffffff;
+
+  /* --- Accent roles ------------------------------------------------------
+     The fill stays the brand 600 so a primary button is the same blue it is in
+     daylight. Accent *text* is the part that has to change: #2570e6 measures
+     2.9:1 on the dark panel, so the words move up the ramp to the 300 (8.6:1),
+     and the hover/focus edges to the 400. */
+  --accent-text: var(--brand-300);
+  --accent-hover: var(--brand-400);
+  --accent-active: var(--brand-300);
+  --accent-soft: #16253c;
+  --accent-soft-border: #24405f;
+  --accent-border: #33547a;
+  --accent-tint: #1b2c45;
+  --accent-highlight: #0f1523;
+  --ring: 0 0 0 1px rgba(119, 174, 255, 0.45), 0 0 0 4px rgba(119, 174, 255, 0.16);
+  --ring-danger: 0 0 0 1px rgba(240, 138, 138, 0.5), 0 0 0 4px rgba(240, 138, 138, 0.16);
+  --shadow-accent: 0 8px 16px -8px rgba(0, 0, 0, 0.6);
+
+  /* --- Status roles ------------------------------------------------------
+     Word and fill swap ends: the word is the light tint (fill-text at night is
+     white on a deep tint, never the light theme's dark-on-pastel), and the fill
+     is that hue taken down to ~10% luminance. Both ends keep the hue, so the
+     three statuses stay distinguishable at a glance. */
+  --success: #5ddba0;
+  --success-soft: #10301f;
+  --success-border: #1d4a33;
+  --warning: #f2c069;
+  --warning-soft: #33260c;
+  --warning-border: #4d3a15;
+  --danger: #f08a8a;
+  --danger-soft: #33161a;
+  --danger-border: #4d2126;
+  --info: #86b4f5;
+  --info-soft: #14243c;
+  --info-border: #22385a;
+  --purple: #c4a2f5;
+  --purple-soft: #241a3a;
+  --purple-border: #3a2a58;
+  --neutral: #a7b1c2;
+  --neutral-soft: #1c2433;
+  --neutral-border: #2b3546;
+
+  /* --- Sidebar -----------------------------------------------------------
+     The rail keeps the light theme's *logic* — nothing filled but the current
+     row — and moves it onto the dark ladder: the rail is the panel surface, one
+     step above the canvas, and the current module is the accent wash taken down
+     for a dark ground. The rail's slate text becomes the dark theme's muted
+     grey, and its hover/active blue the accent 300 that reads at 11px. */
+  --sidebar-bg: #131a26;
+  --sidebar-shadow: 0 0 24px rgba(0, 0, 0, 0.45);
+  --sidebar-icon: #8b97ab;
+  --sidebar-text: #8b97ab;
+  --sidebar-text-muted: #7b889d;
+  --sidebar-text-strong: #f2f5fa;
+  --sidebar-hover-bg: #1b2333;
+  --sidebar-hover-text: var(--brand-300);
+  --sidebar-active-bg: #1e2b41;
+  --sidebar-active-text: var(--brand-300);
+  --sidebar-control-bg: #1a2231;
+  --sidebar-control-border: #2b3546;
+  --sidebar-control-text: #8b97ab;
+
+  /* The trailing controls ride the same hover wash as the rail's rows, so the
+     bar and the rail answer the pointer identically at night. */
+  --topbar-icon: #b3bdcd;
+  --topbar-icon-hover: var(--brand-300);
+  --topbar-control-hover: #1b2333;
+
+  /* --- Tables ------------------------------------------------------------
+     The head band is the panel surface, not a brighter strip: in the light
+     theme it is white-on-white and separated by a hairline, which is the same
+     relationship here, one rung down. */
+  --table-head-bg: #131a26;
+  --table-head-line: #232c3b;
+  --table-row-line: #1d2534;
+  --table-muted: #97a3b7; /* 6.1:1 */
+
+  /* --- Dialogs ----------------------------------------------------------- */
+  --modal-backdrop: rgba(3, 7, 15, 0.72);
+  --modal-shadow:
+    0 24px 60px -12px rgba(0, 0, 0, 0.75),
+    0 8px 20px -8px rgba(0, 0, 0, 0.55);
+
+  /* --- Shadows ----------------------------------------------------------- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
 }
 
 /* Density baseline */

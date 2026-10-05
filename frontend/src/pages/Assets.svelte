@@ -54,7 +54,6 @@
 
   let records = [];
   let pagination = { page: 1, pageSize: 20, total: 0, totalPages: 0 };
-  let summary = { totalRecords: 0, totalQuantity: 0, totalValue: 0, damagedCount: 0 };
 
   let loading = false;
   let saving = false;
@@ -211,7 +210,6 @@
 
       records = response.items || [];
       pagination = response.pagination;
-      summary = response.summary || summary;
     } catch (error) {
       errorMessage = error.message || $locale.assets.loadError;
     } finally {
@@ -584,10 +582,7 @@
   <title>{$locale.assets.title} | {$locale.common.apartmentPro}</title>
 </svelte:head>
 
-<PageLayout
-  showStats={activeTab === 'records'}
-  ariaLabel={$locale.assets.title}
->
+<PageLayout ariaLabel={$locale.assets.title}>
   <svelte:fragment slot="actions">
     {#if activeTab === 'records'}
       <ActionButton icon="bi-plus-lg" label={$locale.assets.addApartmentAsset} on:click={openApartmentAssetCreate} />
@@ -596,39 +591,6 @@
     {:else if activeTab === 'categories'}
       <ActionButton icon="bi-plus-lg" label={$locale.assets.newCategory} on:click={openCategoryCreate} />
     {/if}
-  </svelte:fragment>
-
-  <svelte:fragment slot="stats">
-    <div class="stat-grid">
-      <div class="stat-tile">
-        <span class="stat-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
-        <div>
-          <div class="metric-copy">{$locale.assets.summaryRecords}</div>
-          <strong>{formatNumber(summary.totalRecords)}</strong>
-        </div>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-icon"><i class="bi bi-stack" aria-hidden="true"></i></span>
-        <div>
-          <div class="metric-copy">{$locale.assets.summaryQuantity}</div>
-          <strong>{formatNumber(summary.totalQuantity)}</strong>
-        </div>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
-        <div>
-          <div class="metric-copy">{$locale.assets.summaryValue}</div>
-          <strong>{formatMoney(summary.totalValue)}</strong>
-        </div>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>
-        <div>
-          <div class="metric-copy">{$locale.assets.summaryDamaged}</div>
-          <strong>{formatNumber(summary.damagedCount)}</strong>
-        </div>
-      </div>
-    </div>
   </svelte:fragment>
 
   <svelte:fragment slot="alerts">
