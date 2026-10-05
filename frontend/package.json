@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/utils/numericInput.test.js",
+    "test": "node --test src/utils/numericInput.test.js src/utils/contractDocumentLabels.test.js",
     "test:workflow-ui": "node tests/workflow/browser.mjs"
   },
   "devDependencies": {

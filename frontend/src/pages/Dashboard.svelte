@@ -700,7 +700,6 @@
             <i class="bi bi-hourglass-split card-icon card-icon-warning" aria-hidden="true"></i>
             {$locale.workflow.expiringSoon}
           </h3>
-          <p>{$locale.workflow.reminderRule}</p>
         </div>
 
         <a class="card-link" use:link href="/leases">

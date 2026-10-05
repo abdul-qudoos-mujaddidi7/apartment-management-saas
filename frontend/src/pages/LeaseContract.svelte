@@ -29,6 +29,7 @@
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import { toDocumentDigits } from '../utils/formatters';
   import { mediaUrl } from '../utils/media';
+  import { contractDocumentLabels } from '../utils/contractDocumentLabels';
   import { getLeaseContract, renderContractPdf } from '../services/leaseContracts';
 
   export let params = {};
@@ -39,7 +40,6 @@
   let errorMessage = '';
   let contract = null;
   let language = 'fa';
-  let preparingPdf = false;
   let downloadingPdf = false;
   let pdfError = '';
 
@@ -154,94 +154,13 @@
     window.print();
   }
 
-  /**
-   * The wording the PDF prints around the data, in the contract's language.
-   *
-   * The API owns no translation table: the document is drawn from the same
-   * dictionaries the interface uses, and the browser — which already has them —
-   * sends the words along with the request. They name fields; they never decide
-   * what a field holds, and the server escapes every one of them.
-   */
-  function documentLabels() {
-    const words = doc;
-    return {
-      lessor: words.leaseContract.lessor,
-      tenant: words.leaseContract.tenant,
-      lessorPhoto: words.leaseContract.lessorPhoto,
-      tenantPhoto: words.leaseContract.tenantPhoto,
-      logo: words.leaseContract.logo,
-      officeAddress: words.leaseContract.officeAddress,
-      contractNumber: words.leases.contractNumber,
-      issuedOn: words.leaseContract.issuedOn,
-      notes: words.leases.notes,
-      signatureName: words.leaseContract.signatureName,
-      lessorSignature: words.leaseContract.lessor,
-      tenantSignature: words.leaseContract.tenant,
-      stamp: words.leaseContract.stamp,
-
-      /* The document is a form of sections, and each section is captioned in
-         the language the contract is printed in. */
-      premisesTitle: words.leaseContract.premisesTitle,
-      premisesHint: words.leaseContract.premisesHint,
-      addressSeparator: words.leaseContract.addressSeparator,
-      statementTitle: words.leaseContract.statementTitle,
-      rentScheduleTitle: words.leaseContract.rentScheduleTitle,
-      maintenanceTitle: words.leaseContract.maintenanceTitle,
-      signaturesTitle: words.leaseContract.signaturesTitle,
-
-      leaseStartDate: words.leaseContract.leaseStartDate,
-      building: words.leaseContract.building,
-      buildingAddress: words.leaseContract.buildingAddress,
-      floor: words.leaseContract.floor,
-      apartmentNumber: words.leaseContract.apartmentNumber,
-      area: words.leaseContract.area,
-      bedrooms: words.leaseContract.bedrooms,
-      bathrooms: words.leaseContract.bathrooms,
-
-      month: words.leaseContract.month,
-      rentAmount: words.leaseContract.rentAmount,
-      dueDate: words.leaseContract.dueDate,
-      paymentStatus: words.leaseContract.paymentStatus,
-      paidBy: words.leaseContract.paidBy,
-      serviceFee: words.leases.serviceFee,
-      utilities: words.tenantProfile.utilities,
-      invoiceStatuses: words.tenantProfile.invoiceStatuses,
-    };
-  }
-
-  /**
-   * Preview opens the rendered file in a tab — the browser's own PDF viewer,
-   * which is the only honest preview of a printed page. The download saves the
-   * same bytes, through a blob URL so a failure is a message here rather than a
-   * blank browser error page.
-   */
-  async function openPdf() {
-    preparingPdf = true;
-    pdfError = '';
-    try {
-      const { blob } = await renderContractPdf(params.leaseId, {
-        language,
-        labels: documentLabels(),
-        disposition: 'inline',
-      });
-
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener');
-      setTimeout(() => URL.revokeObjectURL(url), 120_000);
-    } catch (error) {
-      if (error.status !== 401) pdfError = error?.message || $locale.leaseContract.pdfError;
-    } finally {
-      preparingPdf = false;
-    }
-  }
-
   async function downloadPdf() {
     downloadingPdf = true;
     pdfError = '';
     try {
       const { blob, filename } = await renderContractPdf(params.leaseId, {
         language,
-        labels: documentLabels(),
+        labels: contractDocumentLabels(doc),
         disposition: 'attachment',
       });
 
@@ -390,14 +309,6 @@
     </div>
 
     <div class="contract-primary-actions">
-      <button class="btn btn-outline-secondary" type="button" on:click={openPdf} disabled={!contract || preparingPdf}>
-        {#if preparingPdf}
-          <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-        {:else}
-          <i class="bi bi-eye" aria-hidden="true"></i>
-        {/if}
-        {preparingPdf ? $locale.leaseContract.preparingPdf : $locale.leaseContract.previewPdf}
-      </button>
       <button class="btn btn-primary" type="button" on:click={downloadPdf} disabled={!contract || downloadingPdf}>
         {#if downloadingPdf}
           <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>

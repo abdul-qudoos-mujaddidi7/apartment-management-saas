@@ -583,16 +583,6 @@
 </svelte:head>
 
 <PageLayout ariaLabel={$locale.assets.title}>
-  <svelte:fragment slot="actions">
-    {#if activeTab === 'records'}
-      <ActionButton icon="bi-plus-lg" label={$locale.assets.addApartmentAsset} on:click={openApartmentAssetCreate} />
-    {:else if activeTab === 'catalog'}
-      <ActionButton icon="bi-plus-lg" label={$locale.assets.newAsset} on:click={openAssetCreate} />
-    {:else if activeTab === 'categories'}
-      <ActionButton icon="bi-plus-lg" label={$locale.assets.newCategory} on:click={openCategoryCreate} />
-    {/if}
-  </svelte:fragment>
-
   <svelte:fragment slot="alerts">
     {#if errorMessage}
       <div class="alert alert-danger" role="alert">{errorMessage}</div>
@@ -618,7 +608,8 @@
           bind:search
           searchPlaceholder={$locale.assets.search}
           onSearch={() => loadRecords(1)}
-          showAdd={false}
+          addLabel={$locale.assets.addApartmentAsset}
+          onAdd={openApartmentAssetCreate}
           filtersLabel={$locale.common.filters}
           filtersCount={filtersCount}
           filtersClearLabel={$locale.common.clearFilters}
@@ -791,7 +782,8 @@
           slot="toolbar"
           bind:search
           searchPlaceholder={$locale.assets.search}
-          showAdd={false}
+          addLabel={$locale.assets.newAsset}
+          onAdd={openAssetCreate}
         >
           <svelte:fragment slot="tabs">
             <TabFilters {tabs} active={activeTab} on:select={(event) => selectTab(event.detail)} />
@@ -849,7 +841,8 @@
           slot="toolbar"
           bind:search
           searchPlaceholder={$locale.assets.search}
-          showAdd={false}
+          addLabel={$locale.assets.newCategory}
+          onAdd={openCategoryCreate}
         >
           <svelte:fragment slot="tabs">
             <TabFilters {tabs} active={activeTab} on:select={(event) => selectTab(event.detail)} />

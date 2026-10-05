@@ -1,0 +1,55 @@
+/** Localized labels required by the contract PDF endpoint. */
+export function contractDocumentLabels(words) {
+  return {
+    lessor: words.leaseContract.lessor,
+    tenant: words.leaseContract.tenant,
+    lessorPhoto: words.leaseContract.lessorPhoto,
+    tenantPhoto: words.leaseContract.tenantPhoto,
+    logo: words.leaseContract.logo,
+    officeAddress: words.leaseContract.officeAddress,
+    contractNumber: words.leases.contractNumber,
+    issuedOn: words.leaseContract.issuedOn,
+    notes: words.leases.notes,
+    signatureName: words.leaseContract.signatureName,
+    lessorSignature: words.leaseContract.lessor,
+    tenantSignature: words.leaseContract.tenant,
+    witnessSignature: words.leaseContract.witnessSignatureLabel,
+    stamp: words.leaseContract.stamp,
+
+    /* The document is a form of sections, and each section is captioned in
+       the language the contract is printed in. */
+    premisesTitle: words.leaseContract.premisesTitle,
+    premisesHint: words.leaseContract.premisesHint,
+    addressSeparator: words.leaseContract.addressSeparator,
+    statementTitle: words.leaseContract.statementTitle,
+    rentScheduleTitle: words.leaseContract.rentScheduleTitle,
+    utilitiesTitle: words.leaseContract.utilitiesTitle,
+    termTitle: words.leaseContract.termTitle,
+    maintenanceTitle: words.leaseContract.maintenanceTitle,
+    signaturesTitle: words.leaseContract.signaturesTitle,
+
+    leaseStartDate: words.leaseContract.leaseStartDate,
+    startDate: words.leases.startDate,
+    endDate: words.leases.endDate,
+    period: words.tenantProfile.period,
+    months: words.leaseContract.months,
+    securityDeposit: words.leases.securityDeposit,
+    building: words.leaseContract.building,
+    buildingAddress: words.leaseContract.buildingAddress,
+    floor: words.leaseContract.floor,
+    apartmentNumber: words.leaseContract.apartmentNumber,
+    area: words.leaseContract.area,
+    bedrooms: words.leaseContract.bedrooms,
+    bathrooms: words.leaseContract.bathrooms,
+
+    month: words.leaseContract.month,
+    rentAmount: words.leaseContract.rentAmount,
+    dueDate: words.leaseContract.dueDate,
+    paymentStatus: words.leaseContract.paymentStatus,
+    service: words.leaseContract.service,
+    paidBy: words.leaseContract.paidBy,
+    serviceFee: words.leases.serviceFee,
+    utilities: words.tenantProfile.utilities,
+    invoiceStatuses: words.tenantProfile.invoiceStatuses,
+  };
+}
