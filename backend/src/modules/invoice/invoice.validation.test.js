@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const { createInvoiceSchema, itemTypes } = require('./invoice.validation');
-const { incomeAccountCodes } = require('./invoice-income');
+const { incomeAccountRoles } = require('./invoice-income');
 const { DEFAULT_ACCOUNTS } = require('../financials/financial-account.service');
 
 const baseInvoice = {
@@ -46,21 +46,21 @@ test('rejects an unknown charge type', () => {
 /*
  * Every type the API accepts has to credit an income account: the posting debits
  * the tenant's receivable, and an entry whose credits do not match is refused by
- * the ledger — so a missing code turns that charge type into a 500 at the moment
+ * the ledger — so a missing role turns that charge type into a 500 at the moment
  * the invoice is raised.
  */
 test('gives every charge type an income account that exists in the chart', () => {
-  const codes = new Set(DEFAULT_ACCOUNTS.map(([code]) => code));
+  const roles = new Set(DEFAULT_ACCOUNTS.map(([role]) => role));
   itemTypes.forEach((type) => {
-    const code = incomeAccountCodes[type];
-    assert.ok(code, `${type} has no income account.`);
-    assert.ok(codes.has(code), `${type} credits account ${code}, which is not a default account.`);
+    const role = incomeAccountRoles[type];
+    assert.ok(role, `${type} has no income account.`);
+    assert.ok(roles.has(role), `${type} credits account ${role}, which is not a default account.`);
   });
 });
 
 test('credits each charge type to its own account', () => {
-  const used = itemTypes.map((type) => incomeAccountCodes[type]);
+  const used = itemTypes.map((type) => incomeAccountRoles[type]);
   assert.equal(new Set(used).size, used.length);
   // The service fee is not rent: it is billed and read on its own income line.
-  assert.notEqual(incomeAccountCodes.SERVICE_FEE, incomeAccountCodes.RENT);
+  assert.notEqual(incomeAccountRoles.SERVICE_FEE, incomeAccountRoles.RENT);
 });

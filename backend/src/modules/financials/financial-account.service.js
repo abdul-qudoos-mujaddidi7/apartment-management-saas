@@ -3,25 +3,25 @@ const { Prisma } = require('@prisma/client');
 const Decimal = Prisma.Decimal;
 
 const DEFAULT_ACCOUNTS = [
-  ['1000', 'Cash', 'ASSET'],
-  ['1100', 'Accounts Receivable', 'ASSET'],
-  ['2000', 'Security Deposit Liability', 'LIABILITY'],
-  ['4000', 'Rent Income', 'INCOME'],
-  ['4050', 'Security Deposit Forfeited', 'INCOME'],
-  ['4900', 'Foreign Exchange Difference', 'INCOME'],
-  ['4010', 'Electricity Income', 'INCOME'],
-  ['4020', 'Water Income', 'INCOME'],
-  ['4030', 'Gas Income', 'INCOME'],
-  ['4040', 'Service Fee Income', 'INCOME'],
-  ['4090', 'Other Income', 'INCOME'],
-  ['5000', 'Building Expenses', 'EXPENSE'],
+  ['CASH', 'Cash', 'ASSET'],
+  ['ACCOUNTS_RECEIVABLE', 'Accounts Receivable', 'ASSET'],
+  ['SECURITY_DEPOSIT_LIABILITY', 'Security Deposit Liability', 'LIABILITY'],
+  ['RENT_INCOME', 'Rent Income', 'INCOME'],
+  ['SECURITY_DEPOSIT_FORFEITED', 'Security Deposit Forfeited', 'INCOME'],
+  ['FOREIGN_EXCHANGE_DIFFERENCE', 'Foreign Exchange Difference', 'INCOME'],
+  ['ELECTRICITY_INCOME', 'Electricity Income', 'INCOME'],
+  ['WATER_INCOME', 'Water Income', 'INCOME'],
+  ['GAS_INCOME', 'Gas Income', 'INCOME'],
+  ['SERVICE_FEE_INCOME', 'Service Fee Income', 'INCOME'],
+  ['OTHER_INCOME', 'Other Income', 'INCOME'],
+  ['BUILDING_EXPENSES', 'Building Expenses', 'EXPENSE'],
 ];
 
 async function ensureDefaultAccounts(client, organizationId) {
   await client.financialAccount.createMany({
-    data: DEFAULT_ACCOUNTS.map(([code, name, type]) => ({
+    data: DEFAULT_ACCOUNTS.map(([systemKey, name, type]) => ({
       organizationId,
-      code,
+      systemKey,
       name,
       type,
       isSystem: true,
@@ -34,28 +34,28 @@ async function ensureDefaultAccounts(client, organizationId) {
     where: {
       organizationId,
       deletedAt: null,
-      code: { in: DEFAULT_ACCOUNTS.map(([code]) => code) },
+      systemKey: { in: DEFAULT_ACCOUNTS.map(([systemKey]) => systemKey) },
     },
   });
 
-  const byCode = Object.fromEntries(accounts.map((account) => [account.code, account]));
-  for (const [code] of DEFAULT_ACCOUNTS) {
-    if (!byCode[code]) {
-      throw new Error(`Default account ${code} could not be created.`);
+  const byRole = Object.fromEntries(accounts.map((account) => [account.systemKey, account]));
+  for (const [systemKey] of DEFAULT_ACCOUNTS) {
+    if (!byRole[systemKey]) {
+      throw new Error(`Default account ${systemKey} could not be created.`);
     }
   }
 
-  return byCode;
+  return byRole;
 }
 
 async function listFinancialAccounts(organizationId) {
   // Financial accounts are initialized lazily on the first financial read or
-  // write. The unique organization/code constraint makes this safe under load.
+  // write. The unique organization/systemKey constraint makes this safe under load.
   await ensureDefaultAccounts(require('../../lib/prisma'), organizationId);
   const prisma = require('../../lib/prisma');
   const accounts = await prisma.financialAccount.findMany({
     where: { organizationId, deletedAt: null, isActive: true },
-    orderBy: { code: 'asc' },
+    orderBy: [{ type: 'asc' }, { name: 'asc' }, { id: 'asc' }],
   });
 
   return accounts.map((account) => ({
@@ -80,7 +80,7 @@ function accountBalance(account, debit, credit) {
 async function listAccountsWithBalances(organizationId, options = {}) {
   const prisma = require('../../lib/prisma');
   await ensureDefaultAccounts(prisma, organizationId);
-  const accounts = await prisma.financialAccount.findMany({ where: { organizationId, deletedAt: null }, orderBy: { code: 'asc' } });
+  const accounts = await prisma.financialAccount.findMany({ where: { organizationId, deletedAt: null }, orderBy: [{ type: 'asc' }, { name: 'asc' }, { id: 'asc' }] });
   const grouped = await prisma.journalLine.groupBy({
     by: ['accountId'],
     where: { account: { organizationId }, journal: { organizationId, status: 'POSTED' } },

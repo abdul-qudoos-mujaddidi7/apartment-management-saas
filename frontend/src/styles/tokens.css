@@ -359,6 +359,7 @@
   --sidebar-width-collapsed: 4.25rem;
   --sidebar-width: var(--sidebar-width-expanded);
   --topbar-height: 68px;
+  --index-footer-height: 3.25rem;
 
   /* Table density — roomier rows than a spreadsheet: the row is the unit you
      click, and the header band is a label strip rather than a header row. The

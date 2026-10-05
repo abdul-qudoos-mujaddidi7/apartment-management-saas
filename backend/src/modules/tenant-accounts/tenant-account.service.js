@@ -178,7 +178,7 @@ async function getTenantLedger(organizationId, tenantId, query) {
 
 async function reconcileReceivables(client, organizationId) {
   const accounts = await client.tenantAccount.aggregate({ where: { organizationId }, _sum: { balance: true } });
-  const receivable = await client.financialAccount.findFirst({ where: { organizationId, code: '1100', deletedAt: null }, select: { id: true } });
+  const receivable = await client.financialAccount.findFirst({ where: { organizationId, systemKey: 'ACCOUNTS_RECEIVABLE', deletedAt: null }, select: { id: true } });
   const gl = receivable ? await client.journalLine.aggregate({ where: { accountId: receivable.id, journal: { organizationId, status: 'POSTED' } }, _sum: { debit: true, credit: true } }) : { _sum: { debit: 0, credit: 0 } };
   const tenantBalance = asMoney(accounts._sum.balance);
   const receivableBalance = asMoney(gl._sum.debit).minus(asMoney(gl._sum.credit));

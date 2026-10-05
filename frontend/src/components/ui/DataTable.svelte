@@ -539,7 +539,7 @@
     display: flex;
     align-items: center;
     flex: 0 0 auto;
-    min-height: 3.25rem;
+    min-height: var(--index-footer-height);
     padding: var(--space-2) var(--index-gutter, var(--space-4));
     border-block-start: 1px solid var(--border);
     background: var(--surface);

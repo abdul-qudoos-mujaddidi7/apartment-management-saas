@@ -23,10 +23,10 @@ function scope(organizationId) {
  * A deposit is held money, not earned money: it is a liability until it is
  * refunded or kept for a reason. These are the accounts it moves between.
  */
-const LIABILITY_ACCOUNT = '2000';
-const RECEIVABLE_ACCOUNT = '1100';
-const FORFEITED_ACCOUNT = '4050';
-const DEFAULT_CASH_ACCOUNT = '1000';
+const LIABILITY_ACCOUNT = 'SECURITY_DEPOSIT_LIABILITY';
+const RECEIVABLE_ACCOUNT = 'ACCOUNTS_RECEIVABLE';
+const FORFEITED_ACCOUNT = 'SECURITY_DEPOSIT_FORFEITED';
+const DEFAULT_CASH_ACCOUNT = 'CASH';
 
 /// The journal a deposit writes, and how voiding finds it again.
 const JOURNAL_REFERENCE = 'SECURITY_DEPOSIT';
@@ -83,7 +83,7 @@ const transactionSelect = {
   voidReason: true,
   voidedAt: true,
   createdAt: true,
-  account: { select: { id: true, code: true, name: true } },
+  account: { select: { id: true, name: true } },
 };
 
 function serializeDecimal(value) {
@@ -416,7 +416,7 @@ async function resolveMovementAccount(client, organizationId, accounts, accountI
 
   const account = await client.financialAccount.findFirst({
     where: { id: accountId, organizationId, deletedAt: null, isActive: true },
-    select: { id: true, code: true, name: true, type: true },
+    select: { id: true, name: true, type: true },
   });
 
   if (!account) {
@@ -426,7 +426,7 @@ async function resolveMovementAccount(client, organizationId, accounts, accountI
   if (account.type !== 'ASSET') {
     throw fail(
       'DEPOSIT_ACCOUNT_NOT_ASSET',
-      `${account.code} ${account.name} cannot hold money; choose a cash or bank account.`,
+      `${account.name} cannot hold money; choose a cash or bank account.`,
     );
   }
 

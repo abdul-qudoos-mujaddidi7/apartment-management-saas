@@ -33,7 +33,7 @@
   /* The receivable control account is what a tenant's account posts against:
      the GL side is the control account, the tenant identifies the sub-ledger.
      Invoice and payment postings use the same pairing. */
-  const RECEIVABLE_CODE = '1100';
+  const RECEIVABLE_ROLE = 'ACCOUNTS_RECEIVABLE';
 
   /* One control offering two kinds of choice: a general-ledger account, or a
      tenant's account. The select holds a key ('account:<id>' / 'tenant:<id>')
@@ -83,7 +83,7 @@
   onMount(async () => {
     try {
       accounts = (await listAccounts()).items || [];
-      receivableAccountId = accounts.find((account) => account.code === RECEIVABLE_CODE)?.id || null;
+      receivableAccountId = accounts.find((account) => account.systemKey === RECEIVABLE_ROLE)?.id || null;
       await loadJournals(1);
     } catch (error) { await handleRequestError(error); }
 
@@ -289,14 +289,14 @@
   /** Label of the receivable control account, for the picker's group heading. */
   $: receivableAccount = accounts.find((account) => account.id === receivableAccountId) || null;
   $: tenantGroupLabel = receivableAccount
-    ? `${$locale.journals.tenantAccounts} — ${receivableAccount.code} ${receivableAccount.name}`
+    ? `${$locale.journals.tenantAccounts} — ${receivableAccount.name}`
     : $locale.journals.tenantAccounts;
 
   /* --- Table helpers --------------------------------------------------- */
 
   /** A line tagged to a tenant reads as "account · tenant" everywhere. */
   function accountLabel(line) {
-    const account = line.account ? `${line.account.code} — ${line.account.name}` : '—';
+    const account = line.account ? line.account.name : '—';
     return line.tenant ? `${account} · ${tenantName(line.tenant)}` : account;
   }
   function sourceLabel(entry) { const key = SOURCE_LABELS[entry.referenceType]; return key ? $locale.journals[key] : entry.referenceType; }
@@ -360,7 +360,7 @@
           <select class="form-select" id="journal-filter-account" bind:value={filters.accountId} on:change={() => loadJournals(1)}>
             <option value="">{$locale.journals.allAccounts}</option>
             {#each accounts as account (account.id)}
-              <option value={account.id}>{account.code} — {account.name}</option>
+              <option value={account.id}>{account.name}</option>
             {/each}
           </select>
         </div>
@@ -524,7 +524,7 @@
                   <option value="">{$locale.journals.selectAccount}</option>
                   <optgroup label={$locale.journals.generalAccounts}>
                     {#each accounts as account (account.id)}
-                      <option value={`${ACCOUNT_PREFIX}${account.id}`}>{account.code} — {account.name}</option>
+                      <option value={`${ACCOUNT_PREFIX}${account.id}`}>{account.name}</option>
                     {/each}
                   </optgroup>
                   {#if receivableAccountId && tenantAccounts.length}

@@ -9,6 +9,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import DocumentPreview from '../components/printing/DocumentPreview.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { locale } from '../i18n';
   import { notifySuccess } from '../stores/toasts';
@@ -26,6 +27,7 @@
   let loading = false;
   let errorMessage = '';
   let detailsPayment = null;
+  let printRecord = null;
   let detailsOpen = false;
   let voidingPayment = null;
   let voidOpen = false;
@@ -49,6 +51,10 @@
   }
 
   async function openDetails(payment) { try { detailsPayment = (await getPayment(payment.id)).payment; detailsOpen = true; } catch (error) { await handleRequestError(error); } }
+  async function openPrint(payment) {
+    try { printRecord = (await getPayment(payment.id)).payment; }
+    catch (error) { await handleRequestError(error); }
+  }
   function closeDetails() { detailsOpen = false; detailsPayment = null; }
   function requestVoid(payment) { voidingPayment = payment; voidOpen = true; voidReason = ''; modalError = ''; }
   function closeVoid() { if (saving) return; voidOpen = false; voidingPayment = null; modalError = ''; }
@@ -123,9 +129,10 @@
       <tbody>{#each view as payment (payment.id)}
         <tr class:is-selected={selectedIds.has(payment.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(payment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(payment.id)} /></td>
-          <td><strong>{payment.paymentNumber}</strong></td><td class="date-cell">{formatShortDate(payment.paymentDate)}</td><td>{tenantName(payment)}</td><td>{payment.lease?.apartment?.floor?.building?.name || '—'}</td><td class="data-cell">{payment.lease?.apartment?.apartmentNumber || '—'}</td><td>{payment.receiveAccount.code} — {payment.receiveAccount.name}</td><td>{$locale.paymentMethods[payment.paymentMethod]}</td><td class="amount-cell">{formatMoney(payment.amount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.allocatedAmount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.unallocatedAmount, payment.currency)}</td><td><StatusBadge label={paymentLabel(payment.status)} tone={paymentTone(payment.status)} /></td>
+          <td><strong>{payment.paymentNumber}</strong></td><td class="date-cell">{formatShortDate(payment.paymentDate)}</td><td>{tenantName(payment)}</td><td>{payment.lease?.apartment?.floor?.building?.name || '—'}</td><td class="data-cell">{payment.lease?.apartment?.apartmentNumber || '—'}</td><td>{payment.receiveAccount.name}</td><td>{$locale.paymentMethods[payment.paymentMethod]}</td><td class="amount-cell">{formatMoney(payment.amount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.allocatedAmount, payment.currency)}</td><td class="amount-cell">{formatMoney(payment.unallocatedAmount, payment.currency)}</td><td><StatusBadge label={paymentLabel(payment.status)} tone={paymentTone(payment.status)} /></td>
           <td class="actions-cell">
             <RowActions label={$locale.payments.actions}>
+              <button class="row-menu-item" type="button" on:click={() => openPrint(payment)}><i class="bi bi-printer" aria-hidden="true"></i>{$locale.printing.print}</button>
               <button class="row-menu-item" type="button" on:click={() => openDetails(payment)}><i class="bi bi-eye" aria-hidden="true"></i>{$locale.common.actions.view}</button>
               {#if payment.status === 'POSTED'}
                 <button class="row-menu-item warning" type="button" on:click={() => requestVoid(payment)}><i class="bi bi-x-circle" aria-hidden="true"></i>{$locale.common.actions.void}</button>
@@ -143,6 +150,8 @@
 </PageLayout>
 
 <!-- Details Modal -->
+<DocumentPreview record={printRecord} kind="payment" on:close={() => printRecord = null} />
+
 <Modal bind:open={detailsOpen} title={detailsPayment ? detailsPayment.paymentNumber : ''} description={$locale.payments.description} icon="bi-cash-stack" size="modal-lg" closeLabel={$locale.common.close} on:close={closeDetails}>
   {#if detailsPayment}
     <dl class="payment-details"><div><dt>{$locale.payments.tenant}</dt><dd>{tenantName(detailsPayment)}</dd></div><div><dt>{$locale.payments.amount}</dt><dd>{formatMoney(detailsPayment.amount, detailsPayment.currency)}</dd></div><div><dt>{$locale.payments.status}</dt><dd><StatusBadge label={paymentLabel(detailsPayment.status)} tone={paymentTone(detailsPayment.status)} /></dd></div><div><dt>{$locale.payments.reference}</dt><dd>{detailsPayment.reference || '—'}</dd></div></dl>

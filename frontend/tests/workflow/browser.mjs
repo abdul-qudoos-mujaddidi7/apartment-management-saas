@@ -111,10 +111,78 @@ try {
   for (const language of ['fa','ps']) {
     await evaluate(`window.setTestLanguage('${language}')`); await pause(30);
     printed = await evaluate('window.prepareTestPrint()');
-    assert.equal(printed.dir,'rtl'); assert.match(printed.text,/۷,۰۰۰/);
+    assert.equal(printed.dir,'rtl'); assert.match(printed.text,/7,000.00 AFN/);
+    assert.doesNotMatch(printed.text, /[۰-۹٠-٩]/, 'RTL invoices use English digits');
   }
+  await evaluate("window.setTestLanguage('en')");
+  await pause(30);
+  await click('.document-item-print');
+  printed = await evaluate('window.prepareTestPrint()');
+  assert.match(printed.text, /Bill - Monthly rent/);
+  assert.match(printed.text, /Monthly rent/);
+  assert.match(printed.text, /100.00 USD/);
+  assert.match(printed.text, /10.00 USD/);
+  assert.match(printed.text, /90.00 USD/);
+  assert.doesNotMatch(printed.text, /Electricity|8,000.00|AFN/);
+  assert.equal(printed.chrome, false, 'Item print excludes buttons');
+  await click('.modal-footer .btn-outline-secondary');
+  assert.equal(await evaluate("document.querySelectorAll('.document-item-print').length"), 2, 'Full invoice can be restored');
+  await evaluate("document.querySelectorAll('.document-item-print')[1].click()");
+  await pause(30);
+  printed = await evaluate('window.prepareTestPrint()');
+  assert.match(printed.text, /2.2515 AFN/);
+  assert.match(printed.text, /112.58 AFN/);
+  assert.match(printed.text, /Electricity bill/);
+  assert.doesNotMatch(printed.text, /Monthly rent|USD/);
+  console.log('Passed: individual invoice items, item currency, paid/balance totals, meter rate precision and print controls excluded.');
   await key(); await evaluate("window.setTestLanguage('en')");
-  await click('#reading-print'); printed = await evaluate('window.prepareTestPrint()');
+  await click('#payment-print');
+  printed = await evaluate('window.prepareTestPrint()');
+  assert.match(printed.text, /Payment receipt/);
+  assert.match(printed.text, /PAY-005/);
+  assert.match(printed.text, /Test Tenant/);
+  assert.match(printed.text, /Cash account/);
+  assert.match(printed.text, /REF-005/);
+  assert.match(printed.text, /1,200.00 AFN/);
+  assert.match(printed.text, /300.00 AFN/);
+  assert.doesNotMatch(printed.text, /1,200.00 USD/);
+  for (const language of ['fa', 'ps']) {
+    await evaluate(`window.setTestLanguage('${language}')`);
+    await pause(30);
+    printed = await evaluate('window.prepareTestPrint()');
+    assert.equal(printed.dir, 'rtl');
+    assert.match(printed.text, /1,200.00 AFN/);
+    assert.doesNotMatch(printed.text, /[۰-۹٠-٩]/, 'RTL payment receipts use English digits');
+  }
+  await evaluate("window.setTestLanguage('en'); window.setPaymentVoid()");
+  await pause(30);
+  printed = await evaluate('window.prepareTestPrint()');
+  assert.match(printed.text, /Voided/);
+  assert.match(printed.text, /Duplicate payment/);
+  await evaluate('window.setPaymentWithoutLease()');
+  await pause(30);
+  printed = await evaluate('window.prepareTestPrint()');
+  assert.match(printed.text, /Test Tenant/);
+  assert.match(printed.text, /1,500.00 AFN/);
+  console.log('Passed: payment receipts, allocation currency, unallocated amounts, voided payments, optional leases and RTL printing.');
+  await key();
+  await click('#reading-print');
+  for (const theme of ['light', 'dark']) {
+    await evaluate(`document.documentElement.dataset.theme = '${theme}'`);
+    const palette = await evaluate(`(() => {
+      const sheet = document.querySelector('.document-sheet');
+      const actual = getComputedStyle(sheet);
+      const system = getComputedStyle(document.documentElement);
+      const consumption = getComputedStyle(sheet.querySelector('.document-consumption'));
+      return { background: actual.backgroundColor, text: actual.color, surface: system.getPropertyValue('--surface').trim(), ink: system.getPropertyValue('--text-strong').trim(), consumption: consumption.backgroundColor };
+    })()`);
+    const rgb = hex => 'rgb(' + hex.slice(1).match(/../g).map(value => parseInt(value, 16)).join(', ') + ')';
+    assert.equal(palette.background, rgb(palette.surface), `${theme} preview uses system surface`);
+    assert.equal(palette.text, rgb(palette.ink), `${theme} preview uses system text`);
+    printed = await evaluate('window.prepareTestPrint()');
+    assert.equal(await evaluate("getComputedStyle(window.testPrintFrame.contentDocument.querySelector('.document-sheet')).backgroundColor"), 'rgb(255, 255, 255)', `${theme} preview prints on white paper`);
+  }
+  await evaluate("document.documentElement.dataset.theme = 'light'");
   assert.match(printed.text,/handover/i); assert.match(printed.text,/150 − 100 = 50 kWh/);
   assert.match(printed.text,/112.58 AFN/); assert.match(printed.text,/<script>must stay text<\/script>/);
   assert.equal(await evaluate("Boolean(window.testPrintFrame.contentDocument.querySelector('script'))"),false);
@@ -126,8 +194,11 @@ try {
   const pdf = await send('Page.printToPDF', { printBackground:true, preferCSSPageSize:true });
   const pdfBytes = Buffer.from(pdf.data,'base64');
   assert.equal(pdfBytes.subarray(0,4).toString(),'%PDF');
-  assert.equal((pdfBytes.toString('latin1').match(/\/Type \/Page\b/g) || []).length,1,'Reading fits on one A4 page');
-  console.log('Passed: reusable print previews, isolated A4 styles, fonts, currencies, rate precision, reading calculations, safe notes and Dari/Pashto RTL digits.');
+  assert.equal((pdfBytes.toString('latin1').match(/\/Type \/Page\b/g) || []).length,1,'Reading fits on one A3 page');
+  const mediaBox = pdfBytes.toString('latin1').match(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/);
+  assert.ok(mediaBox, 'PDF declares its paper size');
+  assert.ok(Math.abs(Number(mediaBox[1]) - 841.89) < 2 && Math.abs(Number(mediaBox[2]) - 1190.55) < 2, 'PDF uses A3 portrait dimensions');
+  console.log('Passed: reusable print previews, isolated A3 styles, fonts, currencies, rate precision, reading calculations, safe notes and English digits in Dari/Pashto documents.');
   console.log('Passed: modal outside/inside click, Escape, close, dirty cancel, numeric padding, text identifiers, picker Escape, dropdown outside/inside/Escape, English/Dari/Pashto direction.');
 } finally {
   if (socket?.readyState === WebSocket.OPEN && send) { await send('Browser.close').catch(() => {}); socket.close(); }

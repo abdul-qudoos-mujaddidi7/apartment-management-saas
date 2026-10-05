@@ -382,6 +382,15 @@
   .app-sidebar.sidebar-collapsed .app-sidebar-nav { padding-inline: 8px; }
   .app-sidebar.sidebar-collapsed .app-nav-item { padding-inline: 8px; }
   .app-sidebar.sidebar-collapsed .app-sidebar-foot { padding-inline: 8px; }
+  @media (min-width: 992px) {
+    .app-sidebar-foot {
+      display: grid;
+      align-items: center;
+      height: calc(var(--index-footer-height) + var(--page-content-pad-block) + 1px);
+      padding-block: var(--space-2) calc(var(--space-2) + var(--page-content-pad-block) + 1px);
+    }
+  }
+
   @media (max-width: 991.98px) {
     .app-sidebar, .app-sidebar.sidebar-collapsed {
       width: min(240px, 85vw);

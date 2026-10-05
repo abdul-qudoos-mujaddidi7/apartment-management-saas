@@ -252,7 +252,7 @@ async function checkTenantLedgers() {
       _sum: { debit: true, credit: true },
     });
     const receivable = await prisma.financialAccount.findFirst({
-      where: { organizationId, code: '1100', deletedAt: null },
+      where: { organizationId, systemKey: 'ACCOUNTS_RECEIVABLE', deletedAt: null },
       select: { id: true },
     });
     if (!receivable) continue;
@@ -305,7 +305,7 @@ async function checkDeposits() {
 
   for (const organizationId of organizationIds) {
     const liability = await prisma.financialAccount.findFirst({
-      where: { organizationId, code: '2000', deletedAt: null },
+      where: { organizationId, systemKey: 'SECURITY_DEPOSIT_LIABILITY', deletedAt: null },
       select: { id: true },
     });
     if (!liability) continue;

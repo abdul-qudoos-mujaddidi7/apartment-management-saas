@@ -697,4 +697,12 @@ translations.apartments.types = {
 
 translations.printing = {"preview":"Print preview","hint":"Review the document, then print or save as PDF using your browser.","print":"Print / Save PDF","invoice":"Invoice","reading":"Meter reading","unassigned":"No lease assigned","currencyHint":"Invoice totals are shown in","baseline":"Move-in baseline only. No usage is billed by this reading.","readingNotice":"This reading record is not a payment receipt. Billing status is shown above.","recordCopy":"Copy of the saved record","error":"Unable to prepare the print document. Please try again."};
 
+translations.printing.payment = 'Payment receipt';
+
+Object.assign(translations.printing, { fullInvoice: 'Full invoice', invoiceItem: 'Invoice item', printItem: 'Print item' });
+
+translations.printing.bill = 'Bill';
+
+translations.printing.electricityBill = 'Electricity bill';
+
 export default translations;

@@ -4,7 +4,7 @@ import documentStyles from '../styles/document-print.css?inline';
 export async function preparePrintDocument(source, { title, language }) {
   const frame = document.createElement('iframe');
   frame.title = title;
-  frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0';
+  frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:1123px;height:1587px;border:0';
   document.body.appendChild(frame);
   try {
     const doc = frame.contentDocument;
@@ -18,7 +18,10 @@ export async function preparePrintDocument(source, { title, language }) {
     fonts.rel = 'stylesheet'; fonts.href = new URL('/fonts/vazirmatn/print.css', location.origin).href;
     const loaded = new Promise((resolve, reject) => { fonts.onload = resolve; fonts.onerror = () => reject(new Error('Print fonts could not load')); });
     doc.head.appendChild(fonts);
-    doc.body.appendChild(source.cloneNode(true));
+    const paper = source.cloneNode(true);
+    paper.querySelectorAll('[data-print-exclude]').forEach(control => control.remove());
+    // The isolated document uses the light print palette, even from a dark preview.
+    doc.body.appendChild(paper);
     await loaded;
     await doc.fonts.ready;
     await new Promise(resolve => frame.contentWindow.requestAnimationFrame(() => frame.contentWindow.requestAnimationFrame(resolve)));

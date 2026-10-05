@@ -7,7 +7,7 @@ const { fromBase, toBase } = require('../../lib/money');
 const { priceDocument } = require('../currency/currency.service');
 const { ensureDefaultAccounts } = require('../financials/financial-account.service');
 const { postJournal, voidJournalWithReversal } = require('../financials/journal.service');
-const { incomeAccountCodes } = require('./invoice-income');
+const { incomeAccountRoles } = require('./invoice-income');
 const { lineCurrency } = require('./invoice-line-currency');
 const { postTenantLedgerEntry, replaceInvoiceLedgerEntry, reverseTenantLedgerEntry } = require('../tenant-accounts/tenant-account.service');
 
@@ -386,7 +386,7 @@ async function postInvoiceJournal(client, organizationId, invoice, tenantId, ite
   // back at the rate the invoice was posted at. An invoice written in the base
   // currency credits the line itself.
   const creditByAccount = items.reduce((totals, item) => {
-    const code = incomeAccountCodes[item.type];
+    const code = incomeAccountRoles[item.type];
     if (!code) return totals;
     const credit = fromBase(itemBaseAmount(item, invoice.exchangeRate ?? 1), invoice.exchangeRate ?? 1);
     totals[code] = (totals[code] || new Decimal(0)).plus(credit);
@@ -395,7 +395,7 @@ async function postInvoiceJournal(client, organizationId, invoice, tenantId, ite
 
   const lines = [
     {
-      accountId: accounts['1100'].id,
+      accountId: accounts['ACCOUNTS_RECEIVABLE'].id,
       tenantId,
       debit: invoice.total,
       credit: 0,
@@ -441,14 +441,14 @@ async function refreshInvoiceJournal(client, organizationId, invoice, tenantId, 
   // back at the rate the invoice was posted at. An invoice written in the base
   // currency credits the line itself.
   const creditByAccount = items.reduce((totals, item) => {
-    const code = incomeAccountCodes[item.type];
+    const code = incomeAccountRoles[item.type];
     if (!code) return totals;
     const credit = fromBase(itemBaseAmount(item, invoice.exchangeRate ?? 1), invoice.exchangeRate ?? 1);
     totals[code] = (totals[code] || new Decimal(0)).plus(credit);
     return totals;
   }, {});
   const lines = [
-    { accountId: accounts['1100'].id, tenantId, debit: invoice.total, credit: 0, description: `Accounts receivable for ${invoice.invoiceNumber}` },
+    { accountId: accounts['ACCOUNTS_RECEIVABLE'].id, tenantId, debit: invoice.total, credit: 0, description: `Accounts receivable for ${invoice.invoiceNumber}` },
     ...Object.entries(creditByAccount).map(([code, amount]) => ({ accountId: accounts[code].id, debit: 0, credit: amount, description: `Income for ${invoice.invoiceNumber}` })),
   ];
 

@@ -681,7 +681,8 @@ model Invoice {
 model FinancialAccount {
   id             String               @id @default(cuid())
   organizationId String
-  code           String
+  /// Internal posting role for built-in accounts; custom accounts have no role.
+  systemKey      String?
   name           String
   type           FinancialAccountType
   isSystem       Boolean              @default(false)
@@ -695,7 +696,7 @@ model FinancialAccount {
   receivedPayments           Payment[]                     @relation("PaymentReceiveAccount")
   securityDepositTransactions SecurityDepositTransaction[] @relation("SecurityDepositAccount")
 
-  @@unique([organizationId, code])
+  @@unique([organizationId, systemKey])
   @@index([organizationId, deletedAt])
 }
 

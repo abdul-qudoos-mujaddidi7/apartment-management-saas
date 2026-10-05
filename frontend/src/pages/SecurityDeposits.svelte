@@ -291,7 +291,7 @@
                 <select class="form-select" id="transaction-account" bind:value={transaction.accountId}>
                   <option value="">{$locale.securityDeposits.defaultAccount}</option>
                   {#each accounts as account (account.id)}
-                    <option value={account.id}>{account.code} — {account.name}</option>
+                    <option value={account.id}>{account.name}</option>
                   {/each}
                 </select>
               </div>
@@ -382,7 +382,7 @@
                   </td>
                   <td>{item.reference || '—'}
                     {#if item.account}
-                      <small class="cell-sub">{item.account.code} — {item.account.name}</small>
+                      <small class="cell-sub">{item.account.name}</small>
                     {/if}
                   </td>
                   <td>{item.notes || '—'}</td>

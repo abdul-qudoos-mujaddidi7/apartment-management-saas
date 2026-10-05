@@ -85,7 +85,7 @@ async function main() {
       where: { referenceType: 'PAYMENT', referenceId: payment.id, status: 'POSTED' },
       select: {
         id: true,
-        lines: { select: { id: true, baseDebit: true, baseCredit: true, account: { select: { code: true } } } },
+        lines: { select: { id: true, baseDebit: true, baseCredit: true, account: { select: { systemKey: true } } } },
       },
     });
     if (!journal) {
@@ -93,10 +93,10 @@ async function main() {
       continue;
     }
 
-    const arLines = journal.lines.filter((line) => line.account.code === '1100');
-    const unallocatedLines = journal.lines.filter((line) => line.account.code === '4000');
+    const arLines = journal.lines.filter((line) => line.account.systemKey === 'ACCOUNTS_RECEIVABLE');
+    const unallocatedLines = journal.lines.filter((line) => line.account.systemKey === 'RENT_INCOME');
     const receiveLines = journal.lines.filter((line) => line.baseDebit !== null
-      && !['1100', '4000'].includes(line.account.code));
+      && !['ACCOUNTS_RECEIVABLE', 'RENT_INCOME'].includes(line.account.systemKey));
     if (!arLines.length || !receiveLines.length) {
       notes.push(`${payment.paymentNumber}: unexpected journal shape, skipped`);
       continue;

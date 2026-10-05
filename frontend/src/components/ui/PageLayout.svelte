@@ -214,12 +214,15 @@
   /* --- Footer band ------------------------------------------------------ */
 
   .index-footer {
+    display: grid;
+    align-items: center;
+    min-height: var(--index-footer-height);
     position: relative;
     z-index: 10;
     flex: 0 0 auto;
     border-block-start: 1px solid var(--border);
     background: var(--surface);
-    padding: 0.75rem var(--index-gutter) 0.875rem;
+    padding: var(--space-2) var(--index-gutter);
   }
 
   /* --- Responsive ------------------------------------------------------- */

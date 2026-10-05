@@ -18,6 +18,9 @@
     window.testPrintFrame = await preparePrintDocument(document.querySelector('.document-sheet'), {title:'Test print',language:document.documentElement.lang});
     return { text:window.testPrintFrame.contentDocument.body.textContent, dir:window.testPrintFrame.contentDocument.documentElement.dir, styles:window.testPrintFrame.contentDocument.querySelector('style').textContent, fonts:window.testPrintFrame.contentDocument.fonts.check('13px Vazirmatn'), chrome:!!window.testPrintFrame.contentDocument.querySelector('button,[role=dialog]') };
   };
+  const paymentFixture = { paymentNumber: 'PAY-005', paymentDate: '2026-02-01', status: 'POSTED', currency: 'AFN', amount: 1500, allocatedAmount: 1200, unallocatedAmount: 300, tenant: lease.tenant, lease: { contractNumber: lease.contractNumber, apartment }, paymentMethod: 'CASH', receiveAccount: { name: 'Cash account' }, reference: 'REF-005', notes: 'Payment received', allocations: [{ id: 'allocation-1', amount: 1200, invoiceItem: { description: 'Monthly rent', type: 'RENT', currency: 'USD', invoice: { invoiceNumber: 'INV-005' } } }] };
+  window.setPaymentVoid = () => { printRecord = { ...paymentFixture, status: 'VOIDED', voidReason: 'Duplicate payment', allocatedAmount: 0, unallocatedAmount: 1500 }; };
+  window.setPaymentWithoutLease = () => { printRecord = { ...paymentFixture, lease: null, allocations: [], allocatedAmount: 0, unallocatedAmount: 1500 }; };
   let open = false;
   let count = 0;
   let identifier = '005';
@@ -35,6 +38,7 @@
 <button id="utility-open" on:click={() => utilityOpen = true}>Electricity</button>
 <button id="invoice-print" on:click={() => {printKind='invoice';printRecord=invoiceFixture;}}>Invoice print</button>
 <button id="reading-print" on:click={() => {printKind='reading';printRecord=readingFixture;}}>Reading print</button>
+<button id="payment-print" on:click={() => {printKind='payment';printRecord=paymentFixture;}}>Payment print</button>
 <DocumentPreview record={printRecord} kind={printKind} on:close={() => printRecord=null} />
 <RowActions label="Actions"><button id="menu-action">Action</button></RowActions>
 <Modal {open} title="Test form" on:close={() => open = false}>

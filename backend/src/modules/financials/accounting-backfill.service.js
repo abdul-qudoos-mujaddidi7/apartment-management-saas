@@ -7,7 +7,7 @@ const { ensureDefaultAccounts } = require('./financial-account.service');
 const { postJournal } = require('./journal.service');
 const { postTenantLedgerEntry, recalculateBalance, reconcileReceivables } = require('../tenant-accounts/tenant-account.service');
 
-const incomeCode = { RENT: '4000', ELECTRICITY: '4010', WATER: '4020', GAS: '4030' };
+const incomeRoles = { RENT: 'RENT_INCOME', ELECTRICITY: 'ELECTRICITY_INCOME', WATER: 'WATER_INCOME', GAS: 'GAS_INCOME' };
 
 async function backfillInvoice(tx, invoice) {
   const accounts = await ensureDefaultAccounts(tx, invoice.organizationId);
@@ -24,12 +24,12 @@ async function backfillInvoice(tx, invoice) {
   // back at the rate the invoice was posted at, so an invoice that mixes the
   // currencies its charges were agreed in still balances.
   const income = invoice.items.reduce((totals, item) => {
-    const code = incomeCode[item.type];
-    if (!code) return totals;
+    const role = incomeRoles[item.type];
+    if (!role) return totals;
     const base = item.baseAmount !== null && item.baseAmount !== undefined
       ? new Decimal(item.baseAmount)
       : toBase(item.amount, invoiceRate);
-    totals[code] = (totals[code] || new Decimal(0)).plus(fromBase(base, invoiceRate));
+    totals[role] = (totals[role] || new Decimal(0)).plus(fromBase(base, invoiceRate));
     return totals;
   }, {});
   await postJournal(tx, invoice.organizationId, {
@@ -37,8 +37,8 @@ async function backfillInvoice(tx, invoice) {
     description: `Invoice ${invoice.invoiceNumber}`,
     currency: invoice.currency, exchangeRate: invoice.exchangeRate,
     lines: [
-      { accountId: accounts['1100'].id, tenantId: invoice.lease.tenantId, debit: invoice.total, credit: 0 },
-      ...Object.entries(income).map(([code, amount]) => ({ accountId: accounts[code].id, debit: 0, credit: amount })),
+      { accountId: accounts['ACCOUNTS_RECEIVABLE'].id, tenantId: invoice.lease.tenantId, debit: invoice.total, credit: 0 },
+      ...Object.entries(income).map(([role, amount]) => ({ accountId: accounts[role].id, debit: 0, credit: amount })),
     ],
   });
 }
@@ -56,11 +56,11 @@ async function backfillPayment(tx, payment) {
     lines: [
       { accountId: payment.receiveAccountId, tenantId: payment.tenantId, debit: payment.amount, credit: 0 },
       ...(allocated.greaterThan(0) ? [{
-        accountId: accounts['1100'].id, tenantId: payment.tenantId, debit: 0, credit: allocated,
+        accountId: accounts['ACCOUNTS_RECEIVABLE'].id, tenantId: payment.tenantId, debit: 0, credit: allocated,
         baseCredit: allocatedBase,
       }] : []),
       ...(remaining.greaterThan(0) ? [{
-        accountId: accounts['4000'].id, tenantId: payment.tenantId, debit: 0, credit: remaining,
+        accountId: accounts['RENT_INCOME'].id, tenantId: payment.tenantId, debit: 0, credit: remaining,
         baseCredit: baseAmount.minus(allocatedBase),
         description: 'Unallocated payment',
       }] : []),

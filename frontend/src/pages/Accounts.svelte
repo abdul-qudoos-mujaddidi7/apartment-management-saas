@@ -71,7 +71,6 @@
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th>{$locale.accounts.code}</th>
           <th>{$locale.accounts.name}</th>
           <th>{$locale.accounts.type}</th>
           <th class="amount-cell">{$locale.accounts.debit}</th>
@@ -84,7 +83,6 @@
         {#each pagedAccounts as account (account.id)}
           <tr class:is-selected={selectedIds.has(account.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(account.id)} label={$locale.common.selectRow} on:change={() => toggleRow(account.id)} /></td>
-            <td class="data-cell">{account.code}</td>
             <td><strong>{account.name}</strong></td>
             <td>{account.type}</td>
             <td class="amount-cell">{formatMoney(account.baseDebit != null ? account.baseDebit : account.debit, $baseCurrency)}</td>
@@ -117,7 +115,7 @@
 <Modal
   bind:open={ledgerOpen}
   icon="bi-journal-bookmark"
-  title={selectedAccount ? `${selectedAccount.code} — ${selectedAccount.name}` : ''}
+  title={selectedAccount ? selectedAccount.name : ''}
   description={$locale.accounts.description}
   size="modal-xl"
   closeLabel={$locale.common.close}

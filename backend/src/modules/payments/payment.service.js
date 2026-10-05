@@ -31,7 +31,7 @@ const paymentSelect = {
   voidedAt: true,
   voidReason: true,
   createdAt: true,
-  receiveAccount: { select: { id: true, code: true, name: true, type: true } },
+  receiveAccount: { select: { id: true, name: true, type: true } },
   tenant: { select: { id: true, firstName: true, lastName: true, phone: true } },
   lease: {
     select: {
@@ -472,7 +472,7 @@ async function createPayment(organizationId, data) {
       lines: [
         { accountId: receiveAccount.id, tenantId: data.tenantId, debit: amount, credit: 0, baseDebit: receiptBase, description: `Receipt ${paymentNumber}` },
         ...(allocationResult.allocated.greaterThan(0) ? [{
-          accountId: accounts['1100'].id,
+          accountId: accounts['ACCOUNTS_RECEIVABLE'].id,
           tenantId: data.tenantId,
           debit: 0,
           credit: allocationResult.allocated,
@@ -480,7 +480,7 @@ async function createPayment(organizationId, data) {
           description: `Accounts receivable settlement ${paymentNumber}`,
         }] : []),
         ...(baseRemaining.greaterThan(0) ? [{
-          accountId: accounts['4000'].id,
+          accountId: accounts['RENT_INCOME'].id,
           tenantId: data.tenantId,
           debit: 0,
           credit: remaining,

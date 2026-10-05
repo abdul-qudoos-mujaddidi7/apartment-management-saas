@@ -220,7 +220,7 @@ async function voidJournalWithReversal(client, organizationId, referenceType, re
 const journalInclude = {
   lines: {
     include: {
-      account: { select: { id: true, code: true, name: true, type: true } },
+      account: { select: { id: true, name: true, type: true } },
       tenant: { select: { id: true, firstName: true, lastName: true } },
     },
     orderBy: { createdAt: 'asc' },
@@ -297,7 +297,6 @@ async function listJournals(organizationId, query) {
         { description: { contains: query.search } },
         { referenceType: { contains: query.search } },
         { lines: { some: { description: { contains: query.search } } } },
-        { lines: { some: { account: { code: { contains: query.search } } } } },
         { lines: { some: { account: { name: { contains: query.search } } } } },
       ],
     } : {}),
