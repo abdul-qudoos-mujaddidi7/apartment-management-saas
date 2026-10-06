@@ -15,7 +15,7 @@ const router = express.Router();
 router.use(requireAuth);
 
 // Every apartment asset record in the authenticated organization, filterable by
-// building / floor / apartment / category / asset / condition.
+// building / floor / apartment / asset / condition.
 router.get('/', validate({ query: listApartmentAssetsSchema }), asyncHandler(controller.listRecords));
 
 router.get(

@@ -6,16 +6,12 @@ function assetSelect() {
   return {
     id: true,
     organizationId: true,
-    categoryId: true,
     name: true,
     code: true,
     unit: true,
     description: true,
     createdAt: true,
     updatedAt: true,
-    category: {
-      select: { id: true, name: true, code: true },
-    },
     // How many active apartment records use this asset.
     _count: {
       select: { apartmentAssets: { where: { deletedAt: null } } },
@@ -27,25 +23,11 @@ function formatAsset({ _count, ...asset }) {
   return { ...asset, usageCount: _count?.apartmentAssets ?? 0 };
 }
 
-// A category can only be attached when it belongs to the caller's organization.
-async function assertCategoryInOrganization(organizationId, categoryId) {
-  if (!categoryId) return;
 
-  const category = await prisma.assetCategory.findFirst({
-    where: { id: categoryId, organizationId, deletedAt: null },
-    select: { id: true },
-  });
-
-  if (!category) {
-    throw new AppError('Asset category not found.', 404, 'ASSET_CATEGORY_NOT_FOUND');
-  }
-}
-
-async function listAssets(organizationId, { page, pageSize, search, categoryId }) {
+async function listAssets(organizationId, { page, pageSize, search }) {
   const where = {
     organizationId,
     deletedAt: null,
-    ...(categoryId ? { categoryId } : {}),
     ...(search
       ? {
           OR: [
@@ -92,10 +74,6 @@ async function getAsset(organizationId, assetId) {
 }
 
 async function createAsset(organizationId, data) {
-  if (data.categoryId) {
-    await assertCategoryInOrganization(organizationId, data.categoryId);
-  }
-
   const asset = await prisma.asset.create({
     data: { ...data, organizationId },
     select: assetSelect(),
@@ -105,10 +83,6 @@ async function createAsset(organizationId, data) {
 }
 
 async function updateAsset(organizationId, assetId, data) {
-  if (data.categoryId) {
-    await assertCategoryInOrganization(organizationId, data.categoryId);
-  }
-
   try {
     const asset = await prisma.asset.update({
       where: { id: assetId, organizationId, deletedAt: null },
@@ -143,7 +117,6 @@ async function softDeleteAsset(organizationId, assetId) {
 }
 
 module.exports = {
-  assertCategoryInOrganization,
   createAsset,
   getAsset,
   listAssets,

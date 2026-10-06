@@ -157,7 +157,6 @@ model Organization {
   payments                    Payment[]
   tenantAccounts              TenantAccount[]
   tenantLedgerEntries         TenantLedgerEntry[]
-  assetCategories             AssetCategory[]
   assets                      Asset[]
   apartmentAssets             ApartmentAsset[]
   currencies                  Currency[]
@@ -953,29 +952,9 @@ model SecurityDepositTransaction {
 
 // --- Assets / furniture (سجل‌ها و اموال) --------------------------------
 
-model AssetCategory {
-  id             String    @id @default(cuid())
-  organizationId String
-  name           String
-  code           String?
-  description    String?   @db.Text
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  assets       Asset[]
-
-  @@index([organizationId])
-  @@index([organizationId, deletedAt])
-  @@index([organizationId, name])
-  @@index([deletedAt])
-}
-
 model Asset {
   id             String    @id @default(cuid())
   organizationId String
-  categoryId     String?
   name           String
   code           String?
   unit           String?
@@ -985,11 +964,9 @@ model Asset {
   deletedAt      DateTime?
 
   organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  category        AssetCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   apartmentAssets ApartmentAsset[]
 
   @@index([organizationId])
-  @@index([categoryId])
   @@index([name])
   @@index([organizationId, deletedAt])
   @@index([organizationId, name])

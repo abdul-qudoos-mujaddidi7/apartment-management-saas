@@ -96,7 +96,6 @@ const listApartmentAssetsSchema = z.object({
   buildingId: optionalFilter(z.string().trim().min(1)),
   floorId: optionalFilter(z.string().trim().min(1)),
   apartmentId: optionalFilter(z.string().trim().min(1)),
-  categoryId: optionalFilter(z.string().trim().min(1)),
   assetId: optionalFilter(z.string().trim().min(1)),
   condition: optionalFilter(z.enum(assetConditions)),
   setup: z.enum(['all', 'pending', 'completed']).default('all'),

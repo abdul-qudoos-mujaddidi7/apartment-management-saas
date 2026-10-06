@@ -11,10 +11,8 @@
     completeApartmentAssets,
     getNextApartment,
     listApartmentAssets,
-    listAssetCategories,
     listAssets,
     createAsset,
-    createAssetCategory,
     saveApartmentAssets
   } from '../services/assets';
 
@@ -31,7 +29,6 @@
   let apartment = null;
   let rows = [];
   let assets = [];
-  let categories = [];
 
   let loading = false;
   let saving = false;
@@ -50,21 +47,11 @@
   let quickCreateErrors = {};
   let quickCreateForm = emptyQuickCreateForm();
 
-  // The category picker inside the asset modal opens this small dialog of its own.
-  let quickCategoryOpen = false;
-  let quickCategorySaving = false;
-  let quickCategoryError = '';
-  let quickCategoryErrors = {};
-  let quickCategoryNotice = '';
-  let quickCategoryForm = emptyQuickCategoryForm();
 
   function emptyQuickCreateForm() {
-    return { name: '', categoryId: '', unit: '', code: '' };
+    return { name: '', unit: '', code: '' };
   }
 
-  function emptyQuickCategoryForm() {
-    return { name: '', description: '' };
-  }
 
   function emptyRow() {
     rowCounter += 1;
@@ -130,14 +117,12 @@
     errorMessage = '';
 
     try {
-      const [assetResponse, categoryResponse, apartmentResponse] = await Promise.all([
+      const [assetResponse, apartmentResponse] = await Promise.all([
         listAssets({ pageSize: 100 }),
-        listAssetCategories({ pageSize: 100 }),
         listApartmentAssets(apartmentId)
       ]);
 
       assets = assetResponse.items || [];
-      categories = categoryResponse.items || [];
       apartment = apartmentResponse.apartment;
       rows = (apartmentResponse.items || []).map(toRow);
     } catch (error) {
@@ -174,24 +159,12 @@
     return Number.isFinite(unitValue) && Number.isFinite(quantity) ? unitValue * quantity : 0;
   }
 
-  $: assetGroups = groupByCategory(assets);
   $: totalQuantity = rows.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
   $: totalValue = rows.reduce((sum, row) => sum + rowTotal(row), 0);
   $: setupBadge = apartment?.assetSetupCompletedAt
     ? { label: $locale.assets.setupCompletedBadge, tone: 'success' }
     : { label: $locale.assets.setupPendingBadge, tone: 'warning' };
 
-  function groupByCategory(list) {
-    const groups = new Map();
-
-    for (const asset of list) {
-      const label = asset.category?.name || '';
-      if (!groups.has(label)) groups.set(label, []);
-      groups.get(label).push(asset);
-    }
-
-    return [...groups.entries()].map(([label, items]) => ({ label, items }));
-  }
 
   function validateRows() {
     rowErrors = {};
@@ -347,7 +320,7 @@
     quickCreateForRow = row;
     quickCreateError = '';
     quickCreateErrors = {};
-    quickCreateForm = { ...emptyQuickCreateForm(), categoryId: categories[0]?.id || '' };
+    quickCreateForm = emptyQuickCreateForm();
     quickCreateOpen = true;
   }
 
@@ -373,7 +346,6 @@
     try {
       const response = await createAsset({
         name: quickCreateForm.name.trim(),
-        categoryId: quickCreateForm.categoryId || null,
         unit: quickCreateForm.unit.trim() || null,
         code: quickCreateForm.code.trim() || null
       });
@@ -395,58 +367,8 @@
     }
   }
 
-  /**
-   * New asset and new category are one flow: the category dialog opens over this
-   * one, and what it creates is added to the picker and selected, so the asset
-   * being typed never loses its place in the form.
-   */
-  function openQuickCategory() {
-    quickCategoryError = '';
-    quickCategoryErrors = {};
-    quickCategoryNotice = '';
-    quickCategoryForm = emptyQuickCategoryForm();
-    quickCategoryOpen = true;
-  }
 
-  function closeQuickCategory() {
-    if (quickCategorySaving) return;
-    quickCategoryOpen = false;
-    quickCategoryError = '';
-    quickCategoryErrors = {};
-  }
 
-  async function submitQuickCategory() {
-    quickCategoryErrors = {};
-    quickCategoryError = '';
-    quickCategoryNotice = '';
-
-    if (!quickCategoryForm.name.trim()) {
-      quickCategoryErrors = { name: translate('assets.required', { field: $locale.assets.name }) };
-      return;
-    }
-
-    quickCategorySaving = true;
-
-    try {
-      const response = await createAssetCategory({
-        name: quickCategoryForm.name.trim(),
-        description: quickCategoryForm.description.trim() || null
-      });
-
-      const created = response.assetCategory;
-      categories = [...categories, created].sort((a, b) => a.name.localeCompare(b.name));
-      quickCreateForm = { ...quickCreateForm, categoryId: created.id };
-
-      // Closed directly, not through closeQuickCategory(): the guard on that one
-      // would refuse while the save it just finished is still flagged as running.
-      quickCategoryOpen = false;
-      quickCategoryNotice = $locale.assets.categorySaved;
-    } catch (error) {
-      quickCategoryError = error.message;
-    } finally {
-      quickCategorySaving = false;
-    }
-  }
 </script>
 
 <svelte:head>
@@ -538,19 +460,7 @@
                       on:change={(event) => setField(index, 'assetId', event.currentTarget.value)}
                     >
                       <option value="">{$locale.assets.selectAsset}</option>
-                      {#each assetGroups as group (group.label)}
-                        {#if group.label}
-                          <optgroup label={group.label}>
-                            {#each group.items as asset (asset.id)}
-                              <option value={asset.id}>{asset.name}</option>
-                            {/each}
-                          </optgroup>
-                        {:else}
-                          {#each group.items as asset (asset.id)}
-                            <option value={asset.id}>{asset.name}</option>
-                          {/each}
-                        {/if}
-                      {/each}
+                      {#each assets as asset (asset.id)}<option value={asset.id}>{asset.name}</option>{/each}
                     </select>
                     <button
                       class="quick-create"
@@ -714,34 +624,6 @@
         {#if quickCreateErrors.name}<div class="invalid-feedback">{quickCreateErrors.name}</div>{/if}
       </div>
       <div class="col-sm-6">
-        <label class="form-label" for="quick-asset-category">{$locale.assets.category}</label>
-        <div class="field-control modal-control">
-          <i class="bi bi-tags" aria-hidden="true"></i>
-          <select class="form-select" id="quick-asset-category" bind:value={quickCreateForm.categoryId}>
-            <option value="">{$locale.assets.selectCategory}</option>
-            {#each categories as category (category.id)}
-              <option value={category.id}>{category.name}</option>
-            {/each}
-          </select>
-          <button
-            class="quick-create"
-            type="button"
-            on:click={openQuickCategory}
-            aria-haspopup="dialog"
-            aria-label={$locale.assets.newCategory}
-            title={$locale.assets.newCategory}
-          >
-            <i class="bi bi-plus-circle" aria-hidden="true"></i>
-          </button>
-        </div>
-
-        {#if quickCategoryNotice}
-          <div class="quick-notice" role="status">
-            <i class="bi bi-check-circle" aria-hidden="true"></i>{quickCategoryNotice}
-          </div>
-        {/if}
-      </div>
-      <div class="col-sm-6">
         <label class="form-label" for="quick-asset-unit">{$locale.assets.unit}</label>
         <div class="field-control">
           <i class="bi bi-rulers" aria-hidden="true"></i>
@@ -773,56 +655,6 @@
   </div>
 </Modal>
 
-<!-- Create a category without leaving the asset being typed. Opens over the dialog above. -->
-<Modal
-  bind:open={quickCategoryOpen}
-  icon="bi-tags"
-  title={$locale.assets.newCategory}
-  description={$locale.assets.categoryHint}
-  busy={quickCategorySaving}
-  closeLabel={$locale.assets.cancel}
-  on:close={closeQuickCategory}
->
-  <form id="quick-category-form" on:submit|preventDefault={submitQuickCategory} novalidate>
-    {#if quickCategoryError}
-      <div class="alert alert-danger" role="alert">{quickCategoryError}</div>
-    {/if}
-
-    <div class="row g-3">
-      <div class="col-12">
-        <label class="form-label" for="quick-category-name">{$locale.assets.name}</label>
-        <div class="field-control">
-          <i class="bi bi-tags" aria-hidden="true"></i>
-          <input
-            class:is-invalid={quickCategoryErrors.name}
-            class="form-control"
-            id="quick-category-name"
-            bind:value={quickCategoryForm.name}
-          />
-        </div>
-        {#if quickCategoryErrors.name}<div class="invalid-feedback">{quickCategoryErrors.name}</div>{/if}
-      </div>
-      <div class="col-12">
-        <label class="form-label" for="quick-category-description">{$locale.assets.description}</label>
-        <textarea
-          class="form-control"
-          id="quick-category-description"
-          rows="2"
-          bind:value={quickCategoryForm.description}
-        ></textarea>
-      </div>
-    </div>
-  </form>
-
-  <div slot="footer">
-    <button class="btn btn-light" type="button" on:click={closeQuickCategory} disabled={quickCategorySaving}>
-      {$locale.assets.cancel}
-    </button>
-    <button class="btn btn-primary" type="submit" form="quick-category-form" disabled={quickCategorySaving}>
-      {quickCategorySaving ? $locale.assets.saving : $locale.assets.save}
-    </button>
-  </div>
-</Modal>
 
 <style>
   .back-button {
@@ -979,8 +811,6 @@
       minmax(5rem, 1fr)       /* model number */
       minmax(4.75rem, 0.85fr) /* unit value */
       minmax(5rem, 1fr);      /* notes */
-    /* Start, not end: labels share a line and so do the controls, even though
-       the asset field carries a category line under it that the others don't. */
     align-items: start;
     gap: var(--space-2);
     min-width: 0;
@@ -1006,8 +836,7 @@
      the field is one clean row. The words the shortcut used to carry are now its
      tooltip and accessible name, which leaves the asset's own name the width of
      the field. */
-  .asset-control,
-  .modal-control {
+  .asset-control {
     position: relative;
     display: block;
     min-width: 0;
@@ -1039,20 +868,6 @@
   }
   .quick-create:hover { color: var(--accent-hover); background: var(--accent-soft); }
   .quick-create:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-  /* The modal's category picker keeps its own chevron, so its shortcut sits
-     beyond the arrow rather than in the corner. */
-  .modal-control .form-select { padding-inline-end: 4rem; }
-  .modal-control .quick-create { inset-inline-end: 2.25rem; }
-
-  .quick-notice {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin-block-start: 0.35rem;
-    color: var(--success);
-    font-size: var(--text-xs);
-  }
 
   /* Level with the controls rather than the labels above them. */
   .line-side {

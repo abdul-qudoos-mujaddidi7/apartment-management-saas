@@ -17,16 +17,12 @@
   import { listApartments } from '../services/apartments';
   import {
     createAsset,
-    createAssetCategory,
     deleteApartmentAssetRecord,
     deleteAsset,
-    deleteAssetCategory,
     listApartmentAssetRecords,
-    listAssetCategories,
     listAssets,
     updateApartmentAssetRecord,
     updateAsset,
-    updateAssetCategory
   } from '../services/assets';
 
   import { locale, translate } from '../i18n';
@@ -41,7 +37,6 @@
   let buildingId = '';
   let floorId = '';
   let apartmentId = '';
-  let categoryId = '';
   let assetId = '';
   let condition = '';
   let setup = 'all';
@@ -50,7 +45,6 @@
   let floors = [];
   let apartments = [];
   let assets = [];
-  let categories = [];
 
   let records = [];
   let pagination = { page: 1, pageSize: 20, total: 0, totalPages: 0 };
@@ -79,11 +73,6 @@
   let assetErrors = {};
   let assetForm = emptyAssetForm();
 
-  let categoryModalOpen = false;
-  let categoryEditingId = null;
-  let categoryError = '';
-  let categoryErrors = {};
-  let categoryForm = emptyCategoryForm();
 
   function emptyRecordForm() {
     return {
@@ -98,42 +87,26 @@
   }
 
   function emptyAssetForm() {
-    return { name: '', categoryId: '', code: '', unit: '', description: '' };
+    return { name: '', code: '', unit: '', description: '' };
   }
 
-  function emptyCategoryForm() {
-    return { name: '', description: '' };
-  }
 
   onMount(async () => {
-    await Promise.all([loadBuildings(), loadCategories(), loadAssets()]);
+    await Promise.all([loadBuildings(), loadAssets()]);
     await loadRecords(1);
   });
 
   $: tabs = [
     { key: 'records', label: $locale.assets.tabRecords },
-    { key: 'catalog', label: $locale.assets.tabCatalog },
-    { key: 'categories', label: $locale.assets.tabCategories }
+    { key: 'catalog', label: $locale.assets.tabCatalog }
   ];
 
-  $: filtersCount = [buildingId, floorId, apartmentId, categoryId, assetId, condition].filter(Boolean).length
+  $: filtersCount = [buildingId, floorId, apartmentId, assetId, condition].filter(Boolean).length
     + (setup !== 'all' ? 1 : 0);
 
   $: resultSummary = `${$locale.assets.totalRecords}: ${pagination.total}`;
 
-  $: assetGroups = groupByCategory(assets);
 
-  function groupByCategory(list) {
-    const groups = new Map();
-
-    for (const asset of list) {
-      const label = asset.category?.name || '';
-      if (!groups.has(label)) groups.set(label, []);
-      groups.get(label).push(asset);
-    }
-
-    return [...groups.entries()].map(([label, items]) => ({ label, items }));
-  }
 
   // --- Option loading -------------------------------------------------------
 
@@ -179,14 +152,6 @@
     }
   }
 
-  async function loadCategories() {
-    try {
-      const response = await listAssetCategories({ pageSize: 100 });
-      categories = response.items || [];
-    } catch (error) {
-      errorMessage = error.message || $locale.assets.optionsError;
-    }
-  }
 
   // --- Records --------------------------------------------------------------
 
@@ -202,7 +167,6 @@
         buildingId,
         floorId,
         apartmentId,
-        categoryId,
         assetId,
         condition,
         setup
@@ -237,7 +201,6 @@
     buildingId = '';
     floorId = '';
     apartmentId = '';
-    categoryId = '';
     assetId = '';
     condition = '';
     setup = 'all';
@@ -421,7 +384,7 @@
     assetEditingId = null;
     assetError = '';
     assetErrors = {};
-    assetForm = { ...emptyAssetForm(), categoryId: categories[0]?.id || '' };
+    assetForm = emptyAssetForm();
     assetModalOpen = true;
   }
 
@@ -431,7 +394,6 @@
     assetErrors = {};
     assetForm = {
       name: asset.name,
-      categoryId: asset.categoryId || '',
       code: asset.code || '',
       unit: asset.unit || '',
       description: asset.description || ''
@@ -460,7 +422,6 @@
 
     const payload = {
       name: assetForm.name.trim(),
-      categoryId: assetForm.categoryId || null,
       code: assetForm.code.trim() || null,
       unit: assetForm.unit.trim() || null,
       description: assetForm.description.trim() || null
@@ -498,84 +459,11 @@
     }
   }
 
-  // --- Categories -----------------------------------------------------------
 
-  function openCategoryCreate() {
-    categoryEditingId = null;
-    categoryError = '';
-    categoryErrors = {};
-    categoryForm = emptyCategoryForm();
-    categoryModalOpen = true;
-  }
 
-  function openCategoryEdit(category) {
-    categoryEditingId = category.id;
-    categoryError = '';
-    categoryErrors = {};
-    categoryForm = {
-      name: category.name,
-      description: category.description || ''
-    };
-    categoryModalOpen = true;
-  }
 
-  function closeCategoryModal() {
-    if (saving) return;
-    categoryModalOpen = false;
-    categoryEditingId = null;
-    categoryError = '';
-    categoryErrors = {};
-  }
 
-  async function submitCategory() {
-    categoryErrors = {};
-    categoryError = '';
 
-    if (!categoryForm.name.trim()) {
-      categoryErrors = { name: translate('assets.required', { field: $locale.assets.name }) };
-      return;
-    }
-
-    saving = true;
-
-    const payload = {
-      name: categoryForm.name.trim(),
-      description: categoryForm.description.trim() || null
-    };
-
-    try {
-      if (categoryEditingId) {
-        await updateAssetCategory(categoryEditingId, payload);
-      } else {
-        await createAssetCategory(payload);
-      }
-
-      notifySuccess($locale.assets.categorySaved);
-      // Closed directly: closeCategoryModal() refuses while `saving` is still set,
-      // which is exactly the state the save leaves behind.
-      categoryModalOpen = false;
-      categoryEditingId = null;
-      await loadCategories();
-    } catch (error) {
-      categoryError = error.message;
-    } finally {
-      saving = false;
-    }
-  }
-
-  async function removeCategory(category) {
-    if (!window.confirm($locale.assets.confirmDelete)) return;
-
-    errorMessage = '';
-
-    try {
-      await deleteAssetCategory(category.id);
-      notifySuccess($locale.assets.deleted);
-      await loadCategories();
-    } catch (error) {
-      errorMessage = error.message;
-    }
-  }
 </script>
 
 <svelte:head>
@@ -655,15 +543,6 @@
               </select>
             </label>
 
-            <label class="filters-field">
-              <span class="filters-field-label">{$locale.assets.category}</span>
-              <select class="form-select" value={categoryId} on:change={(event) => { categoryId = event.currentTarget.value; loadRecords(1); }}>
-                <option value="">{$locale.assets.allCategories}</option>
-                {#each categories as category (category.id)}
-                  <option value={category.id}>{category.name}</option>
-                {/each}
-              </select>
-            </label>
 
             <label class="filters-field">
               <span class="filters-field-label">{$locale.assets.asset}</span>
@@ -702,7 +581,6 @@
             <th>{$locale.assets.apartment}</th>
             <th>{$locale.assets.floor}</th>
             <th>{$locale.assets.building}</th>
-            <th>{$locale.assets.category}</th>
             <th class="amount-cell">{$locale.assets.quantity}</th>
             <th>{$locale.assets.condition}</th>
             <th>{$locale.assets.serialNumber}</th>
@@ -726,7 +604,6 @@
               <td>{record.apartment?.apartmentNumber || '—'} · {record.apartment?.name || ''}</td>
               <td>{record.apartment?.floor?.name || '—'}</td>
               <td>{record.apartment?.floor?.building?.name || '—'}</td>
-              <td>{record.asset?.category?.name || '—'}</td>
               <td class="amount-cell">{formatNumber(record.quantity)}</td>
               <td>
                 <StatusBadge
@@ -795,7 +672,6 @@
         <thead>
           <tr>
             <th>{$locale.assets.name}</th>
-            <th>{$locale.assets.category}</th>
             <th>{$locale.assets.unit}</th>
             <th>{$locale.assets.code}</th>
             <th class="amount-cell">{$locale.assets.usageCount}</th>
@@ -807,7 +683,6 @@
           {#each assets.filter((asset) => !search.trim() || asset.name.toLowerCase().includes(search.trim().toLowerCase())) as asset (asset.id)}
             <tr>
               <td>{asset.name}</td>
-              <td>{asset.category?.name || '—'}</td>
               <td>{asset.unit || '—'}</td>
               <td>{asset.code || '—'}</td>
               <td class="amount-cell">{formatNumber(asset.usageCount)}</td>
@@ -828,60 +703,6 @@
         </tbody>
       </DataTable>
 
-    <!-- Categories -->
-    {:else}
-      <DataTable
-        isEmpty={categories.length === 0}
-        emptyLabel={$locale.assets.categoriesEmpty}
-        emptyIcon="bi-tags"
-        minTableWidth="48rem"
-        showFooter={false}
-      >
-        <PageToolbar
-          slot="toolbar"
-          bind:search
-          searchPlaceholder={$locale.assets.search}
-          addLabel={$locale.assets.newCategory}
-          onAdd={openCategoryCreate}
-        >
-          <svelte:fragment slot="tabs">
-            <TabFilters {tabs} active={activeTab} on:select={(event) => selectTab(event.detail)} />
-          </svelte:fragment>
-        </PageToolbar>
-
-        <ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.assets.newCategory} on:click={openCategoryCreate} />
-
-        <thead>
-          <tr>
-            <th>{$locale.assets.name}</th>
-            <th>{$locale.assets.description}</th>
-            <th class="amount-cell">{$locale.assets.usageCount}</th>
-            <th class="actions-heading"><span class="visually-hidden">{$locale.assets.actions}</span></th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {#each categories.filter((category) => !search.trim() || category.name.toLowerCase().includes(search.trim().toLowerCase())) as category (category.id)}
-            <tr>
-              <td>{category.name}</td>
-              <td>{category.description || '—'}</td>
-              <td class="amount-cell">{formatNumber(category.assetCount)}</td>
-              <td class="actions-cell">
-                <RowActions label={$locale.assets.actions}>
-                  <button class="row-menu-item" type="button" on:click={() => openCategoryEdit(category)}>
-                    <i class="bi bi-pencil" aria-hidden="true"></i>
-                    {$locale.assets.edit}
-                  </button>
-                  <button class="row-menu-item danger" type="button" on:click={() => removeCategory(category)}>
-                    <i class="bi bi-trash3" aria-hidden="true"></i>
-                    {$locale.assets.removeItem}
-                  </button>
-                </RowActions>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </DataTable>
     {/if}
   </svelte:fragment>
 </PageLayout>
@@ -971,15 +792,7 @@
           <i class="bi bi-box-seam" aria-hidden="true"></i>
           <select class:is-invalid={recordErrors.assetId} class="form-select" id="record-asset" bind:value={recordForm.assetId}>
             <option value="">{$locale.assets.selectAsset}</option>
-            {#each assetGroups as group (group.label)}
-              {#if group.label}
-                <optgroup label={group.label}>
-                  {#each group.items as asset (asset.id)}<option value={asset.id}>{asset.name}</option>{/each}
-                </optgroup>
-              {:else}
-                {#each group.items as asset (asset.id)}<option value={asset.id}>{asset.name}</option>{/each}
-              {/if}
-            {/each}
+            {#each assets as asset (asset.id)}<option value={asset.id}>{asset.name}</option>{/each}
           </select>
         </div>
         {#if recordErrors.assetId}<div class="invalid-feedback">{recordErrors.assetId}</div>{/if}
@@ -1067,18 +880,6 @@
         </div>
         {#if assetErrors.name}<div class="invalid-feedback">{assetErrors.name}</div>{/if}
       </div>
-      <div class="col-sm-6">
-        <label class="form-label" for="asset-category">{$locale.assets.category}</label>
-        <div class="field-control">
-          <i class="bi bi-tags" aria-hidden="true"></i>
-          <select class="form-select" id="asset-category" bind:value={assetForm.categoryId}>
-            <option value="">{$locale.assets.selectCategory}</option>
-            {#each categories as category (category.id)}
-              <option value={category.id}>{category.name}</option>
-            {/each}
-          </select>
-        </div>
-      </div>
       <div class="col-sm-4">
         <label class="form-label" for="asset-unit">{$locale.assets.unit}</label>
         <div class="field-control">
@@ -1110,46 +911,6 @@
   </div>
 </Modal>
 
-<!-- Create / edit an asset category -->
-<Modal
-  bind:open={categoryModalOpen}
-  icon="bi-tags"
-  title={categoryEditingId ? $locale.assets.edit : $locale.assets.newCategory}
-  description={$locale.assets.categoryHint}
-  busy={saving}
-  closeLabel={$locale.assets.cancel}
-  on:close={closeCategoryModal}
->
-  <form id="category-form" on:submit|preventDefault={submitCategory} novalidate>
-    {#if categoryError}
-      <div class="alert alert-danger" role="alert">{categoryError}</div>
-    {/if}
-
-    <div class="row g-3">
-      <div class="col-12">
-        <label class="form-label" for="category-name">{$locale.assets.name}</label>
-        <div class="field-control">
-          <i class="bi bi-tags" aria-hidden="true"></i>
-          <input class:is-invalid={categoryErrors.name} class="form-control" id="category-name" bind:value={categoryForm.name} />
-        </div>
-        {#if categoryErrors.name}<div class="invalid-feedback">{categoryErrors.name}</div>{/if}
-      </div>
-      <div class="col-12">
-        <label class="form-label" for="category-description">{$locale.assets.description}</label>
-        <textarea class="form-control" id="category-description" rows="2" bind:value={categoryForm.description}></textarea>
-      </div>
-    </div>
-  </form>
-
-  <div slot="footer">
-    <button class="btn btn-light" type="button" on:click={closeCategoryModal} disabled={saving}>
-      {$locale.assets.cancel}
-    </button>
-    <button class="btn btn-primary" type="submit" form="category-form" disabled={saving}>
-      {saving ? $locale.assets.saving : $locale.assets.save}
-    </button>
-  </div>
-</Modal>
 
 <style>
   .unit-hint {

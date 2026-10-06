@@ -32,26 +32,6 @@ const assetPermissions = [
     description: 'Remove assets from the master catalogue.',
   },
   {
-    name: 'View asset categories',
-    code: 'ASSET_CATEGORY_VIEW',
-    description: 'View asset categories.',
-  },
-  {
-    name: 'Create asset categories',
-    code: 'ASSET_CATEGORY_CREATE',
-    description: 'Add asset categories.',
-  },
-  {
-    name: 'Update asset categories',
-    code: 'ASSET_CATEGORY_UPDATE',
-    description: 'Edit asset categories.',
-  },
-  {
-    name: 'Delete asset categories',
-    code: 'ASSET_CATEGORY_DELETE',
-    description: 'Remove asset categories.',
-  },
-  {
     name: 'View apartment assets',
     code: 'APARTMENT_ASSET_VIEW',
     description: 'View the assets and furniture registered to apartments.',
@@ -74,7 +54,7 @@ const assetPermissions = [
 ];
 
 // Read-only rights the MANAGER role receives, mirroring the filters in seed.js.
-const managerCodes = ['ASSET_VIEW', 'ASSET_CATEGORY_VIEW', 'APARTMENT_ASSET_VIEW'];
+const managerCodes = ['ASSET_VIEW', 'APARTMENT_ASSET_VIEW'];
 
 async function main() {
   if (!process.argv.includes('--apply')) {

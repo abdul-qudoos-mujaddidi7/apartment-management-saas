@@ -9,7 +9,6 @@ const optionalText = (max) =>
 
 // organizationId is intentionally absent: it is always taken from the authenticated user.
 const assetFields = {
-  categoryId: optionalText(191),
   name: z.string().trim().min(1).max(191),
   code: optionalText(64),
   unit: optionalText(32),
@@ -25,15 +24,10 @@ const updateAssetSchema = z
     message: 'At least one field is required.',
   });
 
-// A cleared filter arrives as `?categoryId=` — an empty value means "not set".
-const optionalFilter = (schema) =>
-  z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
-
 const listAssetsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   search: z.string().trim().max(100).default(''),
-  categoryId: optionalFilter(z.string().trim().min(1)),
 });
 
 const assetParamsSchema = z.object({

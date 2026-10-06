@@ -23,7 +23,6 @@ function apartmentAssetSelect() {
         name: true,
         code: true,
         unit: true,
-        category: { select: { id: true, name: true } },
       },
     },
     apartment: {
@@ -235,14 +234,13 @@ function apartmentScopedWhere(organizationId, filters = {}) {
 }
 
 async function listRecords(organizationId, filters) {
-  const { page, pageSize, search, categoryId, assetId, condition } = filters;
+  const { page, pageSize, search, assetId, condition } = filters;
 
   const where = {
     deletedAt: null,
     ...apartmentScopedWhere(organizationId, filters),
     ...(condition ? { condition } : {}),
     ...(assetId ? { assetId } : {}),
-    ...(categoryId ? { asset: { categoryId } } : {}),
     ...(search
       ? {
           OR: [

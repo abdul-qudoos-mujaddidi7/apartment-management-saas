@@ -1,21 +1,9 @@
 import { api } from './api';
 
-// --- Asset categories (dسته‌بندی اموال) -------------------------------------
-
-export const listAssetCategories = ({ page = 1, pageSize = 50, search = '' } = {}) => {
-  const query = new URLSearchParams({ page, pageSize, search: search.trim() });
-  return api.get(`/asset-categories?${query.toString()}`);
-};
-
-export const createAssetCategory = (data) => api.post('/asset-categories', data);
-export const updateAssetCategory = (id, data) => api.put(`/asset-categories/${id}`, data);
-export const deleteAssetCategory = (id) => api.delete(`/asset-categories/${id}`);
-
 // --- Master assets (فهرست اموال) -------------------------------------------
 
-export const listAssets = ({ page = 1, pageSize = 50, search = '', categoryId } = {}) => {
+export const listAssets = ({ page = 1, pageSize = 50, search = '' } = {}) => {
   const query = new URLSearchParams({ page, pageSize, search: search.trim() });
-  if (categoryId) query.set('categoryId', categoryId);
   return api.get(`/assets?${query.toString()}`);
 };
 
@@ -60,7 +48,6 @@ export const listApartmentAssetRecords = (filters = {}) => {
     buildingId,
     floorId,
     apartmentId,
-    categoryId,
     assetId,
     condition,
     setup,
@@ -70,7 +57,6 @@ export const listApartmentAssetRecords = (filters = {}) => {
   if (buildingId) query.set('buildingId', buildingId);
   if (floorId) query.set('floorId', floorId);
   if (apartmentId) query.set('apartmentId', apartmentId);
-  if (categoryId) query.set('categoryId', categoryId);
   if (assetId) query.set('assetId', assetId);
   if (condition) query.set('condition', condition);
   if (setup && setup !== 'all') query.set('setup', setup);
