@@ -16,10 +16,6 @@ const tenantFields = {
   lastName: z.string().trim().min(1).max(191),
   phone: z.string().trim().min(3).max(64),
   alternatePhone: optionalString(64),
-  email: z.preprocess(
-    (value) => (typeof value === 'string' && value.trim() === '' ? null : value),
-    z.string().trim().email().max(191).nullable().optional(),
-  ),
   nationalId: optionalString(64),
   fatherName: optionalString(191),
   // Identity documents hold the path of a file this API wrote, never a URL from

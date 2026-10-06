@@ -31,6 +31,7 @@
   const primaryLayout = [];
   primaryItems.forEach((item, index) => {
     const group = groupByModule.get(item.key);
+    if (item.permission && !user?.permissions?.includes(item.permission)) return;
     if (!group) {
       primaryLayout.push({ type: 'item', item });
       return;

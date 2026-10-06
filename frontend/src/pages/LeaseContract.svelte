@@ -539,9 +539,19 @@
                 </section>
               {/if}
 
+              {#if contract.guarantor}
+                <section class="contract-section">
+                  <h2 class="contract-section-title">{doc.guarantors.singular}</h2>
+                  <dl class="contract-facts">
+                    {#each [['name', contract.guarantor.fullName], ['phone', contract.guarantor.phone], ['nationalId', contract.guarantor.nationalId || '—'], ['address', contract.guarantor.address || '—']] as [key, value]}
+                      <div class="contract-fact"><dt class="contract-fact-label">{doc.guarantors[key]}:</dt><dd class="contract-fact-value">{digits(value)}</dd></div>
+                    {/each}
+                  </dl>
+                </section>
+              {/if}
               <section class="contract-section">
                 <h2 class="contract-section-title">{doc.leaseContract.signaturesTitle}</h2>
-                <div class="contract-signatures">
+                <div class="contract-signatures" class:has-guarantor={Boolean(contract.guarantor)}>
                   <div class="contract-signature">
                     <span class="contract-signature-rule" aria-hidden="true"></span>
                     <p class="contract-signature-role">{contract.signatureLabels.lessor || doc.leaseContract.lessor}</p>
@@ -553,6 +563,9 @@
                     <p class="contract-signature-role">{contract.signatureLabels.tenant || doc.leaseContract.tenant}</p>
                     <p class="contract-signature-date">{digits(contract.generatedAtLabel)}</p>
                   </div>
+                  {#if contract.guarantor}
+                    <div class="contract-signature"><span class="contract-signature-rule" aria-hidden="true"></span><p class="contract-signature-role">{doc.guarantors.signature}</p><p class="contract-signature-date">{digits(contract.generatedAtLabel)}</p></div>
+                  {/if}
                 </div>
               </section>
 

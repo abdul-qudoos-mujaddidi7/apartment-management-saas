@@ -5,6 +5,7 @@
   import Checkbox from '../components/ui/Checkbox.svelte';
   import Pagination from '../components/ui/Pagination.svelte';
   import Modal from '../components/ui/Modal.svelte';
+  import GuarantorSelect from '../components/guarantors/GuarantorSelect.svelte';
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
@@ -39,7 +40,7 @@
   import { formatMoney } from '../utils/formatters';
 
   const blankForm = () => ({
-    tenantId: '', buildingId: '', floorId: '', apartmentId: '',
+    guarantorId: '', tenantId: '', buildingId: '', floorId: '', apartmentId: '',
     contractNumber: '', startDate: '', endDate: '',
     monthlyRent: '', securityDeposit: '0', serviceFee: '0', paymentDueDay: '1',
     /* Rent, deposit and the service fee can each be agreed in their own
@@ -187,6 +188,7 @@
     const apartmentId = lease.apartment.id;
     form = {
       ...blankForm(),
+      guarantorId: lease.guarantorId || lease.guarantor?.id || '',
       tenantId: lease.tenant.id,
       buildingId, floorId: '', apartmentId: '',
       contractNumber: lease.contractNumber,
@@ -241,6 +243,7 @@
     modalError = '';
     errorMessage = '';
     const payload = {
+      guarantorId: form.guarantorId || null,
       tenantId: form.tenantId,
       apartmentId: form.apartmentId,
       contractNumber: form.contractNumber.trim(),
@@ -589,6 +592,7 @@
           </select>
         </div>
       </div>
+      <div class="field field-wide"><GuarantorSelect bind:value={form.guarantorId} selected={editing?.guarantor} disabled={saving} /></div>
       <div class="field field-wide">
         <label class="field-label" for="lease-notes">{$locale.leases.notes}</label>
         <textarea class="form-control" id="lease-notes" rows="3" bind:value={form.notes}></textarea>
@@ -621,6 +625,10 @@
       <div class="detail-item"><span>{$locale.leases.serviceFee}</span><strong>{formatMoney(detail.serviceFee, detail.serviceFeeCurrency || detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.paymentDueDay}</span><strong>{detail.paymentDueDay}</strong></div>
     </div>
+    {#if detail.guarantor}
+      <div class="detail-notes"><span>{$locale.guarantors.singular}</span><p>{detail.guarantor.firstName} {detail.guarantor.lastName}</p>
+      <p>{$locale.guarantors.phone}: {detail.guarantor.phone}</p><p>{$locale.guarantors.nationalId}: {detail.guarantor.nationalId || '—'}</p><p>{$locale.guarantors.address}: {detail.guarantor.address || '—'}</p></div>
+    {/if}
     <div class="detail-notes"><span>{$locale.leases.notes}</span><p>{detail.notes || '—'}</p></div>
   {/if}
 

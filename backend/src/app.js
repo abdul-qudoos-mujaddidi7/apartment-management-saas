@@ -90,6 +90,7 @@ app.use('/api/asset-categories', assetCategoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/currencies', currencyRoutes);
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/guarantors', require('./modules/guarantors/guarantor.routes'));
 app.use('/api/leases', leaseRoutes);
 // The lease contract and the organization-wide wording it is printed from.
 app.use('/api/lease-contracts', leaseContractRoutes);
@@ -110,6 +111,8 @@ app.use('/api/uploads', uploadRoutes);
 // (on its own port) from drawing them, so it is widened for these files only.
 // Names are unique and never rewritten, so they can be cached for a long time.
 ensureUploadRoot();
+// Guarantor papers contain identity information and belong to one organization.
+app.use('/uploads', require('./middleware/guarantorDocuments'));
 app.use(
   '/uploads',
   (req, res, next) => {

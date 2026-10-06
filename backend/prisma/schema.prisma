@@ -147,6 +147,7 @@ model Organization {
   users                       User[]
   buildings                   Building[]
   apartments                  Apartment[]
+  guarantors                  Guarantor[]
   tenants                     Tenant[]
   leases                      Lease[]
   invoices                    Invoice[]
@@ -434,7 +435,6 @@ model Tenant {
   lastName              String
   phone                 String
   alternatePhone        String?
-  email                 String?
   nationalId            String?
   fatherName            String?
 
@@ -466,11 +466,36 @@ model Tenant {
   @@index([organizationId, deletedAt])
 }
 
+model Guarantor {
+  id             String    @id @default(cuid())
+  organizationId String
+  firstName      String    @db.VarChar(191)
+  lastName       String    @db.VarChar(191)
+  phone          String    @db.VarChar(64)
+  alternatePhone String?   @db.VarChar(64)
+  nationalId     String?   @db.VarChar(64)
+  address        String?   @db.VarChar(500)
+  notes          String?   @db.Text
+  documentUrl    String?   @db.VarChar(500)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  leases       Lease[]
+
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, firstName, lastName])
+  @@index([organizationId, phone])
+}
+
 model Lease {
   id              String      @id @default(cuid())
   organizationId  String
   tenantId        String
   apartmentId     String
+  guarantorId     String?
+  guarantor       Guarantor? @relation(fields: [guarantorId], references: [id], onDelete: Restrict)
   contractNumber  String
   startDate       DateTime
   endDate         DateTime
@@ -508,6 +533,7 @@ model Lease {
   invoices                    Invoice[]
   payments                    Payment[]
 
+  @@index([guarantorId, deletedAt])
   @@unique([organizationId, contractNumber])
   @@index([organizationId, deletedAt])
   @@index([tenantId, deletedAt])

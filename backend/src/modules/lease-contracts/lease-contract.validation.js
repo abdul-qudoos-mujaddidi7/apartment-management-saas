@@ -194,6 +194,12 @@ const documentLabel = z.string().trim().max(200);
  * value.
  */
 const documentLabelsSchema = z.object({
+  guarantor: documentLabel.default('Guarantor'),
+  guarantorName: documentLabel.default('Name'),
+  guarantorPhone: documentLabel.default('Phone'),
+  guarantorNationalId: documentLabel.default('National ID'),
+  guarantorAddress: documentLabel.default('Address'),
+  guarantorSignature: documentLabel.default('Guarantor signature'),
   /* The parties, and the terms the document states about them. */
   lessor: documentLabel,
   tenant: documentLabel,

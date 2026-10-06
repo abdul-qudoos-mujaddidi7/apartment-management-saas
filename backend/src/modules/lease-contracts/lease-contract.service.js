@@ -484,6 +484,7 @@ async function loadLeaseForContract(organizationId, leaseId) {
       paymentDueDay: true,
       status: true,
       notes: true,
+      guarantor: { select: { id:true, firstName:true, lastName:true, phone:true, nationalId:true, address:true } },
       tenant: {
         select: {
           id: true,
@@ -848,6 +849,7 @@ async function getContract(organizationId, leaseId) {
       signatureLabel: optionalText(setting.lessorSignatureLabel),
     },
 
+    guarantor: lease.guarantor ? { ...lease.guarantor, fullName: `${lease.guarantor.firstName} ${lease.guarantor.lastName}`.trim() } : null,
     tenant: {
       fullName: `${tenant.firstName} ${tenant.lastName}`.trim(),
       firstName: tenant.firstName,

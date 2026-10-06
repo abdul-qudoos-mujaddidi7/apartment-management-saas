@@ -1,6 +1,12 @@
 /** Localized labels required by the contract PDF endpoint. */
 export function contractDocumentLabels(words) {
   return {
+    guarantor: words.guarantors.singular,
+    guarantorName: words.guarantors.name,
+    guarantorPhone: words.guarantors.phone,
+    guarantorNationalId: words.guarantors.nationalId,
+    guarantorAddress: words.guarantors.address,
+    guarantorSignature: words.guarantors.signature,
     lessor: words.leaseContract.lessor,
     tenant: words.leaseContract.tenant,
     lessorPhoto: words.leaseContract.lessorPhoto,

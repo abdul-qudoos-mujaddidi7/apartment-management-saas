@@ -4,7 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const permissions = [
-  ...['LEASE_VIEW', 'LEASE_MANAGE', 'UTILITY_VIEW', 'UTILITY_MANAGE', 'INVOICE_VIEW', 'INVOICE_MANAGE'].map(code => ({ code, name: code.replaceAll('_', ' ') })),
+  ...['GUARANTOR_VIEW', 'GUARANTOR_MANAGE', 'LEASE_VIEW', 'LEASE_MANAGE', 'UTILITY_VIEW', 'UTILITY_MANAGE', 'INVOICE_VIEW', 'INVOICE_MANAGE'].map(code => ({ code, name: code.replaceAll('_', ' ') })),
   {
     name: 'View organization',
     code: 'ORGANIZATION_VIEW',
@@ -145,6 +145,7 @@ async function main() {
 
   const managerPermissions = seededPermissions.filter((permission) =>
     [
+      'GUARANTOR_VIEW',
       'ORGANIZATION_VIEW',
       'USER_VIEW',
       'ASSET_VIEW',

@@ -7,6 +7,7 @@ const currencyCode = z.preprocess(
 );
 const leaseStatuses = ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED'];
 const fields = {
+  guarantorId: optionalText(191),
   tenantId: z.string().trim().min(1), apartmentId: z.string().trim().min(1), contractNumber: z.string().trim().min(1).max(100),
   startDate: z.coerce.date(), endDate: z.coerce.date(), monthlyRent: z.coerce.number().positive(), securityDeposit: z.coerce.number().min(0), currency: currencyCode, securityDepositCurrency: currencyCode,
   /* The recurring fee billed on top of the rent, agreed once and carried by

@@ -1,0 +1,18 @@
+const router = require('express').Router();
+const { z } = require('zod');
+const { requireAuth } = require('../auth/auth.middleware');
+const { requirePermission } = require('../../middleware/permission');
+const validate = require('../../middleware/validate');
+const asyncHandler = require('../../middleware/asyncHandler');
+const controller = require('./guarantor.controller');
+const { createGuarantorSchema, updateGuarantorSchema, listGuarantorsSchema } = require('./guarantor.validation');
+const params = z.object({ id: z.string().trim().min(1).max(191) });
+router.use(requireAuth);
+router.use((req, res, next) => requirePermission(`GUARANTOR_${['GET', 'HEAD'].includes(req.method) ? 'VIEW' : 'MANAGE'}`)(req, res, next));
+router.get('/', validate({ query: listGuarantorsSchema }), asyncHandler(controller.list));
+router.get('/:id/profile', validate({ params, query: z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(10) }) }), asyncHandler(controller.profile));
+router.get('/:id', validate({ params }), asyncHandler(controller.get));
+router.post('/', validate({ body: createGuarantorSchema }), asyncHandler(controller.create));
+router.put('/:id', validate({ params, body: updateGuarantorSchema }), asyncHandler(controller.update));
+router.delete('/:id', validate({ params }), asyncHandler(controller.remove));
+module.exports = router;

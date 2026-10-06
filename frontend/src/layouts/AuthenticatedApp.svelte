@@ -12,6 +12,8 @@
   import Apartments from '../pages/Apartments.svelte';
   import ApartmentAssets from '../pages/ApartmentAssets.svelte';
   import Assets from '../pages/Assets.svelte';
+  import Guarantors from '../pages/Guarantors.svelte';
+  import GuarantorProfile from '../pages/GuarantorProfile.svelte';
   import Tenants from '../pages/Tenants.svelte';
   import TenantProfile from '../pages/TenantProfile.svelte';
   import Leases from '../pages/Leases.svelte';
@@ -40,6 +42,8 @@
     '/floors': Floors,
     '/floors/:id': Apartments,
     '/tenants': Tenants,
+    '/guarantors': Guarantors,
+    '/guarantors/:id': GuarantorProfile,
     '/tenants/:id': TenantProfile,
     '/leases': Leases,
     '/leases/:leaseId/contract': LeaseContract,

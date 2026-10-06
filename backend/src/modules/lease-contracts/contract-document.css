@@ -431,6 +431,10 @@
   gap: 6mm;
 }
 
+.contract-signatures.has-guarantor {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .contract-signature {
   display: flex;
   min-width: 0;
@@ -548,7 +552,7 @@
   .contract-premises { grid-template-columns: minmax(0, 1fr); }
   .contract-premises-photo { min-height: 45mm; }
   .contract-facts { grid-template-columns: minmax(0, 1fr); }
-  .contract-signatures { grid-template-columns: minmax(0, 1fr); }
+  .contract-signatures, .contract-signatures.has-guarantor { grid-template-columns: minmax(0, 1fr); }
   .contract-subject-charge-payer { width: 100%; margin-inline-start: 0; }
 }
 

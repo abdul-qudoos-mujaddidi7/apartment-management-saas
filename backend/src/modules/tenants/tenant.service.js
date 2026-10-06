@@ -17,7 +17,6 @@ function tenantSelect() {
     lastName: true,
     phone: true,
     alternatePhone: true,
-    email: true,
     nationalId: true,
     fatherName: true,
     photoUrl: true,

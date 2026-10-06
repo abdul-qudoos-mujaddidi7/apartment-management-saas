@@ -38,6 +38,7 @@ const ALLOWED_MIME_TYPES = {
  * anything.
  */
 const UPLOAD_KINDS = {
+  'guarantor-document': { folder: 'guarantors', prefix: 'document' },
   'tenant-photo': { folder: 'tenants', prefix: 'photo' },
   'tenant-id-front': { folder: 'tenants', prefix: 'id-front' },
   'tenant-id-back': { folder: 'tenants', prefix: 'id-back' },
@@ -100,7 +101,7 @@ const storage = multer.diskStorage({
     const kind = uploadKindOf(req.validated?.query?.kind);
     if (!kind) return callback(new AppError('Unknown upload kind.', 400, 'UPLOAD_KIND_INVALID'));
 
-    const directory = path.join(UPLOAD_ROOT, kind.folder);
+    const directory = path.join(UPLOAD_ROOT, kind.folder, req.validated.query.kind === 'guarantor-document' ? req.user.organizationId : '');
     fs.mkdirSync(directory, { recursive: true });
     return callback(null, directory);
   },

@@ -32,6 +32,12 @@ const { UPLOAD_ROOT, resolveUpload } = require('../src/lib/uploads');
  */
 const DOCUMENT_SOURCES = [
   {
+    model: 'guarantor',
+    fields: ['documentUrl'],
+    select: { id: true, firstName: true, lastName: true, deletedAt: true, organization: { select: { name: true } } },
+    label: row => `${row.firstName} ${row.lastName}${row.deletedAt ? ' (deleted)' : ''} · ${row.organization?.name || 'unknown organization'}`,
+  },
+  {
     model: 'tenant',
     fields: ['photoUrl', 'idCardFrontUrl', 'idCardBackUrl'],
     select: {

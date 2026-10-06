@@ -339,13 +339,8 @@
   --card-radius: 16px;
   --control-height: clamp(2.25rem, 2vw, 2.5rem);
   --control-height-sm: clamp(1.875rem, 1.75vw, 2rem);
-  /* The roomier control a dialog uses. A page is dense — filters and toolbars
-     are scanned, not filled in — while a dialog is the one place the eye
-     moves field by field, so its controls take the taller, easier target.
-     A literal 44px rather than a rem value: this is the one measurement in the
-     system that was chosen on screen rather than derived from the type scale,
-     and it should not shrink with it. */
-  --control-height-dialog: 44px;
+  /* Compact controls shared by all popup forms. */
+  --control-height-dialog: 36px;
   --control-font: clamp(0.8rem, 0.08vw + 0.77rem, 0.86rem);
   --control-radius: 10px;
   --button-height: var(--control-height);

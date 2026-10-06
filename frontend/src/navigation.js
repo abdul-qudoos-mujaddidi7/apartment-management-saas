@@ -38,6 +38,8 @@ export const navigationGroups = [
  * apartment lists and a floor's apartments belong to the Buildings module.
  */
 const moduleAliases = [
+  { path: '/guarantors', key: 'tenants' },
+  { prefix: '/guarantors/', key: 'tenants' },
   { path: '/payments', key: 'invoices' },
   { prefix: '/payments/', key: 'invoices' },
   { path: '/meter-readings', key: 'meters' },

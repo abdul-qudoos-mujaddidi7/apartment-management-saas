@@ -63,7 +63,6 @@
       fatherName: '',
       phone: '',
       alternatePhone: '',
-      email: '',
       nationalId: '',
       // Documents are uploaded one at a time; the form only carries the paths
       // the API handed back.
@@ -131,7 +130,6 @@
     const firstName = form.firstName?.trim() || '';
     const lastName = form.lastName?.trim() || '';
     const phone = form.phone?.trim() || '';
-    const email = form.email?.trim() || '';
 
     if (!firstName) {
       formErrors.firstName = translate('tenants.required', {
@@ -147,10 +145,6 @@
 
     if (phone.length < 3) {
       formErrors.phone = $locale.tenants.invalidPhone;
-    }
-
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
-      formErrors.email = $locale.tenants.invalidEmail;
     }
 
     return Object.keys(formErrors).length === 0;
@@ -192,7 +186,6 @@
 
     const nullableFields = [
       'alternatePhone',
-      'email',
       'nationalId',
       'fatherName',
       'address',
@@ -359,7 +352,6 @@
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
           <th data-sort="lastName">{$locale.tenants.fullName}</th>
           <th data-sort="phone">{$locale.tenants.phone}</th>
-          <th data-sort="email">{$locale.tenants.email}</th>
           <th data-sort="nationalId">{$locale.tenants.nationalId}</th>
           <th data-sort="status">{$locale.tenants.status}</th>
           <th class="actions-heading"><span class="visually-hidden">{$locale.tenants.edit}</span></th>
@@ -394,7 +386,6 @@
               </span>
             </td>
             <td class="data-cell cell-muted">{tenant.phone}</td>
-            <td class="cell-muted">{tenant.email || '—'}</td>
             <td class="data-cell cell-muted">{tenant.nationalId || '—'}</td>
             <td>
               <StatusBadge label={statusLabel(tenant.status)} tone={statusTone(tenant.status)} />
@@ -438,7 +429,6 @@
   bind:open={modalOpen}
   icon="bi-person-plus"
   title={editingId ? $locale.tenants.edit : $locale.tenants.add}
-  description={$locale.tenants.description}
   busy={saving}
   size="modal-lg"
   closeLabel={$locale.tenants.cancel}
@@ -589,24 +579,6 @@
         </div>
 
         <div class="col-sm-6">
-          <label class="form-label" for="tenant-email">{$locale.tenants.email}</label>
-          <div class="field-control">
-            <i class="bi bi-envelope" aria-hidden="true"></i>
-            <input
-              class:is-invalid={formErrors.email}
-              class="form-control"
-              id="tenant-email"
-              type="email"
-              autocomplete="email"
-              bind:value={form.email}
-            />
-          </div>
-          {#if formErrors.email}
-            <div class="invalid-feedback">{formErrors.email}</div>
-          {/if}
-        </div>
-
-        <div class="col-sm-6">
           <label class="form-label" for="tenant-national-id">{$locale.tenants.nationalId}</label>
           <div class="field-control">
             <i class="bi bi-person-vcard" aria-hidden="true"></i>
@@ -645,7 +617,7 @@
       <legend class="section-label">{$locale.tenants.emergencyContact}</legend>
 
       <div class="row g-3">
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-emergency-name">{$locale.tenants.emergencyContactName}</label>
           <div class="field-control">
             <i class="bi bi-person-hearts" aria-hidden="true"></i>
@@ -661,7 +633,7 @@
           {/if}
         </div>
 
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-emergency-phone">{$locale.tenants.emergencyContactPhone}</label>
           <div class="field-control">
             <i class="bi bi-telephone" aria-hidden="true"></i>
@@ -678,7 +650,7 @@
           {/if}
         </div>
 
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-status">{$locale.tenants.status}</label>
           <div class="field-control">
             <i class="bi bi-list-ul" aria-hidden="true"></i>

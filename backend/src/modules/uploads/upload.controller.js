@@ -14,7 +14,7 @@ async function create(req, res) {
   return res.status(201).json({
     success: true,
     upload: {
-      url: publicUrl(kind.folder, req.file.filename),
+      url: publicUrl(req.validated.query.kind === 'guarantor-document' ? `${kind.folder}/${req.user.organizationId}` : kind.folder, req.file.filename),
       kind: req.validated.query.kind,
       mimeType: req.file.mimetype,
       size: req.file.size,

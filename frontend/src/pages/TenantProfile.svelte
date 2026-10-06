@@ -140,12 +140,6 @@
             <i class="bi bi-telephone" aria-hidden="true"></i>
             {profile.tenant.phone}
           </a>
-          {#if profile.tenant.email}
-            <a href={`mailto:${profile.tenant.email}`}>
-              <i class="bi bi-envelope" aria-hidden="true"></i>
-              {profile.tenant.email}
-            </a>
-          {/if}
           <span>
             <i class="bi bi-calendar3" aria-hidden="true"></i>
             {$locale.tenantProfile.tenantSince} {formatShortDate(profile.tenant.createdAt)}
@@ -202,7 +196,6 @@
           <div><dt>{$locale.tenantProfile.fatherName}</dt><dd>{profile.tenant.fatherName || '—'}</dd></div>
           <div><dt>{$locale.tenantProfile.phone}</dt><dd><a href={`tel:${profile.tenant.phone}`}>{profile.tenant.phone}</a></dd></div>
           <div><dt>{$locale.tenantProfile.alternatePhone}</dt><dd>{profile.tenant.alternatePhone || '—'}</dd></div>
-          <div><dt>{$locale.tenantProfile.email}</dt><dd>{#if profile.tenant.email}<a href={`mailto:${profile.tenant.email}`}>{profile.tenant.email}</a>{:else}—{/if}</dd></div>
           <div><dt>{$locale.tenantProfile.nationalId}</dt><dd>{profile.tenant.nationalId || '—'}</dd></div>
           <div class="fact-wide"><dt>{$locale.tenantProfile.address}</dt><dd>{profile.tenant.address || '—'}</dd></div>
           <div><dt>{$locale.tenantProfile.emergencyContact}</dt><dd>{profile.tenant.emergencyContactName || '—'}</dd></div>

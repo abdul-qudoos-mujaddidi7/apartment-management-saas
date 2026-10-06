@@ -1419,13 +1419,9 @@ textarea.form-control {
   border-radius: var(--modal-radius);
   box-shadow: var(--modal-shadow);
   overflow: hidden;
-  /* A dialog is the one place the app has room to breathe: its fields and
-     buttons take the taller control, so a form is read a row at a time
-     instead of scanned like the dense tables behind it. Overriding the two
-     tokens here is what keeps every control — and the `+` beside a select —
-     on that one height without a rule per component. `--button-height`
-     restates it by hand because it is resolved against :root, not inherited
-     through the chain. */
+  /* Keep popup fields, buttons and selector add buttons on one compact height.
+     Restate the button token here because its root value is resolved before
+     the dialog overrides the control height. */
   --control-height: var(--control-height-dialog);
   --button-height: var(--control-height-dialog);
   animation: modal-sheet-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1611,6 +1607,10 @@ textarea.form-control {
 .modal-body .picker-trigger {
   border-color: var(--border-strong);
   background-color: var(--surface);
+}
+
+.modal-body textarea.form-control {
+  min-height: 64px;
 }
 
 /* A disabled field keeps the same surface and dims instead — in a lease form

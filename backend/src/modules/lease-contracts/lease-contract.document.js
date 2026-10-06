@@ -432,10 +432,17 @@ function buildDocument({ contract, language, labels = {} }) {
     section(labels.maintenanceTitle, `<p class="contract-prose">${escapeHtml(text('inventory'))}</p>`),
     section(heading('termsTitle'), clauseList(clauses), { panel: true }),
     section(heading('notesTitle'), noteList(notes, digits)),
+    contract.guarantor ? section(labels.guarantor, facts([
+      [labels.guarantorName, digits(contract.guarantor.fullName)],
+      [labels.guarantorPhone, digits(contract.guarantor.phone)],
+      [labels.guarantorNationalId, digits(contract.guarantor.nationalId || '—')],
+      [labels.guarantorAddress, digits(contract.guarantor.address || '—')],
+    ])) : '',
     `<section class="contract-section"><h2 class="contract-section-title">${escapeHtml(labels.signaturesTitle || '')}</h2>`
-      + '<div class="contract-signatures">'
+      + `<div class="contract-signatures${contract.guarantor ? ' has-guarantor' : ''}">`
       + signatureFor(labels.lessorSignature, contract.signatureLabels.lessor)
       + signatureFor(labels.tenantSignature, contract.signatureLabels.tenant)
+      + (contract.guarantor ? signatureFor(labels.guarantorSignature, null) : '')
       + '</div></section>',
   ].filter(has);
 

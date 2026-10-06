@@ -58,10 +58,14 @@
   $: isMetersModule = moduleKey === 'meters';
   $: metersActive = currentPath === '/meters' || currentPath.startsWith('/meters/');
   $: meterReadingsActive = currentPath === '/meter-readings' || currentPath.startsWith('/meter-readings/');
+  $: isTenantsModule = moduleKey === 'tenants';
+  $: tenantsActive = currentPath === '/tenants' || currentPath.startsWith('/tenants/');
+  $: guarantorsActive = currentPath === '/guarantors' || currentPath.startsWith('/guarantors/');
+  $: canViewGuarantors = $user?.permissions?.includes('GUARANTOR_VIEW');
   $: isInvoicesModule = moduleKey === 'invoices';
   $: invoicesActive = currentPath === '/invoices' || currentPath.startsWith('/invoices/');
   $: paymentsActive = currentPath === '/payments' || currentPath.startsWith('/payments/');
-  $: primaryTabActive = isBuildingsModule ? buildingsActive : isMetersModule ? metersActive : invoicesActive;
+  $: primaryTabActive = isBuildingsModule ? buildingsActive : isMetersModule ? metersActive : isTenantsModule ? tenantsActive : invoicesActive;
 
   function navigateSub(href) {
     window.location.hash = '#' + href;
@@ -90,7 +94,7 @@
 
     {#if moduleName}
       <h1 class="app-topbar-title">
-        {#if isBuildingsModule || isMetersModule || isInvoicesModule || isAccountsModule}
+        {#if isBuildingsModule || isMetersModule || isInvoicesModule || isAccountsModule || isTenantsModule}
           <button
             class="subnav-item"
             class:is-active={isAccountsModule ? accountsActive : primaryTabActive}
@@ -136,6 +140,19 @@
           on:click={() => navigateSub('/tenant-accounts')}
         >
           {$locale.dashboard.nav.tenantAccounts}
+        </button>
+      </nav>
+    {/if}
+    {#if isTenantsModule && canViewGuarantors}
+      <nav class="app-topbar-subnav" aria-label={moduleName}>
+        <button
+          class="subnav-item"
+          class:is-active={guarantorsActive}
+          aria-current={guarantorsActive ? 'page' : undefined}
+          type="button"
+          on:click={() => navigateSub('/guarantors')}
+        >
+          {$locale.dashboard.nav.guarantors}
         </button>
       </nav>
     {/if}

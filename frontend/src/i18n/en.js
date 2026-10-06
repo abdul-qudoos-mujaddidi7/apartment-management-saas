@@ -215,11 +215,11 @@ const translations = {
     add: 'Add tenant', edit: 'Edit tenant', save: 'Save tenant', update: 'Update tenant', cancel: 'Cancel', delete: 'Delete',
     search: 'Search by name or phone...', empty: 'No tenants found. Add your first tenant to get started.', loading: 'Loading tenants...',
     confirmDelete: 'Delete this tenant?', saved: 'Tenant saved successfully.', updated: 'Tenant updated successfully.', deleted: 'Tenant deleted successfully.',
-    firstName: 'First name', lastName: 'Last name', fatherName: 'Father name', fullName: 'Tenant', phone: 'Phone', alternatePhone: 'Alternate phone', email: 'Email', nationalId: 'National ID', address: 'Address',
+    firstName: 'First name', lastName: 'Last name', fatherName: 'Father name', fullName: 'Tenant', phone: 'Phone', alternatePhone: 'Alternate phone', nationalId: 'National ID', address: 'Address',
     photo: 'Profile photo', photoHint: 'Shown beside their name in the tenant list.', identityDocuments: 'Identity documents',
     idCardFront: 'ID card — front', idCardBack: 'ID card — back',
     emergencyContact: 'Emergency contact', emergencyContactName: 'Contact name', emergencyContactPhone: 'Contact phone', notes: 'Notes', status: 'Status', totalTenants: 'Total tenants',
-    active: 'Active', inactive: 'Inactive', required: '{field} is required.', invalidEmail: 'Enter a valid email address.', invalidPhone: 'Enter a valid phone number.',
+    active: 'Active', inactive: 'Inactive', required: '{field} is required.', invalidPhone: 'Enter a valid phone number.',
     page: 'Page {page} of {totalPages}', previous: 'Previous', next: 'Next', sessionExpired: 'Your session has expired. Please sign in again.',
     profile: 'Tenant profile',
   },
@@ -230,7 +230,7 @@ const translations = {
     title: 'Tenant profile', back: 'Back to tenants', loading: 'Loading tenant file...',
     tenantSince: 'Tenant since',
     identity: 'Identity and contact', fullName: 'Full name', fatherName: 'Father name', phone: 'Phone', alternatePhone: 'Alternate phone',
-    email: 'Email', nationalId: 'National ID', address: 'Address', emergencyContact: 'Emergency contact',
+    nationalId: 'National ID', address: 'Address', emergencyContact: 'Emergency contact',
     emergencyPhone: 'Emergency phone', notes: 'Notes',
     documents: 'Identity documents', documentsEmpty: 'No photograph or identity card has been filed for this tenant.',
     photo: 'Photograph', idCardFront: 'ID card — front', idCardBack: 'ID card — back',    openDocument: 'Open in a new tab',
@@ -704,5 +704,41 @@ Object.assign(translations.printing, { fullInvoice: 'Full invoice', invoiceItem:
 translations.printing.bill = 'Bill';
 
 translations.printing.electricityBill = 'Electricity bill';
+
+translations.guarantors = {
+  "title": "Guarantors",
+  "singular": "Guarantor",
+  "add": "Add Guarantor",
+  "edit": "Edit Guarantor",
+  "view": "Guarantor Details",
+  "firstName": "First name",
+  "lastName": "Last name",
+  "name": "Name",
+  "phone": "Phone",
+  "alternatePhone": "Alternate phone",
+  "nationalId": "National ID",
+  "address": "Address",
+  "notes": "Notes",
+  "document": "Guarantor document",
+  "signature": "Guarantor signature",
+  "optional": "Optional",
+  "none": "No guarantor",
+  "search": "Search guarantors by name, phone or national ID",
+  "loading": "Loading…",
+  "empty": "No guarantors found.",
+  "save": "Save",
+  "saved": "Guarantor saved.",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "confirmDelete": "Delete this guarantor? Guarantors assigned to existing leases cannot be deleted.",
+  "actions": "Actions",
+  "forbidden": "You do not have permission to view guarantors."
+};
+translations.dashboard.nav.guarantors = translations.guarantors.title;
+Object.assign(translations.guarantors, {
+  profile: 'Guarantor profile', registeredOn: 'Registered on', guaranteedLeases: 'Guaranteed leases',
+  totalLeases: 'Total leases', activeLeases: 'Active leases', draftLeases: 'Draft leases', closedLeases: 'Expired / terminated leases',
+  noLeases: 'This guarantor has no assigned leases.', leasePermissionRequired: 'Lease view permission is required to see guaranteed lease details.',
+});
 
 export default translations;
