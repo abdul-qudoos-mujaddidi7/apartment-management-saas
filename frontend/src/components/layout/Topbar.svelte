@@ -109,7 +109,8 @@
     {/if}
 
     {#if isBuildingsModule}
-      <nav class="app-topbar-subnav" aria-label="Buildings sub-navigation">
+      <nav class="app-topbar-subnav buildings-subnav" aria-label="Buildings sub-navigation">
+        <span class="subnav-separator" aria-hidden="true">|</span>
         <button
           class="subnav-item"
           class:is-active={floorsActive}
@@ -117,8 +118,9 @@
           type="button"
           on:click={() => navigateSub('/floors')}
         >
-          {$locale.dashboard.nav.floors || 'Floors'}
+          {$locale.dashboard.nav.floors}
         </button>
+        <span class="subnav-separator" aria-hidden="true">|</span>
         <button
           class="subnav-item"
           class:is-active={apartmentsActive}
@@ -220,6 +222,18 @@
     margin-inline-start: var(--space-4);
     padding-inline-start: var(--space-4);
     border-inline-start: 1px solid var(--border);
+  }
+
+  .app-topbar-subnav.buildings-subnav {
+    margin-inline-start: 0;
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .subnav-separator {
+    color: var(--text-muted);
+    font-size: var(--text-lg);
+    user-select: none;
   }
 
   /* Tabs, not chips. The current one is named in the accent and marked with a

@@ -1,6 +1,7 @@
 <script>
   import PageLayout from '../components/ui/PageLayout.svelte';
   import { onMount } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import { api } from '../services/api';
   import { listFloors } from '../services/floors';
   import { listApartments } from '../services/apartments';
@@ -236,6 +237,11 @@
       filtersClearLabel={$locale.common.clearFilters}
       onClearFilters={clearFilters}
     >
+      <svelte:fragment slot="actions">
+        {#if $user?.permissions?.includes('UTILITY_MANAGE')}
+          <ActionButton icon="bi-speedometer" label={$locale.meterReadings.add} on:click={() => push('/meter-readings?add=1')} />
+        {/if}
+      </svelte:fragment>
       <svelte:fragment slot="filters">
         <div class="filters-field">
           <label class="filters-field-label" for="meter-filter-building">{$locale.meters.building}</label>

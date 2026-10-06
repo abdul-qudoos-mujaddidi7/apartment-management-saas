@@ -4,8 +4,6 @@
   import { createInvoice } from '../services/invoices';
   import { user } from '../stores/auth';
   import { api } from '../services/api';
-  import { listApartments } from '../services/apartments';
-  import { listFloors } from '../services/floors';
   import { listMeters } from '../services/meters';
   import { readingBaseline, createMeterReading, deleteMeterReading, getMeterReading, listMeterReadings, updateMeterReading } from '../services/meterReadings';
   import DocumentPreview from '../components/printing/DocumentPreview.svelte';
@@ -16,7 +14,6 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import UtilityReadingTerms from '../components/meters/UtilityReadingTerms.svelte';
   import Modal from '../components/ui/Modal.svelte';
-  import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
@@ -30,7 +27,7 @@
   import { formatMoney } from '../utils/formatters';
 
   const utilities = ['ELECTRICITY', 'WATER', 'GAS'];
-  const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', meterId: '', readingDate: new Date().toISOString().slice(0, 10), currentReading: '', periodStart: '', leaseId: '', unitPrice: '', currency: $baseCurrency, readingKind: 'BILLING', resetBaseline: '', notes: '' });
+  const emptyForm = () => ({ meterId: '', readingDate: new Date().toISOString().slice(0, 10), currentReading: '', periodStart: '', leaseId: '', unitPrice: '', currency: $baseCurrency, readingKind: 'BILLING', resetBaseline: '', notes: '' });
   let readings = [];
   let printReading = null;
   async function openPrint(reading) {
@@ -73,22 +70,38 @@
   $: previewConsumption = form.readingKind === 'MOVE_IN' ? 0 : Number(form.currentReading) - Number(previewPrevious);
   $: previewAmount = Math.round((previewConsumption * Number(form.unitPrice) + Number.EPSILON) * 100) / 100;
   async function meterChanged() {
+    const meter = meters.find(m => m.id === form.meterId);
+    const version = ++meterSelectionVersion;
+    previewVersion++;
+    baseline = null;
+    previewLoading = false;
+    history = [];
+    leaseOptions = [];
+    modalError = '';
+    form = { ...form, leaseId: '', periodStart: '', unitPrice: meter?.defaultUnitPrice ?? '' };
+    if (!meter) return;
     try {
-      const meter = meters.find(m => m.id === form.meterId);
-      history = (await listMeterReadings({ meterId: form.meterId, pageSize: 100 })).items || [];
-      leaseOptions = (await api.get('/leases?apartmentId=' + encodeURIComponent(form.apartmentId) + '&pageSize=100')).items || [];
+      const [readingResponse, leaseResponse] = await Promise.all([
+        listMeterReadings({ meterId: meter.id, pageSize: 100 }),
+        api.get('/leases?apartmentId=' + encodeURIComponent(meter.apartmentId || meter.apartment.id) + '&pageSize=100')
+      ]);
+      if (version !== meterSelectionVersion || !modalOpen) return;
+      history = readingResponse.items || [];
+      leaseOptions = leaseResponse.items || [];
       const prior = history.find(r => r.readingDate.slice(0,10) < form.readingDate);
-      form = { ...form, periodStart: prior?.readingDate.slice(0,10) || meter?.installationDate?.slice(0,10) || '', unitPrice: meter?.defaultUnitPrice ?? '', leaseId: '' }; await updatePreview();
-    } catch (e) { modalError = e.message; }
+      form = { ...form, periodStart: prior?.readingDate.slice(0,10) || meter.installationDate?.slice(0,10) || '' };
+      await updatePreview();
+    } catch (error) { if (version === meterSelectionVersion && modalOpen) modalError = error.message; }
   }
   let sort = { key: null, dir: 'asc' };
   $: view = sortRows(readings, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let filters = { search: '', buildingId: '', utilityType: '', dateFrom: '', dateTo: '' };
   let buildings = [];
-  let floors = [];
-  let apartments = [];
   let meters = [];
+  let metersLoading = false;
+  let meterLoadVersion = 0;
+  let meterSelectionVersion = 0;
   let loading = false;
   let saving = false;
   let errorMessage = '';
@@ -102,7 +115,17 @@
   onDestroy(() => debouncedSearch.cancel());
   function queueSearch() { debouncedSearch(); }
 
-  onMount(async () => { try { await loadBuildings(); await loadReadings(1); } catch (error) { await handleRequestError(error); } });
+  onMount(async () => {
+    const query = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    if (query.get('add') === '1' && $user?.permissions?.includes('UTILITY_MANAGE')) {
+      const url = new URL(window.location.href);
+      url.hash = '#/meter-readings';
+      window.history.replaceState(window.history.state, '', url);
+      openCreate();
+    }
+    try { await loadBuildings(); await loadReadings(1); }
+    catch (error) { await handleRequestError(error); }
+  });
 
   async function handleRequestError(error) { if (error.status === 401) return true; errorMessage = error.message; return false; }
   async function loadBuildings() { const response = await api.get('/buildings?page=1&pageSize=100'); buildings = response.items || []; }
@@ -114,25 +137,64 @@
     finally { loading = false; }
   }
 
-  function resetModal() { modalOpen = false; modalError = ''; formErrors = {}; }
+  function resetModal() {
+    modalOpen = false;
+    modalError = '';
+    formErrors = {};
+    meterLoadVersion++;
+    meterSelectionVersion++;
+    previewVersion++;
+    metersLoading = false;
+    previewLoading = false;
+    baseline = null;
+  }
   function closeModal() { if (!saving) resetModal(); }
-  function openCreate() { baseline = null; previewVersion++; editingId = null; form = emptyForm(); floors = []; apartments = []; meters = []; modalError = ''; formErrors = {}; modalOpen = true; }
-
-  async function loadFloors(buildingId) { floors = buildingId ? ((await listFloors({ buildingId, page: 1, pageSize: 100 })).items || []) : []; }
-  async function loadApartments(floorId) { apartments = floorId ? ((await listApartments({ floorId, page: 1, pageSize: 100 })).items || []) : []; }
-  async function loadMetersForApartment(apartmentId, selectedMeter = null) { meters = apartmentId ? ((await listMeters({ apartmentId, status: 'ACTIVE', page: 1, pageSize: 100 })).items || []) : []; if (selectedMeter && !meters.some((meter) => meter.id === selectedMeter.id)) { meters = [selectedMeter, ...meters]; } }
-
-  async function buildingChanged() { form = { ...form, floorId: '', apartmentId: '', meterId: '' }; apartments = []; meters = []; try { await loadFloors(form.buildingId); } catch (error) { modalError = error.message; } }
-  async function floorChanged() { form = { ...form, apartmentId: '', meterId: '' }; meters = []; try { await loadApartments(form.floorId); } catch (error) { modalError = error.message; } }
-  async function apartmentChanged() { form = { ...form, meterId: '' }; try { await loadMetersForApartment(form.apartmentId); } catch (error) { modalError = error.message; } }
+  async function openCreate() {
+    resetModal();
+    editingId = null;
+    form = emptyForm();
+    meters = [];
+    history = [];
+    leaseOptions = [];
+    modalOpen = true;
+    metersLoading = true;
+    const version = ++meterLoadVersion;
+    try {
+      const options = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const response = await listMeters({ status: 'ACTIVE', page, pageSize: 100 });
+        if (version !== meterLoadVersion || !modalOpen) return;
+        options.push(...(response.items || []));
+        totalPages = response.pagination?.totalPages || 1;
+        page++;
+      } while (page <= totalPages);
+      meters = options;
+    } catch (error) { if (version === meterLoadVersion && modalOpen) modalError = error.message; }
+    finally { if (version === meterLoadVersion) metersLoading = false; }
+  }
 
   async function openEdit(reading) {
-    baseline = null;
-    const meter = reading.meter; const apartment = meter.apartment; const floor = apartment.floor;
-    editingId = reading.id; modalError = ''; formErrors = {}; modalOpen = true;
-    form = { buildingId: floor.building.id, floorId: '', apartmentId: '', meterId: '', readingDate: reading.readingDate.slice(0, 10), currentReading: reading.currentReading, notes: reading.notes || '', leaseId: reading.leaseId || '', periodStart: reading.periodStart?.slice(0,10) || '', unitPrice: reading.unitPrice, currency: reading.currency || $baseCurrency, readingKind: reading.readingKind || 'BILLING', resetBaseline: reading.resetBaseline ?? '' };
-    try { await loadFloors(floor.building.id); form = { ...form, floorId: floor.id }; await loadApartments(floor.id); form = { ...form, apartmentId: apartment.id }; await loadMetersForApartment(apartment.id, meter); form = { ...form, meterId: meter.id }; history = (await listMeterReadings({ meterId: meter.id, pageSize: 100 })).items || []; leaseOptions = (await api.get('/leases?apartmentId=' + encodeURIComponent(apartment.id) + '&pageSize=100')).items || []; await updatePreview(); }
-    catch (error) { modalError = error.message; }
+    resetModal();
+    const meter = reading.meter;
+    const version = ++meterSelectionVersion;
+    editingId = reading.id;
+    meters = [meter];
+    history = [];
+    leaseOptions = [];
+    form = { meterId: meter.id, readingDate: reading.readingDate.slice(0, 10), currentReading: reading.currentReading, notes: reading.notes || '', leaseId: reading.leaseId || '', periodStart: reading.periodStart?.slice(0,10) || '', unitPrice: reading.unitPrice, currency: reading.currency || $baseCurrency, readingKind: reading.readingKind || 'BILLING', resetBaseline: reading.resetBaseline ?? '' };
+    modalOpen = true;
+    try {
+      const [readingResponse, leaseResponse] = await Promise.all([
+        listMeterReadings({ meterId: meter.id, pageSize: 100 }),
+        api.get('/leases?apartmentId=' + encodeURIComponent(meter.apartmentId || meter.apartment.id) + '&pageSize=100')
+      ]);
+      if (version !== meterSelectionVersion || !modalOpen) return;
+      history = readingResponse.items || [];
+      leaseOptions = leaseResponse.items || [];
+      await updatePreview();
+    } catch (error) { if (version === meterSelectionVersion && modalOpen) modalError = error.message; }
   }
 
   function validateForm() {
@@ -185,7 +247,7 @@
   const formatReading = (value) => Number(value).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
   const billingTone = (status) => ({ UNBILLED: 'neutral', BILLED: 'info', PARTIALLY_PAID: 'warning', PAID: 'success' }[status] || 'neutral');
   const billingLabel = (status) => { const labels = { UNBILLED: $locale.meterReadings.unbilled, BILLED: $locale.meterReadings.billed, PARTIALLY_PAID: $locale.meterReadings.partiallyPaid, PAID: $locale.meterReadings.paid }; return labels[status] || status; };
-  const meterLabel = (meter) => `${meter.meterNumber} | ${utilityLabel(meter.utilityType)} | ${meter.unit}`;
+  const meterLabel = (meter) => [meter.meterNumber, utilityLabel(meter.utilityType), meter.apartment?.floor?.building?.name, meter.apartment?.apartmentNumber].filter(Boolean).join(' | ');
   $: resultSummary = `${$locale.meterReadings.title}: ${pagination.total}`;
   // Leading checkbox column — ids of the rows currently rendered.
   let selectedIds = createSelection();
@@ -293,11 +355,8 @@
 <Modal bind:open={modalOpen} title={editingId ? $locale.meterReadings.edit : $locale.meterReadings.add} description={$locale.meterReadings.description} busy={saving} size="modal-lg" icon="bi-speedometer" closeLabel={$locale.meterReadings.cancel} on:close={closeModal}>
   <form id="meter-reading-form" on:submit|preventDefault={saveReading} novalidate>
     {#if modalError}<div class="alert alert-danger" role="alert">{modalError}</div>{/if}
-    <fieldset><legend class="section-label">{$locale.meterReadings.location}</legend><div class="row g-3">
-      <div class="col-sm-6 col-lg-3"><BuildingSelect selectId="reading-building" label={$locale.meterReadings.building} buildings={buildings} icon="bi-building" bind:value={form.buildingId} on:change={buildingChanged} placeholder={$locale.meterReadings.selectBuilding} disabled={Boolean(editingId)} /></div>
-      <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-floor">{$locale.meterReadings.floor}</label><div class="field-control"><i class="bi bi-layers" aria-hidden="true"></i><select class="form-select" id="reading-floor" bind:value={form.floorId} on:change={floorChanged} disabled={!form.buildingId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectFloor}</option>{#each floors as floor (floor.id)}<option value={floor.id}>{floor.name || floor.floorNumber}</option>{/each}</select></div></div>
-      <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-apartment">{$locale.meterReadings.apartment}</label><div class="field-control"><i class="bi bi-door-open" aria-hidden="true"></i><select class="form-select" id="reading-apartment" bind:value={form.apartmentId} on:change={apartmentChanged} disabled={!form.floorId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectApartment}</option>{#each apartments as apartment (apartment.id)}<option value={apartment.id}>{apartment.apartmentNumber}{apartment.name ? ` — ${apartment.name}` : ''}</option>{/each}</select></div></div>
-      <div class="col-sm-6 col-lg-3"><label class="form-label" for="reading-meter">{$locale.meterReadings.meter}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><select class:is-invalid={formErrors.meterId} class="form-select" id="reading-meter" bind:value={form.meterId} on:change={meterChanged} disabled={!form.apartmentId || Boolean(editingId)}><option value="">{$locale.meterReadings.selectMeter}</option>{#each meters as meter (meter.id)}<option value={meter.id}>{meterLabel(meter)}</option>{/each}</select></div>{#if formErrors.meterId}<div class="invalid-feedback">{formErrors.meterId}</div>{/if}</div>
+    <fieldset><legend class="section-label">{$locale.meterReadings.meter}</legend><div class="row g-3">
+      <div class="col-12"><label class="form-label" for="reading-meter">{$locale.meterReadings.meter}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><select class:is-invalid={formErrors.meterId} class="form-select" id="reading-meter" bind:value={form.meterId} on:change={meterChanged} disabled={metersLoading || Boolean(editingId)}><option value="">{metersLoading ? $locale.meterReadings.loading : $locale.meterReadings.selectMeter}</option>{#each meters as meter (meter.id)}<option value={meter.id}>{meterLabel(meter)}</option>{/each}</select></div>{#if formErrors.meterId}<div class="invalid-feedback">{formErrors.meterId}</div>{/if}</div>
     </div></fieldset>
     <fieldset><legend class="section-label">{$locale.meterReadings.reading}</legend><div class="row g-3">
       <div class="col-sm-6"><label class="form-label" for="reading-date">{$locale.meterReadings.date}</label><ShamsiDatePicker invalid={Boolean(formErrors.readingDate)} id="reading-date" bind:value={form.readingDate} on:change={updatePreview} disabled={Boolean(editingId) && form.readingKind === 'MOVE_IN'} />{#if formErrors.readingDate}<div class="invalid-feedback">{formErrors.readingDate}</div>{/if}</div>
