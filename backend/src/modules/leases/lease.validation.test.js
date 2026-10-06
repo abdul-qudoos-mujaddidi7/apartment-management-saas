@@ -21,6 +21,29 @@ test('defaults the service fee to zero on a new lease', () => {
   assert.equal(result.data.serviceFeeCurrency, undefined);
 });
 
+test('defaults a new lease to a monthly rent cycle', () => {
+  const result = createLeaseSchema.safeParse(baseLease);
+  assert.equal(result.success, true);
+  assert.equal(result.data.rentCycleMonths, 1);
+});
+
+test('accepts only 1, 2, 3, 4, 6 or 12 month rent cycles', () => {
+  for (const months of [1, 2, 3, 4, 6, 12]) {
+    const result = createLeaseSchema.safeParse({ ...baseLease, rentCycleMonths: months });
+    assert.equal(result.success, true, `${months} should be a valid cycle`);
+    assert.equal(result.data.rentCycleMonths, months);
+  }
+  for (const months of [0, 5, 7, 13, 24, -1]) {
+    assert.equal(createLeaseSchema.safeParse({ ...baseLease, rentCycleMonths: months }).success, false);
+  }
+});
+
+test('a partial update does not reset the rent cycle', () => {
+  const result = updateLeaseSchema.safeParse({ status: 'ACTIVE' });
+  assert.equal(result.success, true);
+  assert.equal('rentCycleMonths' in result.data, false);
+});
+
 test('accepts a service fee stated in its own currency', () => {
   const result = createLeaseSchema.safeParse({
     ...baseLease,

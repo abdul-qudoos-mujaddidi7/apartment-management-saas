@@ -517,6 +517,25 @@ model Lease {
   serviceFeeCurrency String  @default("AFN") @db.VarChar(3)
 
   paymentDueDay   Int
+
+  /// How many months one invoice covers: 1, 2, 3, 4, 6 or 12. The cycle decides
+  /// both what an invoice charges — rent and the service fee are multiplied by
+  /// it — and how far the schedule advances after each invoice. Held to those
+  /// six values by the lease validator.
+  rentCycleMonths Int         @default(1)
+
+  /// When the next rent invoice falls due. The first one is the lease start date
+  /// plus one cycle — billing is in arrears, so a cycle is invoiced once it has
+  /// been served — and every generated invoice pushes it on by another cycle.
+  /// Only invoices this column schedules are generated; an invoice raised by
+  /// hand does not move it.
+  nextInvoiceDate DateTime?   @db.Date
+
+  /// The date the most recent scheduled invoice was raised for. Null until the
+  /// first cycle closes. The lease form shows it beside the next due date so the
+  /// reader can see the schedule has actually run.
+  lastInvoiceDate DateTime?   @db.Date
+
   status          LeaseStatus @default(DRAFT)
   notes           String?     @db.Text
   createdAt       DateTime    @default(now())
@@ -537,6 +556,8 @@ model Lease {
   @@index([organizationId, deletedAt])
   @@index([tenantId, deletedAt])
   @@index([apartmentId, deletedAt])
+  // What the scheduler scans: the leases whose next cycle has come due.
+  @@index([status, nextInvoiceDate])
 }
 
 /* --- Lease contract (قرارداد کرایه‌نامه) ---------------------------------
@@ -686,6 +707,11 @@ model Invoice {
   basePaidAmount Decimal       @default(0) @db.Decimal(15, 2)
   status         InvoiceStatus @default(UNPAID)
   notes          String?       @db.Text
+  /// The first day of the billing period a rent-cycle invoice covers. Null on
+  /// an invoice raised by hand. The unique index with `leaseId` is what makes
+  /// generation idempotent: one lease can bill a given period exactly once,
+  /// whatever two schedulers happen to be doing at the same moment.
+  billingPeriodStart DateTime?  @db.Date
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
@@ -695,6 +721,9 @@ model Invoice {
   items        InvoiceItem[]
 
   @@unique([organizationId, invoiceNumber])
+  // One invoice per lease per billing period. MySQL allows many NULLs in a
+  // unique index, so hand-raised invoices (period null) are unaffected.
+  @@unique([leaseId, billingPeriodStart])
   @@index([organizationId])
   @@index([leaseId])
   @@index([status])

@@ -1,6 +1,7 @@
 const { z } = require('zod');
 
 const invoiceService = require('./invoice.service');
+const invoiceGeneration = require('./invoice-generation.service');
 const {
   createInvoiceSchema,
   listInvoicesSchema,
@@ -25,7 +26,7 @@ function handleServiceError(error, res, next) {
     return res.status(404).json({ success: false, code: error.code, message: error.message });
   }
 
-  if (['INVOICE_CANCELLED', 'INVOICE_HAS_PAYMENTS', 'INVOICE_HAS_METER_READINGS', 'METER_READING_NOT_AVAILABLE', 'METER_READING_PRICE_REQUIRED', 'EXCHANGE_RATE_MISSING'].includes(error.code)) {
+  if (['INVOICE_CANCELLED', 'INVOICE_HAS_PAYMENTS', 'INVOICE_HAS_METER_READINGS', 'INVOICE_PERIOD_EXISTS', 'METER_READING_NOT_AVAILABLE', 'METER_READING_PRICE_REQUIRED', 'EXCHANGE_RATE_MISSING'].includes(error.code)) {
     return res.status(409).json({ success: false, code: error.code, message: error.message });
   }
 
@@ -81,6 +82,15 @@ async function update(req, res, next) {
   }
 }
 
+async function generateDue(req, res, next) {
+  try {
+    const invoices = await invoiceGeneration.generateDueInvoices({ organizationId: getOrganizationId(req) });
+    return res.status(200).json({ success: true, count: invoices.length, invoices });
+  } catch (error) {
+    return handleServiceError(error, res, next);
+  }
+}
+
 async function cancel(req, res, next) {
   try {
     const invoice = await invoiceService.cancelInvoice(getOrganizationId(req), req.params.id);
@@ -99,4 +109,4 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { cancel, create, get, list, remove, update };
+module.exports = { cancel, create, generateDue, get, list, remove, update };

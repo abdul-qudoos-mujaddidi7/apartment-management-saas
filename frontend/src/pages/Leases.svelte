@@ -39,10 +39,31 @@
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
 
+  // The intervals a lease may bill on, the same six the API accepts.
+  const RENT_CYCLES = [1, 2, 3, 4, 6, 12];
+  const rentCycleLabel = (months) => `${months} ${months === 1 ? $locale.leases.month : $locale.leases.months}`;
+  /*
+   * A date moved on by calendar months, the same rule the API applies (the day
+   * is clamped where the target month is short). This is only the form's own
+   * preview of what will be scheduled — the server remains the one that sets
+   * and advances the dates.
+   */
+  function addMonths(value, months) {
+    if (!value) return '';
+    const date = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) return '';
+    const day = date.getUTCDate();
+    const first = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+    const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+    return new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(day, lastDay))).toISOString().slice(0, 10);
+  }
+  // The next invoice is measured from the start until the first one is raised,
+  // and from the last invoice afterwards — exactly how the API re-times it.
+  $: nextInvoicePreview = addMonths(editing?.lastInvoiceDate ? editing.lastInvoiceDate.slice(0, 10) : form.startDate, Number(form.rentCycleMonths) || 1);
   const blankForm = () => ({
     guarantorId: '', tenantId: '', buildingId: '', floorId: '', apartmentId: '',
     contractNumber: '', startDate: '', endDate: '',
-    monthlyRent: '', securityDeposit: '0', serviceFee: '0', paymentDueDay: '1',
+    monthlyRent: '', securityDeposit: '0', serviceFee: '0', rentCycleMonths: '1', paymentDueDay: '1',
     /* Rent, deposit and the service fee can each be agreed in their own
        currency: a deposit or a fee is routinely quoted in another one. */
     currency: '', securityDepositCurrency: '', serviceFeeCurrency: '',
@@ -197,6 +218,7 @@
       monthlyRent: lease.monthlyRent,
       securityDeposit: lease.securityDeposit,
       serviceFee: lease.serviceFee ?? 0,
+      rentCycleMonths: String(lease.rentCycleMonths || 1),
       currency: lease.currency || '',
       securityDepositCurrency: lease.securityDepositCurrency || lease.currency || '',
       serviceFeeCurrency: lease.serviceFeeCurrency || lease.currency || '',
@@ -231,6 +253,7 @@
     if (!Number.isFinite(Number(form.monthlyRent)) || Number(form.monthlyRent) <= 0) return $locale.leases.monthlyRent;
     if (!Number.isFinite(Number(form.securityDeposit)) || Number(form.securityDeposit) < 0) return $locale.leases.securityDeposit;
     if (!Number.isFinite(Number(form.serviceFee)) || Number(form.serviceFee) < 0) return $locale.leases.serviceFee;
+    if (!RENT_CYCLES.includes(Number(form.rentCycleMonths))) return $locale.leases.rentCycle;
     const dueDay = Number(form.paymentDueDay);
     if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 28) return $locale.leases.paymentDueDay;
     return '';
@@ -252,6 +275,7 @@
       monthlyRent: Number(form.monthlyRent),
       securityDeposit: Number(form.securityDeposit),
       serviceFee: Number(form.serviceFee),
+      rentCycleMonths: Number(form.rentCycleMonths),
       currency: formCurrency,
       securityDepositCurrency: formSecurityDepositCurrency,
       serviceFeeCurrency: formServiceFeeCurrency,
@@ -576,6 +600,23 @@
         <p class="field-hint">{$locale.leases.serviceFeeHint}</p>
       </div>
       <div class="field">
+        <label class="field-label" for="lease-rent-cycle">{$locale.leases.rentCycle}</label>
+        <div class="field-control">
+          <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+          <select class="form-select" id="lease-rent-cycle" bind:value={form.rentCycleMonths}>
+            {#each RENT_CYCLES as months (months)}
+              <option value={String(months)}>{rentCycleLabel(months)}</option>
+            {/each}
+          </select>
+        </div>
+        <p class="field-hint">
+          {$locale.leases.rentCycleHint}
+          {#if form.startDate && nextInvoicePreview}
+            <br />{$locale.leases.nextInvoiceDate}: <strong>{formatShortDate(nextInvoicePreview)}</strong>
+          {/if}
+        </p>
+      </div>
+      <div class="field">
         <label class="field-label" for="lease-payment-due-day">{$locale.leases.paymentDueDay}</label>
         <div class="field-control">
           <i class="bi bi-calendar3" aria-hidden="true"></i>
@@ -624,6 +665,9 @@
       <div class="detail-item"><span>{$locale.leases.securityDeposit}</span><strong>{formatMoney(detail.securityDeposit, detail.securityDepositCurrency || detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.serviceFee}</span><strong>{formatMoney(detail.serviceFee, detail.serviceFeeCurrency || detail.currency)}</strong></div>
       <div class="detail-item"><span>{$locale.leases.paymentDueDay}</span><strong>{detail.paymentDueDay}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.rentCycle}</span><strong>{rentCycleLabel(detail.rentCycleMonths || 1)}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.nextInvoiceDate}</span><strong>{detail.nextInvoiceDate ? formatShortDate(detail.nextInvoiceDate) : '—'}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.lastInvoiceDate}</span><strong>{detail.lastInvoiceDate ? formatShortDate(detail.lastInvoiceDate) : '—'}</strong></div>
     </div>
     {#if detail.guarantor}
       <div class="detail-notes"><span>{$locale.guarantors.singular}</span><p>{detail.guarantor.firstName} {detail.guarantor.lastName}</p>

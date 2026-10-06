@@ -3,7 +3,7 @@
   import { api } from '../services/api';
   import { listLeases } from '../services/leases';
   import { listMeterReadings } from '../services/meterReadings';
-  import { cancelInvoice, createInvoice, deleteInvoice, getInvoice, listInvoices, updateInvoice } from '../services/invoices';
+  import { cancelInvoice, createInvoice, deleteInvoice, generateDueInvoices, getInvoice, listInvoices, updateInvoice } from '../services/invoices';
   import PageLayout from '../components/ui/PageLayout.svelte';
   import DataTable from '../components/ui/DataTable.svelte';
   import PageToolbar from '../components/ui/PageToolbar.svelte';
@@ -87,7 +87,13 @@
   onDestroy(() => debouncedSearch.cancel());
   function queueSearch() { debouncedSearch(); }
 
-  onMount(async () => { try { await Promise.all([loadBuildings(), loadInvoices(1)]); } catch (error) { await handleRequestError(error); } });
+  onMount(async () => {
+    // Raise anything the rent cycle has made due since the last scheduled pass,
+    // then draw the register, so the page reflects what is actually billed. A
+    // reader without invoice rights silently keeps the list it already has.
+    try { await generateDueInvoices(); } catch { /* the register still loads */ }
+    try { await Promise.all([loadBuildings(), loadInvoices(1)]); } catch (error) { await handleRequestError(error); }
+  });
 
   async function handleRequestError(error) { if (error.status === 401) return true; errorMessage = error.message; return false; }
   async function loadBuildings() { const response = await api.get('/buildings?page=1&pageSize=100'); buildings = response.items || []; }
@@ -331,6 +337,22 @@
   // three things that tell two readings of the same utility apart.
   const readingLabel = (reading) => `${formatShortDate(reading.readingDate)} · ${Number(reading.consumption).toLocaleString(undefined, { maximumFractionDigits: 3 })} ${reading.meter.unit} · ${reading.meter.meterNumber}`;
   $: chosenLease = leases.find((lease) => lease.id === form.leaseId) || null;
+  /*
+   * The rent cycle an invoice was billed on, and the two cycle charges it
+   * carries. They are read from the invoice's own lines — so what is shown is
+   * exactly what was posted — and fall back to the lease's terms for any
+   * invoice that predates the cycle fields.
+   */
+  const cycleMonths = (invoice) => Number(invoice?.lease?.rentCycleMonths) || 1;
+  const cycleLabel = (months) => `${months} ${months === 1 ? $locale.invoices.month : $locale.invoices.months}`;
+  const cycleLine = (invoice, type, monthly, currency) => {
+    const line = (invoice?.items || []).find((item) => item.type === type);
+    if (line) return { amount: Number(line.amount), currency: line.currency || invoice.currency };
+    return { amount: Number(monthly || 0) * cycleMonths(invoice), currency };
+  };
+  $: detailCycleMonths = detailsInvoice ? cycleMonths(detailsInvoice) : 1;
+  $: detailRent = detailsInvoice ? cycleLine(detailsInvoice, 'RENT', detailsInvoice.lease.monthlyRent, detailsInvoice.lease.currency) : { amount: 0, currency: '' };
+  $: detailServiceFee = detailsInvoice ? cycleLine(detailsInvoice, 'SERVICE_FEE', detailsInvoice.lease.serviceFee, detailsInvoice.lease.serviceFeeCurrency || detailsInvoice.lease.currency) : { amount: 0, currency: '' };
   const statusLabel = (status) => $locale.invoices[status.toLowerCase().replace('_', '')];
   const statusTone = (status) => ({ PAID: 'success', PARTIALLY_PAID: 'warning', OVERDUE: 'danger', CANCELLED: 'neutral', UNPAID: 'info' }[status] || 'neutral');
   const tenantName = (lease) => `${lease.tenant.firstName} ${lease.tenant.lastName}`.trim();
@@ -539,6 +561,15 @@
   {#if detailsInvoice}
     <p class="details-eyebrow">{detailsInvoice.invoiceNumber}</p>
     <dl class="invoice-meta"><div><dt>{$locale.invoices.tenant}</dt><dd>{tenantName(detailsInvoice.lease)}</dd></div><div><dt>{$locale.invoices.contractNumber}</dt><dd>{detailsInvoice.lease.contractNumber}</dd></div><div><dt>{$locale.invoices.building}</dt><dd>{detailsInvoice.lease.apartment.floor.building.name}</dd></div><div><dt>{$locale.invoices.floor}</dt><dd>{detailsInvoice.lease.apartment.floor.name || detailsInvoice.lease.apartment.floor.floorNumber}</dd></div><div><dt>{$locale.invoices.apartment}</dt><dd>{detailsInvoice.lease.apartment.apartmentNumber}</dd></div><div><dt>{$locale.invoices.status}</dt><dd><StatusBadge label={statusLabel(detailsInvoice.status)} tone={statusTone(detailsInvoice.status)} /></dd></div><div><dt>{$locale.invoices.invoiceDate}</dt><dd>{formatShortDate(detailsInvoice.invoiceDate)}</dd></div><div><dt>{$locale.invoices.dueDate}</dt><dd>{formatShortDate(detailsInvoice.dueDate)}</dd></div></dl>
+    <div class="billing-summary">
+      <span><em>{$locale.invoices.rentCycle}</em><strong>{cycleLabel(detailCycleMonths)}</strong></span>
+      {#if detailsInvoice.billingPeriodStart}
+        <span><em>{$locale.invoices.billingPeriod}</em><strong>{formatShortDate(detailsInvoice.billingPeriodStart)} – {formatShortDate(detailsInvoice.invoiceDate)}</strong></span>
+      {/if}
+      <span><em>{$locale.invoices.cycleRent}</em><strong>{formatMoney(detailRent.amount, detailRent.currency)}</strong></span>
+      <span><em>{$locale.invoices.cycleServiceFee}</em><strong>{formatMoney(detailServiceFee.amount, detailServiceFee.currency)}</strong></span>
+      <span><em>{$locale.invoices.total}</em><strong>{formatMoney(detailsInvoice.total, detailsInvoice.currency)}</strong></span>
+    </div>
     <div class="table-responsive"><table class="table items-table"><thead><tr><th>{$locale.invoices.itemDescription}</th><th>{$locale.invoices.type}</th><th>{$locale.invoices.quantity}</th><th>{$locale.invoices.unitPrice}</th><th>{$locale.invoices.amount}</th><th>{$locale.invoices.paid}</th><th>{$locale.invoices.balance}</th><th>{$locale.invoices.status}</th><th><span class="visually-hidden">{$locale.printing.printItem}</span></th></tr></thead><tbody>{#each detailsInvoice.items as item (item.id)}<tr><td>{item.description}</td><td>{itemTypeLabel(item.type)}</td><td class="amount-cell">{item.quantity}</td><td class="amount-cell">{formatMoney(item.unitPrice, item.currency || detailsInvoice.currency)}</td><td class="amount-cell">{formatMoney(item.amount, item.currency || detailsInvoice.currency)}</td><td class="amount-cell">{formatMoney(item.paidAmount || 0, item.currency || detailsInvoice.currency)}</td><td class="amount-cell">{formatMoney(item.balance != null ? item.balance : item.amount, item.currency || detailsInvoice.currency)}</td><td><StatusBadge label={statusLabel(item.paymentStatus || 'UNPAID')} tone={statusTone(item.paymentStatus || 'UNPAID')} /></td><td><button class="btn btn-outline-secondary btn-sm" type="button" aria-label={`${$locale.printing.printItem}: ${item.description}`} on:click={() => openItemPrint(item)}><i class="bi bi-printer" aria-hidden="true"></i><span>{$locale.printing.printItem}</span></button></td></tr>{/each}</tbody></table></div>
     <div class="invoice-summary"><span>{$locale.invoices.subtotal}<strong>{formatMoney(detailsInvoice.subtotal, detailsInvoice.currency)}</strong></span><span>{$locale.invoices.paid}<strong>{formatMoney(detailsInvoice.paidAmount, detailsInvoice.currency)}</strong></span><span>{$locale.invoices.balance}<strong>{formatMoney(detailsInvoice.total - detailsInvoice.paidAmount, detailsInvoice.currency)}</strong></span><span>{$locale.invoices.total}<strong>{formatMoney(detailsInvoice.total, detailsInvoice.currency)}</strong></span>{#if detailsInvoice.currency !== $baseCurrency}<span>{$locale.currencies.baseRate}<strong>{formatMoney(detailsInvoice.baseTotal, $baseCurrency)}</strong></span>{/if}</div>
   {/if}
@@ -575,6 +606,12 @@
   .invoice-preview, .invoice-summary { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem 1rem; flex-wrap: wrap; margin-block-start: 1rem; color: var(--text-muted); font-size: var(--text-sm); }
   .invoice-preview strong, .invoice-summary strong { color: var(--text-strong); font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .invoice-summary span { display: grid; gap: 0.18rem; min-inline-size: 8rem; }
+  /* The cycle breakdown: what the invoice billed, in the currencies the charges
+     were agreed in, beside the reporting-currency total. */
+  .billing-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.75rem; margin-block-end: 1.25rem; padding: 0.85rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface-muted); }
+  .billing-summary span { display: grid; gap: 0.2rem; min-inline-size: 0; }
+  .billing-summary em { color: var(--text-muted); font-size: var(--text-xs); font-style: normal; font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+  .billing-summary strong { color: var(--text-strong); font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: var(--text-sm); }
   .details-eyebrow { margin: 0 0 0.75rem; color: var(--text-muted); font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
 
   .invoice-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block-end: 1.25rem; }

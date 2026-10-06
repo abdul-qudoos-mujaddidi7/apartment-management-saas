@@ -6,6 +6,11 @@ const currencyCode = z.preprocess(
   z.string().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
 );
 const leaseStatuses = ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED'];
+// The intervals a lease may bill on. Anything else is a mistake, not a cycle.
+const rentCycleMonths = z.coerce.number().int().refine(
+  (value) => [1, 2, 3, 4, 6, 12].includes(value),
+  'Rent cycle must be 1, 2, 3, 4, 6 or 12 months.',
+);
 const fields = {
   guarantorId: optionalText(191),
   tenantId: z.string().trim().min(1), apartmentId: z.string().trim().min(1), contractNumber: z.string().trim().min(1).max(100),
@@ -13,6 +18,9 @@ const fields = {
   /* The recurring fee billed on top of the rent, agreed once and carried by
      every invoice raised on this lease. */
   serviceFee: z.coerce.number().min(0), serviceFeeCurrency: currencyCode,
+  /* How many months one invoice covers. The service fee above is the monthly
+     figure, so an invoice bills it — and the rent — times this many months. */
+  rentCycleMonths,
   paymentDueDay: z.coerce.number().int().min(1).max(28), status: z.enum(leaseStatuses), notes: optionalText(5000),
 };
 const dates = (schema) => schema.refine((v) => !v.startDate || !v.endDate || v.startDate < v.endDate, { message: 'Start date must be before end date.', path: ['endDate'] });
@@ -26,6 +34,7 @@ const createLeaseSchema = dates(z.object({
   ...fields,
   securityDeposit: fields.securityDeposit.default(0),
   serviceFee: fields.serviceFee.default(0),
+  rentCycleMonths: fields.rentCycleMonths.default(1),
   status: fields.status.default('DRAFT'),
 }));
 const updateLeaseSchema = dates(z.object(fields).partial().refine((v) => Object.keys(v).length, { message: 'At least one field is required.' }));

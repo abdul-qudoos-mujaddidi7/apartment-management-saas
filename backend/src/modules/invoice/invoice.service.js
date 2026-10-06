@@ -3,7 +3,8 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../../lib/prisma');
 const Decimal = Prisma.Decimal;
 const { assertLeaseOwnsInterval } = require('../meter-readings/reading-workflow');
-const { fromBase, toBase } = require('../../lib/money');
+const { fromBase, toBase, toDateOnly } = require('../../lib/money');
+const { normalizeRentCycle } = require('../../lib/rent-cycle');
 const { priceDocument } = require('../currency/currency.service');
 const { ensureDefaultAccounts } = require('../financials/financial-account.service');
 const { postJournal, voidJournalWithReversal } = require('../financials/journal.service');
@@ -50,6 +51,8 @@ function invoiceSelect(includeItems = false) {
     basePaidAmount: true,
     status: true,
     notes: true,
+    // The period a generated invoice covers; null on one raised by hand.
+    billingPeriodStart: true,
     createdAt: true,
     updatedAt: true,
     ...(includeItems ? {
@@ -81,6 +84,9 @@ function invoiceSelect(includeItems = false) {
         currency: true,
         serviceFee: true,
         serviceFeeCurrency: true,
+        // What the invoice was billed on: the number of months one cycle covers,
+        // shown beside the rent and the fee on the invoice page.
+        rentCycleMonths: true,
         tenant: { select: { id: true, firstName: true, lastName: true } },
         apartment: {
           select: {
@@ -225,6 +231,8 @@ function formatInvoice(invoice) {
     lease: {
       ...invoice.lease,
       monthlyRent: Number(invoice.lease.monthlyRent),
+      serviceFee: Number(invoice.lease.serviceFee ?? 0),
+      rentCycleMonths: normalizeRentCycle(invoice.lease.rentCycleMonths),
     },
     items: itemsFormatted,
   };
@@ -284,10 +292,13 @@ async function prepareInvoiceItems(client, organizationId, lease, sourceItems, {
   for (const item of sourceItems) {
     if (!item.meterReadingId) {
       const currency = lineCurrency(item, lease, baseCurrency);
-      // Service fees are contractual charges. Always copy the selected lease's
-      // fee so a stale or manipulated client cannot invoice a different value.
+      // Service fees are contractual charges. The unit price is always the
+      // selected lease's own fee, so a stale or manipulated client cannot
+      // invoice a different rate; the quantity is how many months the line
+      // covers — one month by default, the whole rent cycle when a cycle is
+      // billed — and the amount is the two multiplied.
       const isServiceFee = item.type === 'SERVICE_FEE';
-      const quantity = new Decimal(isServiceFee ? 1 : item.quantity);
+      const quantity = new Decimal(isServiceFee ? (item.quantity ?? 1) : item.quantity);
       const unitPrice = new Decimal(isServiceFee ? lease.serviceFee : item.unitPrice);
       const amount = quantity.times(unitPrice).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
       items.push(stored(item, currency, quantity, unitPrice, amount, await rateFor(currency)));
@@ -564,61 +575,82 @@ async function getInvoiceFromTransaction(client, id) {
   return formatInvoice(invoice);
 }
 
+/**
+ * Raise one invoice inside a transaction the caller already owns.
+ *
+ * The scheduler needs this shape: it reads the lease schedule, decides the
+ * invoice is due, posts it and moves the schedule on, all in one atomic step,
+ * so a crash can never bill a period without advancing the lease — or advance
+ * the lease without billing it. Ordinary callers use `createInvoice`, which is
+ * just this wrapped in its own transaction.
+ */
+async function createInvoiceWithinTransaction(tx, organizationId, data) {
+  const lease = await assertLeaseInOrganization(tx, organizationId, data.leaseId);
+  // The document is written in the base currency and each of its lines keeps
+  // the currency it was agreed in, so everything it stores is already a
+  // base-currency figure and its own rate is 1.
+  const { currency: baseCurrency } = await priceDocument(tx, organizationId, { date: data.invoiceDate });
+  const items = await prepareInvoiceItems(tx, organizationId, lease, data.items, {
+    baseCurrency,
+    date: data.invoiceDate,
+  });
+  const totals = calculateTotals(items);
+  const invoiceNumber = await nextInvoiceNumber(tx, organizationId);
+  const invoice = await tx.invoice.create({
+    data: {
+      organizationId,
+      leaseId: data.leaseId,
+      invoiceNumber,
+      invoiceDate: data.invoiceDate,
+      dueDate: data.dueDate,
+      notes: data.notes ?? null,
+      currency: baseCurrency,
+      exchangeRate: 1,
+      paidAmount: 0,
+      status: 'UNPAID',
+      subtotal: totals.subtotal,
+      total: totals.total,
+      baseSubtotal: totals.subtotal,
+      baseTotal: totals.total,
+      // Only set for an invoice the scheduler raised: the period it covers. It
+      // is the deduplication key, so a hand-raised invoice leaves it null.
+      billingPeriodStart: data.billingPeriodStart ? toDateOnly(data.billingPeriodStart) : null,
+    },
+    select: { id: true },
+  });
+  await tx.invoiceItem.createMany({
+    data: items.map((item) => ({ ...item, invoiceId: invoice.id })),
+  });
+  const created = await getInvoiceFromTransaction(tx, invoice.id);
+  // The sub-ledger is base currency, so it takes the stored base total.
+  await postTenantLedgerEntry(tx, organizationId, {
+    tenantId: lease.tenantId,
+    type: 'INVOICE',
+    transactionDate: created.invoiceDate,
+    referenceType: 'INVOICE',
+    referenceId: created.id,
+    description: `Invoice ${created.invoiceNumber}`,
+    debit: created.baseTotal,
+    credit: 0,
+    currency: created.currency,
+    exchangeRate: created.exchangeRate,
+  });
+  await postInvoiceJournal(tx, organizationId, created, lease.tenantId, items);
+  return created;
+}
+
 async function createInvoice(organizationId, data) {
   try {
-    return await prisma.$transaction(async (tx) => {
-      const lease = await assertLeaseInOrganization(tx, organizationId, data.leaseId);
-      // The document is written in the base currency and each of its lines keeps
-      // the currency it was agreed in, so everything it stores is already a
-      // base-currency figure and its own rate is 1.
-      const { currency: baseCurrency } = await priceDocument(tx, organizationId, { date: data.invoiceDate });
-      const items = await prepareInvoiceItems(tx, organizationId, lease, data.items, {
-        baseCurrency,
-        date: data.invoiceDate,
-      });
-      const totals = calculateTotals(items);
-      const invoiceNumber = await nextInvoiceNumber(tx, organizationId);
-      const invoice = await tx.invoice.create({
-        data: {
-          organizationId,
-          leaseId: data.leaseId,
-          invoiceNumber,
-          invoiceDate: data.invoiceDate,
-          dueDate: data.dueDate,
-          notes: data.notes ?? null,
-          currency: baseCurrency,
-          exchangeRate: 1,
-          paidAmount: 0,
-          status: 'UNPAID',
-          subtotal: totals.subtotal,
-          total: totals.total,
-          baseSubtotal: totals.subtotal,
-          baseTotal: totals.total,
-        },
-        select: { id: true },
-      });
-      await tx.invoiceItem.createMany({
-        data: items.map((item) => ({ ...item, invoiceId: invoice.id })),
-      });
-      const created = await getInvoiceFromTransaction(tx, invoice.id);
-      // The sub-ledger is base currency, so it takes the stored base total.
-      await postTenantLedgerEntry(tx, organizationId, {
-        tenantId: lease.tenantId,
-        type: 'INVOICE',
-        transactionDate: created.invoiceDate,
-        referenceType: 'INVOICE',
-        referenceId: created.id,
-        description: `Invoice ${created.invoiceNumber}`,
-        debit: created.baseTotal,
-        credit: 0,
-        currency: created.currency,
-        exchangeRate: created.exchangeRate,
-      });
-      await postInvoiceJournal(tx, organizationId, created, lease.tenantId, items);
-      return created;
-    }, { isolationLevel: 'ReadCommitted' });
+    return await prisma.$transaction(
+      (tx) => createInvoiceWithinTransaction(tx, organizationId, data),
+      { isolationLevel: 'ReadCommitted' },
+    );
   } catch (error) {
     if (error.code === 'P2002') {
+      const target = Array.isArray(error.meta?.target) ? error.meta.target.join(',') : String(error.meta?.target || '');
+      if (target.includes('billingPeriodStart')) {
+        throw serviceError('INVOICE_PERIOD_EXISTS', 'An invoice already exists for this lease and billing period.');
+      }
       throw serviceError('METER_READING_NOT_AVAILABLE', 'Meter reading was billed by another invoice. Refresh and try again.');
     }
     throw error;
@@ -739,6 +771,7 @@ module.exports = {
   prepareInvoiceItems,
   cancelInvoice,
   createInvoice,
+  createInvoiceWithinTransaction,
   getInvoice,
   listInvoices,
   softDeleteInvoice,
