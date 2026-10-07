@@ -94,7 +94,8 @@
     /* The pip sits half outside the square, over the bar's own surface. */
     box-shadow: 0 0 0 2px var(--canvas);
   }
-  .notification-panel { position: absolute; inset-inline-end: 0; top: 100%; z-index: 1040; padding: 1rem; width: min(24rem, 85vw); max-height: 70vh; overflow: auto; }
+  .notification-panel { position: absolute; inset-inline-end: 0; top: 100%; z-index: 1040; padding: 1rem; width: min(230px, calc(100vw - 2 * var(--space-3))); max-height: 70vh; overflow: auto; }
+  :global([data-theme='dark']) .notification-panel { background: var(--surface); }
   a { display: grid; gap: .25rem; padding: .75rem 0; border-bottom: 1px solid var(--card-border); color: var(--text-strong); text-decoration: none; }
   span { font-size: .875rem; }
 </style>

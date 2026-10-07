@@ -115,7 +115,7 @@
 
 <svelte:head>
   <title>{$locale.register.title} | {$locale.common.apartmentPro}</title>
-  <meta name="description" content={$locale.register.subtitle} />
+  
 </svelte:head>
 
 <main class="au-page">
@@ -170,7 +170,6 @@
         </div>
       {:else}
         <h1 class="au-title">{$locale.register.title}</h1>
-        <p class="au-lede">{$locale.register.subtitle}</p>
 
         {#if errorMessage}
           <div class="au-alert" role="alert">
@@ -199,7 +198,6 @@
           <div class="au-field">
             <label class="au-label" for="register-currency">
               {$locale.register.fields.currency}
-              <span class="au-hint">{$locale.register.currencyHint}</span>
             </label>
             <CurrencyPicker
               id="register-currency"
@@ -207,14 +205,11 @@
               bind:name={form.currencyName}
               bind:symbol={form.currencySymbol}
               inputClass="au-input"
+              showStatus={false}
               invalid={Boolean(fieldErrors.currency)}
               unavailableMessage={$locale.register.currencyUnavailable}
             />
-            {#if form.currencyName}
-              <p class="au-hint">{form.currency} — {form.currencyName} {form.currencySymbol}</p>
-            {:else}
-              <p class="au-hint">{$locale.register.currencyDefault}</p>
-            {/if}
+            <p class="au-hint">{$locale.register.currencyHint}</p>
             {#if fieldErrors.currency}
               <p class="au-error" id="register-currency-error">
                 <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.currency}

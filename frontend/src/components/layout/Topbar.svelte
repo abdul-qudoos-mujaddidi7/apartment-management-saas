@@ -1,9 +1,10 @@
 <script>
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import LeaseNotifications from '../LeaseNotifications.svelte';
   import LanguageSwitcher from '../LanguageSwitcher.svelte';
   import ThemeToggle from '../ThemeToggle.svelte';
-  import { user } from '../../stores/auth';
+  import { user, signOut } from '../../stores/auth';
+  import { replace } from 'svelte-spa-router';
   import { locale } from '../../i18n';
   import { moduleKeyForLocation } from '../../navigation';
 
@@ -13,6 +14,8 @@
   let profileOpen = false;
   let profileContainer;
   let profileButton;
+  let loggingOut = false;
+  let profileError = '';
 
   $: displayName = [$user?.firstName, $user?.lastName].filter(Boolean).join(' ') || $user?.email || '';
   $: if (!$user) profileOpen = false;
@@ -26,6 +29,31 @@
       profileOpen = false;
       profileButton?.focus();
     }
+  }
+
+  async function toggleProfile() {
+    profileError = '';
+    profileOpen = !profileOpen;
+    if (profileOpen) { await tick(); profileContainer?.querySelector('[data-profile-link]')?.focus(); }
+  }
+
+  function profileMenuKeydown(event) {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const items = [...profileContainer.querySelectorAll('[data-profile-link]:not(:disabled)')];
+    if (!items.length) return;
+    const index = items.indexOf(document.activeElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items[next]?.focus();
+  }
+
+  async function handleProfileLogout() {
+    if (loggingOut) return;
+    loggingOut = true;
+    profileError = '';
+    try { await signOut(); await replace('/login'); }
+    catch (error) { profileError = $locale.profile.logoutFailed; }
+    finally { loggingOut = false; }
   }
 
   // Read the initial hash and keep it in sync via hashchange events.
@@ -185,7 +213,7 @@
           class:is-open={profileOpen}
           type="button"
           bind:this={profileButton}
-          on:click={() => profileOpen = !profileOpen}
+          on:click={toggleProfile}
           aria-label={$locale.profile.menu}
           aria-expanded={profileOpen}
           aria-controls="topbar-profile"
@@ -195,16 +223,17 @@
         {#if profileOpen}
           <section id="topbar-profile" class="profile-panel" aria-label={$locale.profile.account}>
             <div class="profile-identity">
-              <span class="app-avatar" aria-hidden="true">{initials()}</span>
-              <div class="profile-details">
-                <strong class="profile-name">{displayName}</strong>
-                <span class="profile-email" dir="ltr">{$user.email}</span>
+              <strong class="profile-name">{displayName}</strong>
+              <span class="profile-email" dir="ltr">{$user.email}</span>
+            </div>
+            <nav class="profile-links" aria-label={$locale.profile.menu}>
+              <a class="profile-menu-item" data-profile-link on:keydown={profileMenuKeydown} href="#/dashboard" on:click={() => profileOpen = false}>{$locale.dashboard.nav.dashboard}</a>
+              <div class="profile-footer">
+                <button class="profile-menu-item" data-profile-link on:keydown={profileMenuKeydown} type="button" disabled={loggingOut} on:click={handleProfileLogout}>{loggingOut ? $locale.common.loggingOut : $locale.common.logout}</button>
+                <span class="profile-version" dir="ltr" title={$locale.profile.version}>v{__APP_VERSION__}</span>
               </div>
-            </div>
-            <div class="profile-version">
-              <span>{$locale.profile.version}</span>
-              <span class="app-version" dir="ltr">v{__APP_VERSION__}</span>
-            </div>
+            </nav>
+            {#if profileError}<p class="profile-error" role="alert">{profileError}</p>{/if}
           </section>
         {/if}
       </div>
@@ -306,8 +335,8 @@
     inset-block-start: calc(100% + var(--space-2));
     inset-inline-end: 0;
     z-index: 10;
-    width: min(320px, calc(100vw - 2 * var(--space-3)));
-    padding: var(--space-4);
+    width: min(230px, calc(100vw - 2 * var(--space-3)));
+    overflow: hidden;
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     background: var(--surface);
@@ -316,26 +345,39 @@
   }
 
   .profile-identity {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
+    display: grid;
+    gap: 0.2rem;
+    padding: var(--space-4) var(--space-5);
+    border-block-end: 1px solid var(--border);
   }
 
-  .profile-details { display: grid; gap: var(--space-1); min-width: 0; }
-  .profile-name { font-size: var(--text-sm); overflow-wrap: anywhere; }
-  .profile-email { color: var(--text-secondary); font-size: var(--text-sm); overflow-wrap: anywhere; text-align: start; }
-
-  .profile-version {
+  .profile-name, .profile-email { font-size: var(--text-sm); line-height: 1.5; overflow-wrap: anywhere; }
+  .profile-name { font-weight: var(--weight-semibold); }
+  .profile-email { color: var(--text-strong); text-align: start; }
+  .profile-links { padding-block-start: var(--space-2); }
+  .profile-menu-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: var(--space-3);
-    margin-block-start: var(--space-4);
-    padding-block-start: var(--space-3);
-    border-block-start: 1px solid var(--border);
-    color: var(--text-secondary);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-5);
+    border: 0;
+    background: transparent;
+    color: var(--text-strong);
     font-size: var(--text-sm);
+    line-height: 1.5;
+    text-align: start;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--transition);
   }
+  .profile-menu-item:hover { background: var(--surface-hover); }
+  .profile-menu-item:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -3px; background: var(--surface-hover); }
+  .profile-menu-item:disabled { cursor: wait; opacity: 0.65; }
+  .profile-footer { display: flex; align-items: center; margin-block-start: var(--space-2); padding-block: var(--space-2); padding-inline-end: var(--space-5); border-block-start: 1px solid var(--border); }
+  .profile-footer .profile-menu-item { flex: 1; min-width: 0; }
+  .profile-version { flex-shrink: 0; color: var(--text-secondary); font-size: var(--text-xs); }
+  .profile-error { margin: 0; padding: var(--space-3) var(--space-5); color: var(--danger); font-size: var(--text-sm); }
 
   /* The trailing cluster: theme, language, bell, identity. One gap and one
      control size for all of them, so the row reads as a single object rather
@@ -344,22 +386,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-1);
-  }
-
-  .app-version {
-    display: inline-flex;
-    align-items: center;
-    min-height: 1.75rem;
-    padding-inline: var(--space-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
-    color: var(--text-secondary);
-    background: var(--surface);
-    font-family: var(--font-data);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    line-height: 1;
-    white-space: nowrap;
   }
 
   /* The avatar is a disc in the reference bar, not the console's rounded

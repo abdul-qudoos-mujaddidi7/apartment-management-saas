@@ -16,14 +16,17 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
     />
     <title>ApartmentPro | Sign in</title>
-    <!-- Theme before first paint. The choice lives in localStorage; resolving it
-         here rather than in the app means a dark-mode visitor never sees a white
-         flash while the bundle loads. Deliberately inline and synchronous — a
-         deferred copy would run after the first frame, which is the flash. The
-         store in src/stores/theme.js owns every change after this. -->
+    <!-- Theme before first paint: public pages stay light, while authenticated
+         pages use the saved preference. The theme store owns later changes. -->
     <script>
       (function () {
         try {
+          var path = window.location.hash.slice(1).split('?')[0] || '/';
+          if (path === '/' || path === '/login' || path === '/register') {
+            document.documentElement.dataset.theme = 'light';
+            document.documentElement.style.colorScheme = 'light';
+            return;
+          }
           var stored = localStorage.getItem('apartmentpro.theme');
           var preference = stored === 'light' || stored === 'dark' ? stored : 'system';
           var dark =

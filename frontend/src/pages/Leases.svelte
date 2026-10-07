@@ -286,7 +286,9 @@
     try {
       if (editing) { await updateLease(editing.id, payload); notifySuccess($locale.leases.updated); }
       else { await createLease(payload); notifySuccess($locale.leases.saved); }
-      closeModal();
+      modalOpen = false;
+      editing = null;
+      modalError = '';
       await loadLeases(1);
     } catch (error) { modalError = error?.message || 'Unable to save lease.'; }
     finally { saving = false; }

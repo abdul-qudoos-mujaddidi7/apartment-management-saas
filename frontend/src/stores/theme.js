@@ -5,8 +5,8 @@ import { get, writable } from 'svelte/store';
  *
  * The value lives in localStorage and is mirrored onto `<html data-theme>` —
  * the attribute `[data-theme='dark']` in tokens.css keys off. A `<script>` in
- * index.html does the same read before the first paint, so a returning visitor
- * never sees a white flash; this module owns every change *after* that.
+ * index.html applies the same rule before the first paint. Public pages always
+ * use light mode; authenticated pages retain the saved preference.
  */
 const STORAGE_KEY = 'apartmentpro.theme';
 
@@ -34,8 +34,17 @@ export function resolveTheme(preference) {
 
 export const themePreference = writable(readStored());
 
+function pageTheme() {
+  const path = typeof window !== 'undefined'
+    ? window.location.hash.slice(1).split('?')[0] || '/'
+    : '/';
+  return ['/', '/login', '/register'].includes(path)
+    ? 'light'
+    : resolveTheme(get(themePreference));
+}
+
 /** The theme actually on screen: 'light' or 'dark', never 'system'. */
-export const resolvedTheme = writable(resolveTheme(get(themePreference)));
+export const resolvedTheme = writable(pageTheme());
 
 function paint(theme) {
   if (typeof document === 'undefined') return;
@@ -60,8 +69,8 @@ export function toggleTheme() {
 }
 
 if (typeof window !== 'undefined') {
-  const apply = (preference) => {
-    const theme = resolveTheme(get(themePreference));
+  const apply = () => {
+    const theme = pageTheme();
     resolvedTheme.set(theme);
     paint(theme);
   };
@@ -69,6 +78,7 @@ if (typeof window !== 'undefined') {
   apply();
 
   themePreference.subscribe(apply);
+  window.addEventListener('hashchange', apply);
 
   // Only meaningful while the preference is 'system', but the listener is
   // harmless either way — `apply` re-resolves and the OS value is ignored
