@@ -27,6 +27,7 @@
   export let kind; // which document this is — an allowlist the API enforces
   export let label; // the field's name, used as the image's alt text too
   export let hint = ''; // an extra line under the control, when the name is not enough
+  export let showHint = true;
   export let shape = 'card'; // 'card' (16:10 document) | 'avatar' (round)
   export let disabled = false;
 
@@ -183,7 +184,9 @@
     </div>
   {/if}
 
-  <p class="image-upload-hint">{hint || $locale.uploads.hint}</p>
+  {#if showHint}
+    <p class="image-upload-hint">{hint || $locale.uploads.hint}</p>
+  {/if}
 
   {#if errorMessage}
     <p class="image-upload-error" role="alert">{errorMessage}</p>

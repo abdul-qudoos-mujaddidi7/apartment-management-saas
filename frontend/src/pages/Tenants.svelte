@@ -61,7 +61,6 @@
       firstName: '',
       fatherName: '',
       phone: '',
-      alternatePhone: '',
       nationalId: '',
       // Documents are uploaded one at a time; the form only carries the paths
       // the API handed back.
@@ -69,6 +68,7 @@
       idCardFrontUrl: null,
       idCardBackUrl: null,
       address: '',
+      primaryResidence: '',
       emergencyContactName: '',
       emergencyContactPhone: '',
       notes: '',
@@ -177,10 +177,10 @@
     };
 
     const nullableFields = [
-      'alternatePhone',
       'nationalId',
       'fatherName',
       'address',
+      'primaryResidence',
       'emergencyContactName',
       'emergencyContactPhone',
       'notes'
@@ -492,24 +492,7 @@
       <legend class="section-label">{$locale.tenants.phone}</legend>
 
       <div class="row g-3">
-        <div class="col-sm-6">
-          <label class="form-label" for="tenant-alt-phone">{$locale.tenants.alternatePhone}</label>
-          <div class="field-control">
-            <i class="bi bi-telephone-plus" aria-hidden="true"></i>
-            <input
-              class:is-invalid={formErrors.alternatePhone}
-              class="form-control"
-              id="tenant-alt-phone"
-              type="tel"
-              bind:value={form.alternatePhone}
-            />
-          </div>
-          {#if formErrors.alternatePhone}
-            <div class="invalid-feedback">{formErrors.alternatePhone}</div>
-          {/if}
-        </div>
-
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-national-id">{$locale.tenants.nationalId}</label>
           <div class="field-control">
             <i class="bi bi-person-vcard" aria-hidden="true"></i>
@@ -525,7 +508,24 @@
           {/if}
         </div>
 
-        <div class="col-12">
+        <div class="col-sm-4">
+          <label class="form-label" for="tenant-primary-residence">{$locale.tenants.primaryResidence}</label>
+          <div class="field-control">
+            <i class="bi bi-house" aria-hidden="true"></i>
+            <input
+              class:is-invalid={formErrors.primaryResidence}
+              class="form-control"
+              id="tenant-primary-residence"
+              autocomplete="street-address"
+              bind:value={form.primaryResidence}
+            />
+          </div>
+          {#if formErrors.primaryResidence}
+            <div class="invalid-feedback">{formErrors.primaryResidence}</div>
+          {/if}
+        </div>
+
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-address">{$locale.tenants.address}</label>
           <div class="field-control">
             <i class="bi bi-geo-alt" aria-hidden="true"></i>
@@ -592,19 +592,6 @@
           </div>
         </div>
 
-        <div class="col-12">
-          <label class="form-label" for="tenant-notes">{$locale.tenants.notes}</label>
-          <textarea
-            class:is-invalid={formErrors.notes}
-            class="form-control"
-            id="tenant-notes"
-            rows="3"
-            bind:value={form.notes}
-          ></textarea>
-          {#if formErrors.notes}
-            <div class="invalid-feedback">{formErrors.notes}</div>
-          {/if}
-        </div>
       </div>
     </fieldset>
 
@@ -620,7 +607,7 @@
           <ImageUpload
             kind="tenant-photo"
             label={$locale.tenants.photo}
-            hint={$locale.tenants.photoHint}
+            showHint={false}
             value={form.photoUrl}
             disabled={saving}
             on:change={(event) => (form.photoUrl = event.detail.url)}
@@ -632,6 +619,7 @@
           <ImageUpload
             kind="tenant-id-front"
             label={$locale.tenants.idCardFront}
+            showHint={false}
             value={form.idCardFrontUrl}
             disabled={saving}
             on:change={(event) => (form.idCardFrontUrl = event.detail.url)}
@@ -643,11 +631,32 @@
           <ImageUpload
             kind="tenant-id-back"
             label={$locale.tenants.idCardBack}
+            showHint={false}
             value={form.idCardBackUrl}
             disabled={saving}
             on:change={(event) => (form.idCardBackUrl = event.detail.url)}
             on:busy={(event) => markUpload('idCardBackUrl', event.detail.busy)}
           />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="section-label">{$locale.tenants.notes}</legend>
+
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label" for="tenant-notes">{$locale.tenants.notes}</label>
+          <textarea
+            class:is-invalid={formErrors.notes}
+            class="form-control"
+            id="tenant-notes"
+            rows="3"
+            bind:value={form.notes}
+          ></textarea>
+          {#if formErrors.notes}
+            <div class="invalid-feedback">{formErrors.notes}</div>
+          {/if}
         </div>
       </div>
     </fieldset>

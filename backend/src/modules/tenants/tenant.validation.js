@@ -14,7 +14,6 @@ const optionalString = (max) =>
 const tenantFields = {
   firstName: z.string().trim().min(1).max(191),
   phone: z.string().trim().min(3).max(64),
-  alternatePhone: optionalString(64),
   nationalId: optionalString(64),
   fatherName: optionalString(191),
   // Identity documents hold the path of a file this API wrote, never a URL from
@@ -23,6 +22,7 @@ const tenantFields = {
   idCardFrontUrl: uploadUrlSchema,
   idCardBackUrl: uploadUrlSchema,
   address: optionalString(500),
+  primaryResidence: optionalString(500),
   emergencyContactName: optionalString(191),
   emergencyContactPhone: optionalString(64),
   notes: optionalString(5000),

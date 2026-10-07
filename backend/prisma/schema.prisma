@@ -432,7 +432,6 @@ model Tenant {
   organizationId        String
   firstName             String
   phone                 String
-  alternatePhone        String?
   nationalId            String?
   fatherName            String?
 
@@ -445,6 +444,7 @@ model Tenant {
   idCardBackUrl         String?      @db.VarChar(500)
 
   address               String?      @db.VarChar(500)
+  primaryResidence      String?      @db.VarChar(500)
   emergencyContactName  String?
   emergencyContactPhone String?
   notes                 String?      @db.Text

@@ -15,13 +15,13 @@ function tenantSelect() {
     organizationId: true,
     firstName: true,
     phone: true,
-    alternatePhone: true,
     nationalId: true,
     fatherName: true,
     photoUrl: true,
     idCardFrontUrl: true,
     idCardBackUrl: true,
     address: true,
+    primaryResidence: true,
     emergencyContactName: true,
     emergencyContactPhone: true,
     notes: true,
@@ -41,7 +41,6 @@ async function listTenants(organizationId, { page, pageSize, search, status }) {
           OR: [
             { firstName: { contains: search } },
             { phone: { contains: search } },
-            { alternatePhone: { contains: search } },
           ],
         }
       : {}),
