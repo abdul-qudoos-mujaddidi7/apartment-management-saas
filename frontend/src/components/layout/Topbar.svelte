@@ -199,6 +199,7 @@
           {$locale.dashboard.nav.leases}
         </button>
         {#if canViewGuarantors}
+          <span class="subnav-separator" aria-hidden="true">|</span>
           <button
             class="subnav-item"
             class:is-active={guarantorsActive}

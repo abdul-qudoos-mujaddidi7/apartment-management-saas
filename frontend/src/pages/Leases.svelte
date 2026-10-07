@@ -31,7 +31,7 @@
 
   import { api } from '../services/api';
   import { listFloors } from '../services/floors';
-  import { listApartments } from '../services/apartments';
+  import { createApartment, listApartments } from '../services/apartments';
   import { listLeases, createLease, updateLease, deleteLease } from '../services/leases';
   import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
   import { locale } from '../i18n';
@@ -77,6 +77,9 @@
   let buildings = [];
   let floors = [];
   let apartments = [];
+  $: leaseApartmentOptions = apartments.filter(
+    (apartment) => apartment.status !== 'OCCUPIED' || apartment.id === editing?.apartment?.id
+  );
   let loading = false;
   let saving = false;
   let optionsLoading = false;
@@ -85,6 +88,10 @@
   let editing = null;
   let errorMessage = '';
   let modalError = '';
+  let quickApartmentOpen = false;
+  let quickApartmentSaving = false;
+  let quickApartmentError = '';
+  let quickApartment = { apartmentNumber: '', name: '', type: '' };
   let search = '';
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let form = blankForm();
@@ -156,6 +163,53 @@
     if (!form.floorId) return;
     try { await loadApartmentsForFloor(form.floorId); }
     catch (error) { modalError = error?.message || 'Unable to load apartments.'; }
+  }
+
+  function openQuickApartment() {
+    quickApartment = { apartmentNumber: '', name: '', type: '' };
+    quickApartmentError = '';
+    quickApartmentOpen = true;
+  }
+
+  function closeQuickApartment() {
+    if (quickApartmentSaving) return;
+    quickApartmentOpen = false;
+    quickApartmentError = '';
+  }
+
+  async function saveQuickApartment() {
+    if (!form.floorId || quickApartmentSaving) return;
+    quickApartmentError = '';
+    if (!quickApartment.apartmentNumber.trim() || !quickApartment.name.trim() || !quickApartment.type) {
+      quickApartmentError = $locale.apartments.required.replace('{field}', !quickApartment.apartmentNumber.trim()
+        ? $locale.apartments.apartmentNumber
+        : !quickApartment.name.trim()
+          ? $locale.apartments.name
+          : $locale.apartments.type);
+      return;
+    }
+
+    quickApartmentSaving = true;
+    try {
+      const response = await createApartment({
+        floorId: form.floorId,
+        apartmentNumber: quickApartment.apartmentNumber.trim(),
+        name: quickApartment.name.trim(),
+        type: quickApartment.type,
+        status: 'AVAILABLE'
+      });
+      const apartment = response.apartment || response;
+      apartments = [...apartments, apartment];
+      form = { ...form, apartmentId: apartment.id };
+      apartmentChanged();
+      quickApartmentOpen = false;
+    } catch (error) {
+      quickApartmentError = error.data?.code === 'APARTMENT_NUMBER_EXISTS'
+        ? $locale.apartments.apartmentNumberExists
+        : error.message;
+    } finally {
+      quickApartmentSaving = false;
+    }
   }
 
   /*
@@ -500,6 +554,7 @@
           placeholder={$locale.leases.select}
           required
           disabled={optionsLoading}
+          allowCreate={false}
         />
       </div>
       <div class="field">
@@ -516,16 +571,26 @@
       </div>
       <div class="field">
         <label class="field-label" for="lease-apartment">{$locale.leases.apartment}</label>
-        <div class="field-control">
+        <div class="field-control lease-apartment-select">
           <i class="bi bi-door-open" aria-hidden="true"></i>
           <select class="form-select" id="lease-apartment" bind:value={form.apartmentId} on:change={apartmentChanged} disabled={!form.floorId} required>
             <option value="">{$locale.leases.select}</option>
-            {#each apartments as apartment (apartment.id)}
+            {#each leaseApartmentOptions as apartment (apartment.id)}
               <option value={apartment.id} disabled={apartment.status !== 'AVAILABLE' && apartment.id !== editing?.apartment?.id}>
                 {apartment.apartmentNumber} — {apartment.name}
               </option>
             {/each}
           </select>
+          <button
+            class="lease-apartment-add"
+            type="button"
+            on:click={openQuickApartment}
+            disabled={!form.floorId || optionsLoading}
+            aria-label={$locale.apartments.add}
+            title={$locale.apartments.add}
+          >
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+          </button>
         </div>
       </div>
       <div class="field">
@@ -651,6 +716,53 @@
   </div>
 </Modal>
 
+<Modal
+  bind:open={quickApartmentOpen}
+  title={$locale.apartments.add}
+  icon="bi-door-open"
+  busy={quickApartmentSaving}
+  closeLabel={$locale.leases.cancel}
+  on:close={closeQuickApartment}
+>
+  <form id="quick-apartment-form" on:submit|preventDefault={saveQuickApartment} novalidate>
+    {#if quickApartmentError}
+      <div class="alert alert-danger" role="alert">{quickApartmentError}</div>
+    {/if}
+    <div class="field">
+      <label class="field-label" for="quick-apartment-number">{$locale.apartments.apartmentNumber}</label>
+      <div class="field-control">
+        <i class="bi bi-123" aria-hidden="true"></i>
+        <input class="form-control" id="quick-apartment-number" bind:value={quickApartment.apartmentNumber} required />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="quick-apartment-name">{$locale.apartments.name}</label>
+      <div class="field-control">
+        <i class="bi bi-tag" aria-hidden="true"></i>
+        <input class="form-control" id="quick-apartment-name" bind:value={quickApartment.name} required />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="quick-apartment-type">{$locale.apartments.type}</label>
+      <div class="field-control">
+        <i class="bi bi-tags" aria-hidden="true"></i>
+        <select class="form-select" id="quick-apartment-type" bind:value={quickApartment.type} required>
+          <option value="">{$locale.apartments.selectType}</option>
+          {#each Object.keys($locale.apartments.types) as typeValue (typeValue)}
+            <option value={typeValue}>{$locale.apartments.types[typeValue]}</option>
+          {/each}
+        </select>
+      </div>
+    </div>
+  </form>
+  <div slot="footer">
+    <button class="btn btn-light" type="button" on:click={closeQuickApartment} disabled={quickApartmentSaving}>{$locale.leases.cancel}</button>
+    <button class="btn btn-primary" type="submit" form="quick-apartment-form" disabled={quickApartmentSaving}>
+      {quickApartmentSaving ? $locale.apartments.loading : $locale.apartments.save}
+    </button>
+  </div>
+</Modal>
+
 <!-- Detail Modal -->
 <Modal open={Boolean(detail)} title={$locale.leases.details} description={$locale.leases.description} icon="bi-file-earmark-text" size="modal-lg" closeLabel={$locale.leases.cancel} on:close={() => (detail = null)}>
   {#if detail}
@@ -690,6 +802,13 @@
 </Modal>
 
 <style>
+  .lease-apartment-select .form-select { width: 100%; padding-inline-end: 3.25rem; background-position: right 2.7rem center; }
+  :global([dir='rtl']) .lease-apartment-select .form-select { background-position: left 2.7rem center; }
+  .lease-apartment-add { position: absolute; z-index: 1; inset-inline-end: 0.35rem; top: 50%; display: inline-flex; align-items: center; justify-content: center; width: calc(var(--control-height) - 0.5rem); height: calc(var(--control-height) - 0.5rem); padding: 0; transform: translateY(-50%); border: 0; border-radius: var(--control-radius); color: var(--accent-text); background: transparent; font-size: 1rem; cursor: pointer; }
+  .lease-apartment-add:hover:not(:disabled) { color: var(--accent-hover); background: transparent; }
+  .lease-apartment-add:focus-visible { outline: 0; box-shadow: var(--ring); }
+  .lease-apartment-add:disabled { color: var(--text-placeholder); cursor: not-allowed; }
+  #quick-apartment-form { display: grid; gap: var(--space-3); }
   .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
   .detail-item { padding: 0.85rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface-muted); }
   .detail-item > span, .detail-notes > span { display: block; margin-bottom: 0.25rem; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
