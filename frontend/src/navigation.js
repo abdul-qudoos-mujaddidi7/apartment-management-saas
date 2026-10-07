@@ -9,7 +9,6 @@ export const navigationItems = [
   { key: 'dashboard', icon: 'bi-grid-1x2', href: '/dashboard' },
   { key: 'buildings', icon: 'bi-buildings', href: '/buildings' },
   { key: 'tenants', icon: 'bi-people', href: '/tenants' },
-  { key: 'leases', icon: 'bi-file-earmark-text', href: '/leases' },
   { key: 'securityDeposits', icon: 'bi-shield-check', href: '/security-deposits' },
   { key: 'meters', icon: 'bi-speedometer2', href: '/meters' },
   { key: 'invoices', icon: 'bi-receipt', href: '/invoices' },
@@ -52,9 +51,11 @@ const moduleAliases = [
   // Tenant accounts live under the Accounts module.
   { path: '/tenant-accounts', key: 'accounts' },
   { prefix: '/tenant-accounts/', key: 'accounts' },
-  // A printed contract belongs to the lease it was raised on, so the chrome
-  // keeps naming the Leases module while the document is open.
-  { prefix: '/leases/', key: 'leases' }
+  // Leases are a tab in the Tenants module rather than a sidebar row, so the
+  // chrome keeps naming Tenants while the lease list, a lease's details or a
+  // printed contract is open.
+  { path: '/leases', key: 'tenants' },
+  { prefix: '/leases/', key: 'tenants' }
 ];
 
 /**

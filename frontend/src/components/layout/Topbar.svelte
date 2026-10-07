@@ -89,6 +89,9 @@
   $: meterReadingsActive = currentPath === '/meter-readings' || currentPath.startsWith('/meter-readings/');
   $: isTenantsModule = moduleKey === 'tenants';
   $: tenantsActive = currentPath === '/tenants' || currentPath.startsWith('/tenants/');
+  // Leases are a tab in the Tenants module: their list, their details and the
+  // printed contract all light it up.
+  $: leasesActive = currentPath === '/leases' || currentPath.startsWith('/leases/');
   $: guarantorsActive = currentPath === '/guarantors' || currentPath.startsWith('/guarantors/');
   $: canViewGuarantors = $user?.permissions?.includes('GUARANTOR_VIEW');
   $: isInvoicesModule = moduleKey === 'invoices';
@@ -184,17 +187,28 @@
         </button>
       </nav>
     {/if}
-    {#if isTenantsModule && canViewGuarantors}
+    {#if isTenantsModule}
       <nav class="app-topbar-subnav" aria-label={moduleName}>
         <button
           class="subnav-item"
-          class:is-active={guarantorsActive}
-          aria-current={guarantorsActive ? 'page' : undefined}
+          class:is-active={leasesActive}
+          aria-current={leasesActive ? 'page' : undefined}
           type="button"
-          on:click={() => navigateSub('/guarantors')}
+          on:click={() => navigateSub('/leases')}
         >
-          {$locale.dashboard.nav.guarantors}
+          {$locale.dashboard.nav.leases}
         </button>
+        {#if canViewGuarantors}
+          <button
+            class="subnav-item"
+            class:is-active={guarantorsActive}
+            aria-current={guarantorsActive ? 'page' : undefined}
+            type="button"
+            on:click={() => navigateSub('/guarantors')}
+          >
+            {$locale.dashboard.nav.guarantors}
+          </button>
+        {/if}
       </nav>
     {/if}
     {#if isMetersModule || isInvoicesModule}
