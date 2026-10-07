@@ -35,7 +35,7 @@ function readingSelect() {
     id: true, meterId: true, readingDate: true, previousReading: true,
     currentReading: true, consumption: true, unitPrice: true, amount: true,
     notes: true, createdAt: true, updatedAt: true, leaseId: true, periodStart: true, currency: true, readingKind: true, resetBaseline: true,
-    lease: { select: { id: true, contractNumber: true, tenant: { select: { firstName: true, lastName: true } } } },
+    lease: { select: { id: true, contractNumber: true, tenant: { select: { firstName: true } } } },
     invoiceItem: {
       select: {
         id: true,

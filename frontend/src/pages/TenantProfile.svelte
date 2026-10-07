@@ -59,9 +59,9 @@
     return $locale.tenantProfile[group]?.[status] || status;
   }
 
-  const name = (tenant) => (tenant ? `${tenant.firstName} ${tenant.lastName}` : '');
+  const name = (tenant) => (tenant ? `${tenant.firstName}` : '');
   const initials = (tenant) => tenant
-    ? [tenant.firstName, tenant.lastName]
+    ? (tenant.firstName || '').split(/\s+/)
         .filter(Boolean)
         .map((part) => part.trim().charAt(0))
         .join('')

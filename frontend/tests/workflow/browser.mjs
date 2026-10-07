@@ -76,10 +76,21 @@ try {
   await evaluate("document.querySelector('#number').value = '005'; document.querySelector('#number').dispatchEvent(new Event('input', {bubbles:true}));");
   assert.equal(await evaluate("document.querySelector('#number').value"), '5');
   assert.equal(await evaluate("document.querySelector('#identifier').value"), '005');
-  await click('#cancel'); assert.equal(await isOpen(), true, 'Reject discard preserves form');
-  assert.equal(await evaluate('window.confirmCalls'), 1, 'Cancel prompts once');
-  await evaluate('window.allowDiscard = true'); await click('#cancel'); assert.equal(await isOpen(), false, 'Confirmed discard closes');
-  console.log('Dirty form checks passed');
+  await click('#cancel'); assert.equal(await isOpen(), false, 'Cancel closes edited form immediately');
+  assert.equal(await evaluate('window.confirmCalls'), 0, 'Cancel does not prompt');
+  const clickOutside = async () => {
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 5, y: 5, button: 'left', clickCount: 1 });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 5, y: 5, button: 'left', clickCount: 1 });
+    await pause(30);
+  };
+  for (const dismiss of [key, () => click('.btn-close'), clickOutside]) {
+    await open();
+    await evaluate("(() => { const field = document.querySelector('#number'); field.value='5'; field.dispatchEvent(new Event('input', {bubbles:true})); })()");
+    await dismiss();
+    assert.equal(await isOpen(), false, 'Edited form closes without confirmation');
+    assert.equal(await evaluate('window.confirmCalls'), 0, 'Edited form does not prompt');
+  }
+  console.log('Edited form dismissal checks passed');
   await open();
   await click('#date'); await key(); assert.equal(await isOpen(), true, 'Picker owns first Escape');
   await key(); assert.equal(await isOpen(), false, 'Next Escape closes modal');
@@ -199,7 +210,7 @@ try {
   assert.ok(mediaBox, 'PDF declares its paper size');
   assert.ok(Math.abs(Number(mediaBox[1]) - 841.89) < 2 && Math.abs(Number(mediaBox[2]) - 1190.55) < 2, 'PDF uses A3 portrait dimensions');
   console.log('Passed: reusable print previews, isolated A3 styles, fonts, currencies, rate precision, reading calculations, safe notes and English digits in Dari/Pashto documents.');
-  console.log('Passed: modal outside/inside click, Escape, close, dirty cancel, numeric padding, text identifiers, picker Escape, dropdown outside/inside/Escape, English/Dari/Pashto direction.');
+  console.log('Passed: modal outside/inside click, Escape, close, immediate cancellation, numeric padding, text identifiers, picker Escape, dropdown outside/inside/Escape, English/Dari/Pashto direction.');
 } finally {
   if (socket?.readyState === WebSocket.OPEN && send) { await send('Browser.close').catch(() => {}); socket.close(); }
   browser?.kill();

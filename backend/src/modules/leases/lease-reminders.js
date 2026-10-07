@@ -8,7 +8,7 @@ async function expiringLeases(organizationId) {
       tenant: { deletedAt: null }, apartment: { deletedAt: null } },
     orderBy: [{ endDate: 'asc' }, { id: 'asc' }],
     select: { id: true, contractNumber: true, status: true, endDate: true, monthlyRent: true, currency: true,
-      tenant: { select: { id: true, firstName: true, lastName: true } },
+      tenant: { select: { id: true, firstName: true } },
       apartment: { select: { id: true, apartmentNumber: true, name: true, floor: { select: { name: true, building: { select: { name: true } } } } } } },
   });
   // Derived notifications: one stable key per lease/expiry, with no stale rows

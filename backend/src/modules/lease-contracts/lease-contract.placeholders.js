@@ -31,7 +31,6 @@ const PLACEHOLDER_GROUPS = [
     tokens: [
       ['tenant.fullName', 'Tenant full name'],
       ['tenant.firstName', 'Tenant first name'],
-      ['tenant.lastName', 'Tenant last name'],
       ['tenant.fatherName', 'Tenant father name'],
       ['tenant.phone', 'Tenant phone'],
       ['tenant.alternatePhone', 'Tenant alternate phone'],

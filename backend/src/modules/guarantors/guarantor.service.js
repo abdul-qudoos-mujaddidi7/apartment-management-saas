@@ -48,7 +48,7 @@ async function getGuarantorProfile(org, id, { page, pageSize }, canViewLeases) {
     select: {
       id: true, contractNumber: true, startDate: true, endDate: true, status: true,
       monthlyRent: true, currency: true,
-      tenant: { select: { id: true, firstName: true, lastName: true, deletedAt: true } },
+      tenant: { select: { id: true, firstName: true, deletedAt: true } },
       apartment: { select: {
         apartmentNumber: true, name: true,
         floor: { select: { name: true, floorNumber: true, building: { select: { name: true } } } },

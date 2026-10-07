@@ -43,7 +43,6 @@ const leaseSelect = {
     select: {
       id: true,
       firstName: true,
-      lastName: true,
       phone: true,
     },
   },
@@ -298,7 +297,6 @@ function buildLeaseWhere(organizationId, query) {
           OR: [
             { contractNumber: { contains: query.search } },
             { tenant: { firstName: { contains: query.search } } },
-            { tenant: { lastName: { contains: query.search } } },
             { tenant: { phone: { contains: query.search } } },
             { apartment: { apartmentNumber: { contains: query.search } } },
           ],

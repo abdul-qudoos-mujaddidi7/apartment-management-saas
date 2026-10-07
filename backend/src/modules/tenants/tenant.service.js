@@ -14,7 +14,6 @@ function tenantSelect() {
     id: true,
     organizationId: true,
     firstName: true,
-    lastName: true,
     phone: true,
     alternatePhone: true,
     nationalId: true,
@@ -32,15 +31,15 @@ function tenantSelect() {
   };
 }
 
-async function listTenants(organizationId, { page, pageSize, search }) {
+async function listTenants(organizationId, { page, pageSize, search, status }) {
   const where = {
     organizationId,
     deletedAt: null,
+    ...(status ? { status } : {}),
     ...(search
       ? {
           OR: [
             { firstName: { contains: search } },
-            { lastName: { contains: search } },
             { phone: { contains: search } },
             { alternatePhone: { contains: search } },
           ],
@@ -52,7 +51,7 @@ async function listTenants(organizationId, { page, pageSize, search }) {
     prisma.tenant.findMany({
       where,
       select: tenantSelect(),
-      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ firstName: 'asc' }, { createdAt: 'asc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

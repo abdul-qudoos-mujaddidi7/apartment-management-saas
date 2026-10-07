@@ -104,7 +104,7 @@
             <thead><tr><th>{$locale.leases.contractNumber}</th><th>{$locale.leases.tenant}</th><th>{$locale.leases.building}</th><th>{$locale.leases.apartment}</th><th>{$locale.leases.period}</th><th>{$locale.leases.monthlyRent}</th><th>{$locale.leases.status}</th><th>{$locale.guarantors.actions}</th></tr></thead>
             <tbody>{#each profile.leases as lease (lease.id)}<tr>
               <td><button class="table-link" type="button" on:click={() => push(`/leases?detail=${encodeURIComponent(lease.id)}`)}>{lease.contractNumber}</button></td>
-              <td>{#if lease.tenant.deletedAt}{lease.tenant.firstName} {lease.tenant.lastName}{:else}<button class="table-link" type="button" on:click={() => push(`/tenants/${encodeURIComponent(lease.tenant.id)}`)}>{lease.tenant.firstName} {lease.tenant.lastName}</button>{/if}</td>
+              <td>{#if lease.tenant.deletedAt}{lease.tenant.firstName}{:else}<button class="table-link" type="button" on:click={() => push(`/tenants/${encodeURIComponent(lease.tenant.id)}`)}>{lease.tenant.firstName}</button>{/if}</td>
               <td>{lease.apartment.floor.building.name}<small>{$locale.leases.floor}: {lease.apartment.floor.name || lease.apartment.floor.floorNumber}</small></td>
               <td>{lease.apartment.apartmentNumber}</td><td>{formatShortDate(lease.startDate)} — {formatShortDate(lease.endDate)}</td><td>{formatMoney(lease.monthlyRent, lease.currency)}</td>
               <td><StatusBadge label={$locale.tenantProfile.leaseStatuses[lease.status] || lease.status} tone={tones[lease.status] || 'neutral'} /></td>

@@ -6,7 +6,7 @@
   import LanguageSwitcher from '../components/LanguageSwitcher.svelte';
   import { locale, translate } from '../i18n';
 
-  let email = '';
+  let username = '';
   let password = '';
   let rememberMe = false;
   let showPassword = false;
@@ -15,17 +15,17 @@
   let fieldErrors = {};
 
   onMount(() => {
-    const savedEmail = localStorage.getItem('apartmentpro.rememberedEmail');
-    if (savedEmail) {
-      email = savedEmail;
+    const savedUsername = localStorage.getItem('apartmentpro.rememberedUsername')
+      || localStorage.getItem('apartmentpro.rememberedEmail');
+    if (savedUsername) {
+      username = savedUsername;
       rememberMe = true;
     }
   });
 
   function validate() {
     fieldErrors = {};
-    if (!email.trim()) fieldErrors.email = [translate('login.requiredEmail')];
-    else if (!/^\S+@\S+\.\S+$/.test(email)) fieldErrors.email = [translate('login.invalidEmail')];
+    if (!username.trim()) fieldErrors.username = [translate('login.requiredUsername')];
     if (!password) fieldErrors.password = [translate('login.requiredPassword')];
     return Object.keys(fieldErrors).length === 0;
   }
@@ -36,10 +36,14 @@
 
     loading = true;
     try {
-      await login({ email: email.trim(), password });
+      const identifier = username.trim();
+      await login(identifier.includes('@')
+        ? { email: identifier, password }
+        : { username: identifier, password });
       resetAuth();
-      if (rememberMe) localStorage.setItem('apartmentpro.rememberedEmail', email.trim());
-      else localStorage.removeItem('apartmentpro.rememberedEmail');
+      if (rememberMe) localStorage.setItem('apartmentpro.rememberedUsername', username.trim());
+      else localStorage.removeItem('apartmentpro.rememberedUsername');
+      localStorage.removeItem('apartmentpro.rememberedEmail');
       await push('/dashboard');
     } catch (error) {
       fieldErrors = error.data?.errors || {};
@@ -111,19 +115,21 @@
 
       <form class="au-form" on:submit|preventDefault={handleSubmit} novalidate>
         <div class="au-field">
-          <label class="au-label" for="email">{$locale.login.email}</label>
+          <label class="au-label" for="username">{$locale.login.username}</label>
           <input
             class="au-input"
-            id="email"
-            type="email"
-            autocomplete="email"
-            bind:value={email}
-            aria-invalid={Boolean(fieldErrors.email)}
-            aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+            id="username"
+            type="text"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck={false}
+            bind:value={username}
+            aria-invalid={Boolean(fieldErrors.username)}
+            aria-describedby={fieldErrors.username ? 'username-error' : undefined}
           />
-          {#if fieldErrors.email}
-            <p class="au-error" id="email-error">
-              <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.email[0]}
+          {#if fieldErrors.username}
+            <p class="au-error" id="username-error">
+              <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.username[0]}
             </p>
           {/if}
         </div>

@@ -31,8 +31,7 @@
   setLanguage('en');
   window.setTestLanguage = setLanguage;
   window.confirmCalls = 0;
-  window.allowDiscard = false;
-  window.confirm = () => { window.confirmCalls++; return window.allowDiscard; };
+  window.confirm = () => { window.confirmCalls++; return false; };
 </script>
 <button id="open" on:click={() => { open = true; count = 0; date = ''; }}>Open</button>
 <button id="utility-open" on:click={() => utilityOpen = true}>Electricity</button>

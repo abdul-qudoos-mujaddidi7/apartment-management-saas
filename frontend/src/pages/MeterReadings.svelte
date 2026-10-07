@@ -375,7 +375,7 @@
   {#if billReading}
     {#if billError}<p class="alert alert-danger" role="alert">{billError}</p>{/if}
     <p>{billReading.meter.meterNumber} · {billReading.meter.apartment.apartmentNumber}</p>
-    <p>{billReading.lease?.contractNumber || ''} · {billReading.lease?.tenant?.firstName || ''} {billReading.lease?.tenant?.lastName || ''}</p>
+    <p>{billReading.lease?.contractNumber || ''} · {billReading.lease?.tenant?.firstName || ''}</p>
     <p>{formatShortDate(billReading.periodStart)} → {formatShortDate(billReading.readingDate)}</p>
     <p>{formatReading(billReading.currentReading)} − {formatReading(billReading.previousReading)} = {formatReading(billReading.consumption)} {billReading.meter.unit}</p>
     <p>{formatReading(billReading.consumption)} × {billReading.unitPrice} = <strong>{formatMoney(billReading.amount, billReading.currency || $baseCurrency)}</strong></p>

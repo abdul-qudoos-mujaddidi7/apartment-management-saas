@@ -59,7 +59,6 @@
   function emptyForm() {
     return {
       firstName: '',
-      lastName: '',
       fatherName: '',
       phone: '',
       alternatePhone: '',
@@ -128,18 +127,11 @@
   function validateForm() {
     formErrors = {};
     const firstName = form.firstName?.trim() || '';
-    const lastName = form.lastName?.trim() || '';
     const phone = form.phone?.trim() || '';
 
     if (!firstName) {
       formErrors.firstName = translate('tenants.required', {
         field: $locale.tenants.firstName
-      });
-    }
-
-    if (!lastName) {
-      formErrors.lastName = translate('tenants.required', {
-        field: $locale.tenants.lastName
       });
     }
 
@@ -199,7 +191,7 @@
     }
 
     payload.firstName = payload.firstName.trim();
-    payload.lastName = payload.lastName.trim();
+    delete payload.lastName;
     payload.phone = payload.phone.trim();
 
     return payload;
@@ -350,7 +342,7 @@
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th data-sort="lastName">{$locale.tenants.fullName}</th>
+          <th data-sort="firstName">{$locale.tenants.fullName}</th>
           <th data-sort="phone">{$locale.tenants.phone}</th>
           <th data-sort="nationalId">{$locale.tenants.nationalId}</th>
           <th data-sort="status">{$locale.tenants.status}</th>
@@ -381,7 +373,7 @@
                   {/if}
                 </span>
                 <button class="table-link" type="button" on:click={() => push(`/tenants/${tenant.id}`)}>
-                  {tenant.firstName} {tenant.lastName}
+                  {tenant.firstName}
                 </button>
               </span>
             </td>
@@ -461,23 +453,6 @@
         </div>
 
         <div class="col-sm-4">
-          <label class="form-label" for="tenant-last-name">{$locale.tenants.lastName}</label>
-          <div class="field-control">
-            <i class="bi bi-person" aria-hidden="true"></i>
-            <input
-              class:is-invalid={formErrors.lastName}
-              class="form-control"
-              id="tenant-last-name"
-              autocomplete="family-name"
-              bind:value={form.lastName}
-            />
-          </div>
-          {#if formErrors.lastName}
-            <div class="invalid-feedback">{formErrors.lastName}</div>
-          {/if}
-        </div>
-
-        <div class="col-sm-4">
           <label class="form-label" for="tenant-father-name">{$locale.tenants.fatherName}</label>
           <div class="field-control">
             <i class="bi bi-person-badge" aria-hidden="true"></i>
@@ -492,58 +467,8 @@
             <div class="invalid-feedback">{formErrors.fatherName}</div>
           {/if}
         </div>
-      </div>
-    </fieldset>
 
-    <fieldset>
-      <legend class="section-label">{$locale.tenants.identityDocuments}</legend>
-
-      <div class="row g-3">
-        <div class="col-12 col-md-4">
-          <!-- The same card-shaped slot as the two ID scans beside it: three
-               dropzones of one size read as the row they are, where a round
-               photograph among two rectangles read as a different kind of
-               field. -->
-          <ImageUpload
-            kind="tenant-photo"
-            label={$locale.tenants.photo}
-            hint={$locale.tenants.photoHint}
-            value={form.photoUrl}
-            disabled={saving}
-            on:change={(event) => (form.photoUrl = event.detail.url)}
-            on:busy={(event) => markUpload('photoUrl', event.detail.busy)}
-          />
-        </div>
-
-        <div class="col-12 col-md-4">
-          <ImageUpload
-            kind="tenant-id-front"
-            label={$locale.tenants.idCardFront}
-            value={form.idCardFrontUrl}
-            disabled={saving}
-            on:change={(event) => (form.idCardFrontUrl = event.detail.url)}
-            on:busy={(event) => markUpload('idCardFrontUrl', event.detail.busy)}
-          />
-        </div>
-
-        <div class="col-12 col-md-4">
-          <ImageUpload
-            kind="tenant-id-back"
-            label={$locale.tenants.idCardBack}
-            value={form.idCardBackUrl}
-            disabled={saving}
-            on:change={(event) => (form.idCardBackUrl = event.detail.url)}
-            on:busy={(event) => markUpload('idCardBackUrl', event.detail.busy)}
-          />
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend class="section-label">{$locale.tenants.phone}</legend>
-
-      <div class="row g-3">
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <label class="form-label" for="tenant-phone">{$locale.tenants.phone}</label>
           <div class="field-control">
             <i class="bi bi-telephone" aria-hidden="true"></i>
@@ -560,7 +485,13 @@
             <div class="invalid-feedback">{formErrors.phone}</div>
           {/if}
         </div>
+      </div>
+    </fieldset>
 
+    <fieldset>
+      <legend class="section-label">{$locale.tenants.phone}</legend>
+
+      <div class="row g-3">
         <div class="col-sm-6">
           <label class="form-label" for="tenant-alt-phone">{$locale.tenants.alternatePhone}</label>
           <div class="field-control">
@@ -673,6 +604,50 @@
           {#if formErrors.notes}
             <div class="invalid-feedback">{formErrors.notes}</div>
           {/if}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="section-label">{$locale.tenants.identityDocuments}</legend>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <!-- The same card-shaped slot as the two ID scans beside it: three
+               dropzones of one size read as the row they are, where a round
+               photograph among two rectangles read as a different kind of
+               field. -->
+          <ImageUpload
+            kind="tenant-photo"
+            label={$locale.tenants.photo}
+            hint={$locale.tenants.photoHint}
+            value={form.photoUrl}
+            disabled={saving}
+            on:change={(event) => (form.photoUrl = event.detail.url)}
+            on:busy={(event) => markUpload('photoUrl', event.detail.busy)}
+          />
+        </div>
+
+        <div class="col-12 col-md-4">
+          <ImageUpload
+            kind="tenant-id-front"
+            label={$locale.tenants.idCardFront}
+            value={form.idCardFrontUrl}
+            disabled={saving}
+            on:change={(event) => (form.idCardFrontUrl = event.detail.url)}
+            on:busy={(event) => markUpload('idCardFrontUrl', event.detail.busy)}
+          />
+        </div>
+
+        <div class="col-12 col-md-4">
+          <ImageUpload
+            kind="tenant-id-back"
+            label={$locale.tenants.idCardBack}
+            value={form.idCardBackUrl}
+            disabled={saving}
+            on:change={(event) => (form.idCardBackUrl = event.detail.url)}
+            on:busy={(event) => markUpload('idCardBackUrl', event.detail.busy)}
+          />
         </div>
       </div>
     </fieldset>

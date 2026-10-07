@@ -489,7 +489,6 @@ async function loadLeaseForContract(organizationId, leaseId) {
         select: {
           id: true,
           firstName: true,
-          lastName: true,
           phone: true,
           alternatePhone: true,
           email: true,
@@ -567,9 +566,9 @@ function contractValues({ organization, setting, lease }) {
     'contract.lessorNationalId': optionalText(setting.lessorNationalId),
     'contract.lessorAddress': optionalText(setting.lessorAddress),
 
-    'tenant.fullName': `${tenant.firstName} ${tenant.lastName}`.trim(),
+    'tenant.fullName': tenant.firstName.trim(),
     'tenant.firstName': tenant.firstName,
-    'tenant.lastName': tenant.lastName,
+    'tenant.lastName': '', // Existing templates render the removed field as empty.
     'tenant.fatherName': optionalText(tenant.fatherName),
     'tenant.phone': tenant.phone,
     'tenant.alternatePhone': optionalText(tenant.alternatePhone),
@@ -851,9 +850,8 @@ async function getContract(organizationId, leaseId) {
 
     guarantor: lease.guarantor ? { ...lease.guarantor, fullName: `${lease.guarantor.firstName} ${lease.guarantor.lastName}`.trim() } : null,
     tenant: {
-      fullName: `${tenant.firstName} ${tenant.lastName}`.trim(),
+      fullName: tenant.firstName.trim(),
       firstName: tenant.firstName,
-      lastName: tenant.lastName,
       phone: tenant.phone,
       alternatePhone: optionalText(tenant.alternatePhone),
       email: optionalText(tenant.email),

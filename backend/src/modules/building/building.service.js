@@ -23,10 +23,11 @@ function formatBuilding({ _count, ...building }) {
   return { ...building, totalFloors: _count?.floors ?? 0 };
 }
 
-async function listBuildings(organizationId, { page, pageSize, search }) {
+async function listBuildings(organizationId, { page, pageSize, search, status }) {
   const where = {
     organizationId,
     deletedAt: null,
+    ...(status ? { status } : {}),
     ...(search
       ? {
           OR: [

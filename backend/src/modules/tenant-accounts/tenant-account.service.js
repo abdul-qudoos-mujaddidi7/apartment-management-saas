@@ -137,7 +137,7 @@ async function reverseTenantLedgerEntry(client, organizationId, referenceType, r
 }
 
 function tenantSelect() {
-  return { id: true, firstName: true, lastName: true, phone: true, leases: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1, select: { contractNumber: true, apartment: { select: { apartmentNumber: true, floor: { select: { name: true, floorNumber: true, building: { select: { name: true } } } } } } } } };
+  return { id: true, firstName: true, phone: true, leases: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1, select: { contractNumber: true, apartment: { select: { apartmentNumber: true, floor: { select: { name: true, floorNumber: true, building: { select: { name: true } } } } } } } } };
 }
 
 async function listTenantAccounts(organizationId, query) {
@@ -145,7 +145,7 @@ async function listTenantAccounts(organizationId, query) {
     organizationId,
     tenant: {
       deletedAt: null,
-      ...(query.search ? { OR: [{ firstName: { contains: query.search } }, { lastName: { contains: query.search } }, { phone: { contains: query.search } }] } : {}),
+      ...(query.search ? { OR: [{ firstName: { contains: query.search } }, { phone: { contains: query.search } }] } : {}),
       ...(query.buildingId || query.apartmentId ? { leases: { some: { deletedAt: null, ...(query.apartmentId ? { apartmentId: query.apartmentId } : {}), ...(query.buildingId ? { apartment: { floor: { buildingId: query.buildingId } } } : {}) } } } : {}),
     },
   };

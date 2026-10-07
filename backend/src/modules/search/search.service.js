@@ -27,7 +27,6 @@ async function globalSearch(organizationId, query) {
         deletedAt: null,
         OR: [
           { firstName: { contains: term } },
-          { lastName: { contains: term } },
           { phone: { contains: term } },
           { email: { contains: term } },
           { nationalId: { contains: term } },
@@ -36,7 +35,6 @@ async function globalSearch(organizationId, query) {
       select: {
         id: true,
         firstName: true,
-        lastName: true,
         phone: true,
         email: true,
         status: true,
@@ -83,7 +81,7 @@ async function globalSearch(organizationId, query) {
         contractNumber: true,
         monthlyRent: true,
         status: true,
-        tenant: { select: { firstName: true, lastName: true } },
+        tenant: { select: { firstName: true } },
         apartment: {
           select: {
             apartmentNumber: true,
@@ -117,7 +115,7 @@ async function globalSearch(organizationId, query) {
     results.push({
       type: 'tenant',
       id: t.id,
-      title: `${t.firstName} ${t.lastName}`,
+      title: t.firstName,
       subtitle: [t.phone, t.email].filter(Boolean).join(' · '),
       href: '/tenants',
       status: t.status,
@@ -139,7 +137,7 @@ async function globalSearch(organizationId, query) {
   }
 
   for (const l of leases) {
-    const tenantName = `${l.tenant.firstName} ${l.tenant.lastName}`;
+    const tenantName = l.tenant.firstName;
     const loc = [
       l.apartment?.floor?.building?.name,
       l.apartment?.apartmentNumber,

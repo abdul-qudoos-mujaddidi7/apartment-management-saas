@@ -18,7 +18,7 @@
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney, formatShortDate } from '../utils/formatters';
 
-  const tenantName = (payment) => `${payment.tenant?.firstName || ''} ${payment.tenant?.lastName || ''}`.trim() || '—';
+  const tenantName = (payment) => payment.tenant?.firstName?.trim() || '—';
   let payments = [];
   let sort = { key: null, dir: 'asc' };
   $: view = sortRows(payments, sort.key, sort.dir);
@@ -125,7 +125,7 @@
 
   <svelte:fragment slot="content">
     <DataTable loading={loading} isEmpty={payments.length === 0} loadingLabel={$locale.payments.loading} emptyLabel={$locale.payments.empty} emptyIcon="bi-credit-card" minTableWidth="72rem" showFooter={!loading && payments.length > 0} sortKey={sort.key} sortDir={sort.dir} on:sort={(event) => (sort = event.detail)}>
-      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th data-sort="paymentNumber">{$locale.payments.paymentNumber}</th><th data-sort="paymentDate">{$locale.payments.paymentDate}</th><th data-sort="lease.tenant.lastName">{$locale.payments.tenant}</th><th data-sort="lease.apartment.floor.building.name">{$locale.payments.building}</th><th data-sort="lease.apartment.apartmentNumber">{$locale.payments.apartment}</th><th data-sort="receiveAccount.name">{$locale.payments.receiveInto}</th><th data-sort="paymentMethod">{$locale.payments.method}</th><th class="amount-cell" data-sort="amount">{$locale.payments.amount}</th><th class="amount-cell" data-sort="allocatedAmount">{$locale.payments.allocated}</th><th class="amount-cell" data-sort="unallocatedAmount">{$locale.payments.unallocated}</th><th data-sort="status">{$locale.payments.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.payments.actions}</span></th></tr></thead>
+      <thead><tr><th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th><th data-sort="paymentNumber">{$locale.payments.paymentNumber}</th><th data-sort="paymentDate">{$locale.payments.paymentDate}</th><th data-sort="lease.tenant.firstName">{$locale.payments.tenant}</th><th data-sort="lease.apartment.floor.building.name">{$locale.payments.building}</th><th data-sort="lease.apartment.apartmentNumber">{$locale.payments.apartment}</th><th data-sort="receiveAccount.name">{$locale.payments.receiveInto}</th><th data-sort="paymentMethod">{$locale.payments.method}</th><th class="amount-cell" data-sort="amount">{$locale.payments.amount}</th><th class="amount-cell" data-sort="allocatedAmount">{$locale.payments.allocated}</th><th class="amount-cell" data-sort="unallocatedAmount">{$locale.payments.unallocated}</th><th data-sort="status">{$locale.payments.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.payments.actions}</span></th></tr></thead>
       <tbody>{#each view as payment (payment.id)}
         <tr class:is-selected={selectedIds.has(payment.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(payment.id)} label={$locale.common.selectRow} on:change={() => toggleRow(payment.id)} /></td>

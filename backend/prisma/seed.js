@@ -73,11 +73,12 @@ const permissions = [
 ];
 
 async function main() {
-  const seedAdminEmail = process.env.SEED_ADMIN_EMAIL || (process.env.NODE_ENV === 'production' ? null : 'admin@example.com');
+  const seedAdminUsername = (process.env.SEED_ADMIN_USERNAME || process.env.SEED_ADMIN_EMAIL
+    || (process.env.NODE_ENV === 'production' ? null : 'admin@example.com'))?.trim().toLowerCase();
   const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? null : 'Admin@123456');
 
-  if (!seedAdminEmail || !seedAdminPassword) {
-    throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be configured before seeding.');
+  if (!seedAdminUsername || !seedAdminPassword) {
+    throw new Error('SEED_ADMIN_USERNAME and SEED_ADMIN_PASSWORD must be configured before seeding.');
   }
 
   const passwordHash = await bcrypt.hash(seedAdminPassword, 12);
@@ -149,7 +150,7 @@ async function main() {
   );
 
   await prisma.user.upsert({
-    where: { email: seedAdminEmail },
+    where: { username: seedAdminUsername },
     update: {
       firstName: 'Demo',
       lastName: 'Admin',
@@ -159,7 +160,7 @@ async function main() {
       deletedAt: null,
     },
     create: {
-      email: 'admin@example.com',
+      username: seedAdminUsername,
       firstName: 'Demo',
       lastName: 'Admin',
       passwordHash,

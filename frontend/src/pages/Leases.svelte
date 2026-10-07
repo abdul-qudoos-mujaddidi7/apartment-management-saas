@@ -384,7 +384,7 @@
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
           <th data-sort="contractNumber">{$locale.leases.contractNumber}</th>
-          <th data-sort="tenant.lastName">{$locale.leases.tenant}</th>
+          <th data-sort="tenant.firstName">{$locale.leases.tenant}</th>
           <th data-sort="apartment.floor.building.name">{$locale.leases.building}</th>
           <th data-sort="apartment.floor.name">{$locale.leases.floor}</th>
           <th data-sort="apartment.apartmentNumber">{$locale.leases.apartment}</th>
@@ -400,7 +400,7 @@
           <tr class:is-selected={selectedIds.has(lease.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(lease.id)} label={$locale.common.selectRow} on:change={() => toggleRow(lease.id)} /></td>
             <td class="contract-number">{lease.contractNumber}</td>
-            <td class="tenant-name">{lease.tenant.firstName} {lease.tenant.lastName}</td>
+            <td class="tenant-name">{lease.tenant.firstName}</td>
             <td>{lease.apartment.floor.building.name}</td>
             <td>{lease.apartment.floor.name}</td>
             <td class="data-cell">{lease.apartment.apartmentNumber}</td>
@@ -484,7 +484,7 @@
           <select class="form-select" id="lease-tenant" bind:value={form.tenantId} disabled={optionsLoading} required>
             <option value="">{$locale.leases.select}</option>
             {#each tenants as tenant (tenant.id)}
-              <option value={tenant.id}>{tenant.firstName} {tenant.lastName} — {tenant.phone}</option>
+              <option value={tenant.id}>{tenant.firstName} — {tenant.phone}</option>
             {/each}
           </select>
         </div>
@@ -655,7 +655,7 @@
 <Modal open={Boolean(detail)} title={$locale.leases.details} description={$locale.leases.description} icon="bi-file-earmark-text" size="modal-lg" closeLabel={$locale.leases.cancel} on:close={() => (detail = null)}>
   {#if detail}
     <div class="detail-grid">
-      <div class="detail-item"><span>{$locale.leases.tenant}</span><strong>{detail.tenant.firstName} {detail.tenant.lastName}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.tenant}</span><strong>{detail.tenant.firstName}</strong></div>
       <div class="detail-item"><span>{$locale.leases.contractNumber}</span><strong>{detail.contractNumber}</strong></div>
       <div class="detail-item"><span>{$locale.leases.building}</span><strong>{detail.apartment.floor.building.name}</strong></div>
       <div class="detail-item"><span>{$locale.leases.floor}</span><strong>{detail.apartment.floor.name}</strong></div>

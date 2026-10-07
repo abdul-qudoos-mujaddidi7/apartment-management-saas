@@ -8,7 +8,6 @@
 export const navigationItems = [
   { key: 'dashboard', icon: 'bi-grid-1x2', href: '/dashboard' },
   { key: 'buildings', icon: 'bi-buildings', href: '/buildings' },
-  { key: 'assets', icon: 'bi-box-seam', href: '/assets' },
   { key: 'tenants', icon: 'bi-people', href: '/tenants' },
   { key: 'leases', icon: 'bi-file-earmark-text', href: '/leases' },
   { key: 'securityDeposits', icon: 'bi-shield-check', href: '/security-deposits' },
@@ -47,8 +46,9 @@ const moduleAliases = [
   { path: '/floors', key: 'buildings' },
   { path: '/apartments', key: 'buildings' },
   { prefix: '/floors/', key: 'buildings' },
-  // An apartment's asset sheet is part of the Assets & Furniture module.
-  { prefix: '/apartments/', key: 'assets' },
+  // Assets are a tab in Buildings, including each apartment's asset sheet.
+  { path: '/assets', key: 'buildings' },
+  { prefix: '/apartments/', key: 'buildings' },
   // Tenant accounts live under the Accounts module.
   { path: '/tenant-accounts', key: 'accounts' },
   { prefix: '/tenant-accounts/', key: 'accounts' },

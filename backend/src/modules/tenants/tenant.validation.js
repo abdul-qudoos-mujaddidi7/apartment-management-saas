@@ -13,7 +13,6 @@ const optionalString = (max) =>
 
 const tenantFields = {
   firstName: z.string().trim().min(1).max(191),
-  lastName: z.string().trim().min(1).max(191),
   phone: z.string().trim().min(3).max(64),
   alternatePhone: optionalString(64),
   nationalId: optionalString(64),
@@ -39,6 +38,7 @@ const listTenantsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   search: z.string().trim().max(100).default(''),
+  status: z.enum(tenantStatuses).optional(),
 });
 
 module.exports = {

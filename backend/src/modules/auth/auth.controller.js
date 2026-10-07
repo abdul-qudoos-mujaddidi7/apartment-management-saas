@@ -1,38 +1,7 @@
 const { z } = require('zod');
 
 const authService = require('./auth.service');
-
-const loginSchema = z.object({
-  email: z.string().trim().email(),
-  password: z.string().min(1),
-});
-
-/**
- * The reporting currency the new workspace is set up in.
- *
- * It is chosen here because it is the currency every later report is stated in,
- * and because it cannot be changed once the organization has posted money. It
- * stays optional so a client that does not send one still registers into AFN.
- */
-const registrationCurrency = z.preprocess(
-  (value) => (value === '' || value === null || value === undefined
-    ? undefined
-    : String(value).trim().toUpperCase()),
-  z
-    .string()
-    .regex(/^[A-Z]{3}$/, 'Use a three-letter currency code such as USD.')
-    .optional(),
-);
-
-const registrationSchema = z.object({
-  organizationName: z.string().trim().min(1),
-  firstName: z.string().trim().min(1),
-  lastName: z.string().trim().min(1),
-  email: z.string().trim().email(),
-  phone: z.string().trim().min(1),
-  password: z.string().min(8),
-  currency: registrationCurrency,
-});
+const { loginSchema, registrationSchema } = require('./auth.validation');
 
 const cookieOptions = {
   httpOnly: true,
@@ -69,23 +38,30 @@ async function register(req, res, next) {
       });
     }
 
-    if (error.code === 'EMAIL_ALREADY_EXISTS' || error.code === 'SLUG_ALREADY_EXISTS') {
+    if (['USERNAME_ALREADY_EXISTS', 'SLUG_ALREADY_EXISTS'].includes(error.code)) {
       return res.status(409).json({
         success: false,
         code: error.code,
         message: error.message,
-        field: error.code === 'EMAIL_ALREADY_EXISTS' ? 'email' : 'organization',
+        field: error.code === 'USERNAME_ALREADY_EXISTS' ? 'username' : 'organization',
       });
     }
 
     if (error.code === 'P2002') {
       const target = error.meta?.target;
-      const field = Array.isArray(target) && target.includes('email') ? 'email' : 'organizationName';
+      // MySQL reports the unique index name; other Prisma connectors may give
+      // a list of columns. Handle both, including concurrent registrations.
+      const targetName = Array.isArray(target) ? target.join(' ') : String(target || '');
+      const field = targetName.includes('username') ? 'username' : 'organization';
+      const conflict = {
+        username: ['USERNAME_ALREADY_EXISTS', 'Username is already registered.'],
+        organization: ['SLUG_ALREADY_EXISTS', 'Organization slug already exists.'],
+      }[field];
       return res.status(409).json({
         success: false,
-        code: field === 'email' ? 'EMAIL_ALREADY_EXISTS' : 'SLUG_ALREADY_EXISTS',
-        message: field === 'email' ? 'Email is already registered.' : 'Organization slug already exists.',
-        field: field === 'email' ? 'email' : 'organization',
+        code: conflict[0],
+        message: conflict[1],
+        field,
       });
     }
 
@@ -107,7 +83,7 @@ async function login(req, res, next) {
     }
 
     const user = await authService.authenticateUser(
-      result.data.email,
+      result.data.username || result.data.email,
       result.data.password,
     );
 
@@ -115,7 +91,7 @@ async function login(req, res, next) {
       return res.status(401).json({
         success: false,
         code: 'INVALID_CREDENTIALS',
-        message: 'Invalid email or password.',
+        message: 'Invalid username or password.',
       });
     }
 

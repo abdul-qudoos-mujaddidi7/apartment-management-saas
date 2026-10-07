@@ -17,7 +17,7 @@
   let loggingOut = false;
   let profileError = '';
 
-  $: displayName = [$user?.firstName, $user?.lastName].filter(Boolean).join(' ') || $user?.email || '';
+  $: displayName = [$user?.firstName, $user?.lastName].filter(Boolean).join(' ') || $user?.username || '';
   $: if (!$user) profileOpen = false;
 
   function dismissProfile(event) {
@@ -83,6 +83,7 @@
   $: buildingsActive = currentPath === '/buildings';
   $: floorsActive = currentPath === '/floors' || currentPath.startsWith('/buildings/');
   $: apartmentsActive = currentPath === '/apartments' || currentPath.startsWith('/floors/');
+  $: assetsActive = currentPath === '/assets' || currentPath.startsWith('/apartments/');
   $: isMetersModule = moduleKey === 'meters';
   $: metersActive = currentPath === '/meters' || currentPath.startsWith('/meters/');
   $: meterReadingsActive = currentPath === '/meter-readings' || currentPath.startsWith('/meter-readings/');
@@ -101,7 +102,7 @@
 
   /** Who is signed in, for the identity block at the bar's trailing edge. */
   function initials() {
-    return $user?.firstName?.[0]?.toUpperCase() || $user?.email?.[0]?.toUpperCase() || 'U';
+    return $user?.firstName?.[0]?.toUpperCase() || $user?.username?.[0]?.toUpperCase() || 'U';
   }
 
 </script>
@@ -157,6 +158,16 @@
           on:click={() => navigateSub('/apartments')}
         >
           {$locale.dashboard.nav.apartments}
+        </button>
+        <span class="subnav-separator" aria-hidden="true">|</span>
+        <button
+          class="subnav-item"
+          class:is-active={assetsActive}
+          aria-current={assetsActive ? 'page' : undefined}
+          type="button"
+          on:click={() => navigateSub('/assets')}
+        >
+          {$locale.dashboard.nav.assets}
         </button>
       </nav>
     {/if}
@@ -224,7 +235,7 @@
           <section id="topbar-profile" class="profile-panel" aria-label={$locale.profile.account}>
             <div class="profile-identity">
               <strong class="profile-name">{displayName}</strong>
-              <span class="profile-email" dir="ltr">{$user.email}</span>
+              <span class="profile-username" dir="auto">{$user.username}</span>
             </div>
             <nav class="profile-links" aria-label={$locale.profile.menu}>
               <a class="profile-menu-item" data-profile-link on:keydown={profileMenuKeydown} href="#/dashboard" on:click={() => profileOpen = false}>{$locale.dashboard.nav.dashboard}</a>
@@ -351,9 +362,9 @@
     border-block-end: 1px solid var(--border);
   }
 
-  .profile-name, .profile-email { font-size: var(--text-sm); line-height: 1.5; overflow-wrap: anywhere; }
+  .profile-name, .profile-username { font-size: var(--text-sm); line-height: 1.5; overflow-wrap: anywhere; }
   .profile-name { font-weight: var(--weight-semibold); }
-  .profile-email { color: var(--text-strong); text-align: start; }
+  .profile-username { color: var(--text-strong); text-align: start; }
   .profile-links { padding-block-start: var(--space-2); }
   .profile-menu-item {
     display: flex;

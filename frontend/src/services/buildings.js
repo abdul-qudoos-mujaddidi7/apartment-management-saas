@@ -1,11 +1,12 @@
 import { api } from './api';
 
-export async function getBuildings({ page = 1, pageSize = 10, search = '' } = {}) {
+export async function getBuildings({ page = 1, pageSize = 10, search = '', status } = {}) {
   const query = new URLSearchParams({
     page,
     pageSize,
     search: search.trim()
   });
+  if (status && status !== 'all') query.set('status', status);
 
   return api.get(`/buildings?${query.toString()}`);
 }

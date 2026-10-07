@@ -13,6 +13,7 @@
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
   import ApartmentSpacesEditor from '../components/apartments/ApartmentSpacesEditor.svelte';
+  import FloorSelect from '../components/apartments/FloorSelect.svelte';
 
   import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
   import { formatMoney } from '../utils/formatters';
@@ -248,7 +249,8 @@
   }
 
   function handleFloorChoice(event) {
-    formFloorId = event.currentTarget.value;
+    formFloorId = event.detail;
+    if (formErrors.floorId) formErrors = { ...formErrors, floorId: '' };
     const chosen = floors.find((option) => option.id === formFloorId) || null;
     if (chosen) form = { ...form, apartmentNumber: nextApartmentNumber(chosen) };
   }
@@ -546,16 +548,8 @@
              some floor, so the form asks which one. -->
         <div class="col-12">
           <label class="form-label" for="apartment-floor">{$locale.apartments.floor}</label>
-          <div class="field-control">
-            <i class="bi bi-layers" aria-hidden="true"></i>
-            <select class:is-invalid={formErrors.floorId} class="form-select" id="apartment-floor" bind:value={formFloorId} on:change={handleFloorChoice} disabled={loadingFloors}>
-              <option value="">{$locale.apartments.chooseFloor}</option>
-              {#each floors as option (option.id)}
-                <option value={option.id}>{option.building?.name ? `${option.building.name} · ${option.name}` : option.name}</option>
-              {/each}
-            </select>
-          </div>
-          {#if formErrors.floorId}<div class="invalid-feedback">{formErrors.floorId}</div>{/if}
+          <FloorSelect floors={floors} bind:value={formFloorId} on:change={handleFloorChoice} disabled={loadingFloors} invalid={Boolean(formErrors.floorId)} describedBy={formErrors.floorId ? 'apartment-floor-error' : undefined} />
+          {#if formErrors.floorId}<div class="invalid-feedback" id="apartment-floor-error">{formErrors.floorId}</div>{/if}
         </div>
       {/if}
       <div class="col-sm-6">

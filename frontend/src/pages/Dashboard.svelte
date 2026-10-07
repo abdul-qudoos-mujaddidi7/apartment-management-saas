@@ -285,7 +285,7 @@
   }
 
   const money$ = formatMoney;
-  const tenantName = (tenant) => (`${tenant?.firstName || ''} ${tenant?.lastName || ''}`).trim() || '—';
+  const tenantName = (tenant) => (`${tenant?.firstName || ''}`).trim() || '—';
   const location = (apartment) => [
     apartment?.apartmentNumber,
     apartment?.floor?.building?.name

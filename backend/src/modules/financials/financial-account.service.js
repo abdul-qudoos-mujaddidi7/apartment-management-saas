@@ -114,7 +114,7 @@ async function getAccountLedger(organizationId, id, query) {
   await getAccount(organizationId, id);
   const where = { accountId: id, journal: { organizationId } };
   const [items, total] = await prisma.$transaction([
-    prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, currency: true, exchangeRate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true, lastName: true } } }, orderBy: [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+    prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, currency: true, exchangeRate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true } } }, orderBy: [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
     prisma.journalLine.count({ where }),
   ]);
   return {

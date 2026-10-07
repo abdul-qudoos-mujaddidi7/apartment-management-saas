@@ -17,7 +17,7 @@
   const points = ['pointOne', 'pointTwo', 'pointThree'];
 
   // Empty currency means the workspace reports in AFN, the default.
-  let form = { organization: '', fullName: '', email: '', phone: '', password: '', confirmPassword: '', currency: '', currencyName: '', currencySymbol: '' };
+  let form = { organization: '', fullName: '', username: '', phone: '', password: '', confirmPassword: '', currency: '', currencyName: '', currencySymbol: '' };
   let fieldErrors = {};
   let errorMessage = '';
   let submitting = false;
@@ -39,8 +39,8 @@
     if (!form.organization.trim()) errors.organization = required('organization');
     if (!form.fullName.trim()) errors.fullName = required('fullName');
     else if (form.fullName.trim().split(/\s+/).length < 2) errors.fullName = translate('register.fullNameRequired');
-    if (!form.email.trim()) errors.email = required('email');
-    else if (!/^\S+@\S+\.\S+$/.test(form.email)) errors.email = translate('register.invalidEmail');
+    if (!form.username.trim()) errors.username = required('username');
+    else if (!/^[\p{L}\p{N}._-]{3,64}$/u.test(form.username.trim())) errors.username = translate('register.invalidUsername');
     if (!form.phone.trim()) errors.phone = required('phone');
     else if (form.phone.trim().replace(/\D/g, '').length < 6) errors.phone = translate('register.invalidPhone');
     if (!form.password) errors.password = required('password');
@@ -68,7 +68,7 @@
 
   function messageFor(error) {
     const keyByCode = {
-      EMAIL_ALREADY_EXISTS: 'register.emailExists',
+      USERNAME_ALREADY_EXISTS: 'register.usernameExists',
       SLUG_ALREADY_EXISTS: 'register.organizationExists',
       AUTH_RATE_LIMITED: 'register.rateLimited',
       ORIGIN_NOT_ALLOWED: 'register.requestBlocked',
@@ -88,13 +88,13 @@
         organizationName: form.organization.trim(),
         firstName,
         lastName: rest.join(' '),
-        email: form.email.trim(),
+        username: form.username.trim(),
         phone: form.phone.trim(),
         password: form.password,
         currency: selectedCurrency,
       });
       resetAuth();
-      created = { firstName, organization: form.organization.trim(), email: form.email.trim() };
+      created = { firstName, organization: form.organization.trim(), username: form.username.trim().toLowerCase() };
     } catch (error) {
       errorMessage = messageFor(error);
       if (error.data?.field) fieldErrors = { [error.data.field]: errorMessage };
@@ -157,7 +157,7 @@
           <div class="au-success-mark"><i class="bi bi-check-lg" aria-hidden="true"></i></div>
           <p class="au-eyebrow">{$locale.register.confirmEyebrow}</p>
           <h1>{translate('register.confirmTitle', { name: created.firstName })}</h1>
-          <p>{translate('register.confirmBody', { organization: created.organization, email: created.email })}</p>
+          <p>{translate('register.confirmBody', { organization: created.organization, username: created.username })}</p>
           <button class="au-submit" type="button" on:click={() => push('/dashboard')}>
             {$locale.register.confirmContinue}
             <i class="bi bi-arrow-right" aria-hidden="true"></i>
@@ -240,25 +240,6 @@
           </div>
 
           <div class="au-field">
-            <label class="au-label" for="register-email">{$locale.register.fields.email}</label>
-            <input
-              class="au-input"
-              id="register-email"
-              type="email"
-              autocomplete="email"
-              value={form.email}
-              on:input={(event) => update('email', event.currentTarget.value)}
-              aria-invalid={Boolean(fieldErrors.email)}
-              aria-describedby={fieldErrors.email ? 'register-email-error' : undefined}
-            />
-            {#if fieldErrors.email}
-              <p class="au-error" id="register-email-error">
-                <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.email}
-              </p>
-            {/if}
-          </div>
-
-          <div class="au-field">
             <label class="au-label" for="phone">{$locale.register.fields.phone}</label>
             <input
               class="au-input"
@@ -273,6 +254,28 @@
             {#if fieldErrors.phone}
               <p class="au-error" id="phone-error">
                 <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.phone}
+              </p>
+            {/if}
+          </div>
+
+          <div class="au-field">
+            <label class="au-label" for="register-username">{$locale.register.fields.username}</label>
+            <input
+              class="au-input"
+              id="register-username"
+              type="text"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck={false}
+              maxlength="64"
+              value={form.username}
+              on:input={(event) => update('username', event.currentTarget.value)}
+              aria-invalid={Boolean(fieldErrors.username)}
+              aria-describedby={fieldErrors.username ? 'register-username-error' : undefined}
+            />
+            {#if fieldErrors.username}
+              <p class="au-error" id="register-username-error">
+                <i class="bi bi-exclamation-circle" aria-hidden="true"></i>{fieldErrors.username}
               </p>
             {/if}
           </div>

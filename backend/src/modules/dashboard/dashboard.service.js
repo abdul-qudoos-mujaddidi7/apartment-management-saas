@@ -107,7 +107,7 @@ async function getDashboard(organizationId, canViewLeases = false) {
         lease: {
           select: {
             contractNumber: true,
-            tenant: { select: { id: true, firstName: true, lastName: true, phone: true } },
+            tenant: { select: { id: true, firstName: true, phone: true } },
             apartment: {
               select: {
                 apartmentNumber: true,
@@ -131,7 +131,7 @@ async function getDashboard(organizationId, canViewLeases = false) {
         amount: true,
         baseAmount: true,
         paymentMethod: true,
-        tenant: { select: { id: true, firstName: true, lastName: true } },
+        tenant: { select: { id: true, firstName: true } },
         lease: { select: { contractNumber: true } },
       },
     }),

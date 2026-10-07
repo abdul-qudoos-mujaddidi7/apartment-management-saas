@@ -46,7 +46,7 @@
         {#if !items.length && !error}<p>{$locale.dashboard.noExpiringLeases}</p>{/if}
         {#each items as lease (lease.notificationId)}
           <a href={`#/leases?detail=${encodeURIComponent(lease.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-lease', { detail: lease.id })); }}>
-            <strong>{lease.tenant.firstName} {lease.tenant.lastName}</strong>
+            <strong>{lease.tenant.firstName}</strong>
             <span>{lease.apartment.apartmentNumber} · {lease.contractNumber}</span>
             <span>{formatDate(lease.endDate)} · {lease.daysLeft} {$locale.workflow.daysRemaining}</span>
           </a>

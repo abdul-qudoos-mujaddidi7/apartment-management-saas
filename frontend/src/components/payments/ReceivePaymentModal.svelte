@@ -19,7 +19,7 @@
   // Amounts are printed in the currency they are stated in: each invoice keeps
   // its own, and the allocation column is always in the receipt's currency.
   const money = (value, code = $baseCurrency) => formatMoney(value, code);
-  const tenantName = (record) => `${record?.tenant?.firstName || ''} ${record?.tenant?.lastName || ''}`.trim() || '—';
+  const tenantName = (record) => `${record?.tenant?.firstName || ''}`.trim() || '—';
   const itemTypeLabel = (type) => $locale.invoices[type.toLowerCase()] || type;
 
   let accounts = [];

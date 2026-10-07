@@ -30,7 +30,7 @@
     <div class="document-reference"><span class="document-label">{referenceLabel}</span><strong><bdi>{referenceNumber}</bdi></strong><span class="document-status">{status || '—'}</span></div>
   </header>
   <dl class="document-facts">
-    <div><dt>{$locale.invoices.tenant}</dt><dd>{tenant ? `${tenant.firstName || ''} ${tenant.lastName || ''}` : $locale.printing.unassigned}</dd></div>
+    <div><dt>{$locale.invoices.tenant}</dt><dd>{tenant ? `${tenant.firstName || ''}` : $locale.printing.unassigned}</dd></div>
     <div><dt>{$locale.invoices.contractNumber}</dt><dd><bdi>{lease?.contractNumber || '—'}</bdi></dd></div>
     <div><dt>{$locale.invoices.location}</dt><dd>{#if apartment}{apartment.floor?.building?.name} / {apartment.floor?.name || number(apartment.floor?.floorNumber)} / <bdi>{apartment.apartmentNumber}</bdi>{:else}—{/if}</dd></div>
     <div><dt>{payment ? $locale.payments.paymentDate : invoice ? $locale.invoices.invoiceDate : $locale.meterReadings.date}</dt><dd><bdi>{date(payment ? record.paymentDate : invoice ? record.invoiceDate : record.readingDate)}</bdi></dd></div>

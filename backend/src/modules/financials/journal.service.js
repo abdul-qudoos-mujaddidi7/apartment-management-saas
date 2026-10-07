@@ -221,7 +221,7 @@ const journalInclude = {
   lines: {
     include: {
       account: { select: { id: true, name: true, type: true } },
-      tenant: { select: { id: true, firstName: true, lastName: true } },
+      tenant: { select: { id: true, firstName: true } },
     },
     orderBy: { createdAt: 'asc' },
   },

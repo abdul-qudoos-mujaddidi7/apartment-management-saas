@@ -42,7 +42,7 @@
     } catch (requestError) { error = requestError.message; }
   }
 
-  const tenantName = (account) => `${account.tenant.firstName} ${account.tenant.lastName}`.trim();
+  const tenantName = (account) => `${account.tenant.firstName}`.trim();
   const lease = (account) => account.tenant.leases?.[0];
   $: resultSummary = `${$locale.tenantAccounts.title}: ${pagination.total ?? ''}`;
   // Leading checkbox column — ids of the rows currently rendered.

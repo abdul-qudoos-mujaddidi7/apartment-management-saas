@@ -187,7 +187,7 @@
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-          <th data-sort="lease.tenant.lastName">{$locale.securityDeposits.tenant}</th>
+          <th data-sort="lease.tenant.firstName">{$locale.securityDeposits.tenant}</th>
           <th data-sort="lease.apartment.floor.building.name">{$locale.securityDeposits.building}</th>
           <th data-sort="lease.apartment.floor.name">{$locale.securityDeposits.floor}</th>
           <th data-sort="lease.apartment.apartmentNumber">{$locale.securityDeposits.apartment}</th>
@@ -205,7 +205,7 @@
         {#each view as row (row.lease.id)}
           <tr class:is-selected={selectedIds.has(row.lease.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(row.lease.id)} label={$locale.common.selectRow} on:change={() => toggleRow(row.lease.id)} /></td>
-            <td class="tenant-name">{row.lease.tenant.firstName} {row.lease.tenant.lastName}</td>
+            <td class="tenant-name">{row.lease.tenant.firstName}</td>
             <td>{row.lease.apartment.floor.building.name}</td>
             <td>{row.lease.apartment.floor.name}</td>
             <td class="data-cell">{row.lease.apartment.apartmentNumber}</td>
@@ -241,7 +241,7 @@
   {:else if detail}
     {#if transactionError}<div class="alert alert-danger" role="alert">{transactionError}</div>{/if}
     <div class="lease-context">
-      <span><strong>{$locale.securityDeposits.tenant}</strong>{detail.lease.tenant.firstName} {detail.lease.tenant.lastName}</span>
+      <span><strong>{$locale.securityDeposits.tenant}</strong>{detail.lease.tenant.firstName}</span>
       <span><strong>{$locale.securityDeposits.building}</strong>{detail.lease.apartment.floor.building.name}</span>
       <span><strong>{$locale.securityDeposits.floor}</strong>{detail.lease.apartment.floor.name}</span>
       <span><strong>{$locale.securityDeposits.apartment}</strong>{detail.lease.apartment.apartmentNumber}</span>

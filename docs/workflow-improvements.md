@@ -18,7 +18,7 @@ The migration seeds `LEASE_VIEW`, `LEASE_MANAGE`, `UTILITY_VIEW`, `UTILITY_MANAG
 
 ## Popups and numeric inputs
 
-Shared modals, including Receive Payment, close from their outer empty area, Escape or close button. Modal forms prompt before discarding edits, including footer cancellation and date-picker changes. Busy forms stay open. The innermost popup owns Escape and modal focus returns to the previous control. Dropdowns keep inside clicks open and close from an outside pointer press or Escape.
+Shared modals, including Receive Payment, close from their outer empty area, Escape or close button. Edited forms close immediately without a discard confirmation, including footer cancellation. Busy forms stay open. The innermost popup owns Escape and modal focus returns to the previous control. Dropdowns keep inside clicks open and close from an outside pointer press or Escape.
 
 Numeric inputs normalize leading padding before Svelte bindings read their values. The default zero is selected on focus. Persian and Arabic digits and their decimal separator are supported for typing and paste. Decimal zero prefixes and fractional precision are preserved. Text and telephone fields keep identifiers such as phone numbers, contract numbers and meter numbers intact.
 
@@ -64,6 +64,6 @@ npm.cmd run build
 npm.cmd run test:workflow-ui
 ```
 
-The browser checks use installed Chrome or Edge in headless mode; set `TEST_BROWSER` to another Chromium executable if needed. They mount real Svelte components against a local Vite test harness. Tests cover outside/inside clicks, Escape, close buttons, discard prompts, nested date-picker Escape, dropdown dismissal, numeric normalization, identifier preservation and English/Dari/Pashto direction. Backend tests cover month-end reminders, timezone boundaries, renewal/termination, permission checks, decimal charges, historical lease ownership, handover, resets, move-in baselines, immutable billed readings, duplicate charges and frozen multi-currency invoice values.
+The browser checks use installed Chrome or Edge in headless mode; set `TEST_BROWSER` to another Chromium executable if needed. They mount real Svelte components against a local Vite test harness. Tests cover outside/inside clicks, Escape, close buttons, edited forms closing without confirmation, nested date-picker Escape, dropdown dismissal, numeric normalization, identifier preservation and English/Dari/Pashto direction. Backend tests cover month-end reminders, timezone boundaries, renewal/termination, permission checks, decimal charges, historical lease ownership, handover, resets, move-in baselines, immutable billed readings, duplicate charges and frozen multi-currency invoice values.
 
 Database deployment and concurrent integration checks against a migrated MySQL database are separate from these unit/service and browser checks. The migration has not been applied by this implementation session.

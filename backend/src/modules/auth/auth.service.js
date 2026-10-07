@@ -35,7 +35,9 @@ function getJwtSecret() {
 function formatUser(user) {
   return {
     id: user.id,
-    email: user.email,
+    username: user.username,
+    // Response alias for previously deployed clients. No email column remains.
+    email: user.username.includes('@') ? user.username : null,
     firstName: user.firstName,
     lastName: user.lastName,
     // Every authenticated request is scoped from this server-derived value.
@@ -71,8 +73,9 @@ async function findActiveUser(where) {
   });
 }
 
-async function authenticateUser(email, password) {
-  const user = await findActiveUser({ email });
+async function authenticateUser(identifier, password) {
+  const normalized = identifier.trim().toLowerCase();
+  const user = await findActiveUser({ username: normalized });
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return null;
@@ -85,23 +88,23 @@ async function registerOrganizationAdmin({
   organizationName,
   firstName,
   lastName,
-  email,
+  username,
   password,
   currency,
 }) {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedUsername = username.trim().toLowerCase();
   const slug = createSlug(organizationName);
   // The workspace reports in this currency from its very first invoice; it
   // defaults to AFN for clients that do not choose one.
   const baseCurrency = (currency || 'AFN').trim().toUpperCase();
 
-  const [existingUser, existingOrganization] = await Promise.all([
-    prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true } }),
+  const [existingUsername, existingOrganization] = await Promise.all([
+    prisma.user.findUnique({ where: { username: normalizedUsername }, select: { id: true } }),
     prisma.organization.findUnique({ where: { slug }, select: { id: true } }),
   ]);
 
-  if (existingUser) {
-    throw createConflictError('EMAIL_ALREADY_EXISTS', 'Email is already registered.');
+  if (existingUsername) {
+    throw createConflictError('USERNAME_ALREADY_EXISTS', 'Username is already registered.');
   }
 
   if (existingOrganization) {
@@ -132,7 +135,7 @@ async function registerOrganizationAdmin({
 
     return transaction.user.create({
       data: {
-        email: normalizedEmail,
+        username: normalizedUsername,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         passwordHash,
@@ -141,7 +144,7 @@ async function registerOrganizationAdmin({
       },
       select: {
         id: true,
-        email: true,
+        username: true,
         firstName: true,
         lastName: true,
         organization: {
@@ -164,7 +167,7 @@ async function registerOrganizationAdmin({
 }
 
 function createAccessToken(user) {
-  return jwt.sign({ email: user.email }, getJwtSecret(), {
+  return jwt.sign({ username: user.username }, getJwtSecret(), {
     subject: user.id,
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   });

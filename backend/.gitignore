@@ -6,3 +6,6 @@ node_modules
 
 # Uploaded tenant documents and photos are data, not source
 /uploads
+
+# Database backups contain private application data.
+/.backup/

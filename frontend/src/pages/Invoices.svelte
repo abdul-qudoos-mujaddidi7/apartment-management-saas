@@ -355,7 +355,7 @@
   $: detailServiceFee = detailsInvoice ? cycleLine(detailsInvoice, 'SERVICE_FEE', detailsInvoice.lease.serviceFee, detailsInvoice.lease.serviceFeeCurrency || detailsInvoice.lease.currency) : { amount: 0, currency: '' };
   const statusLabel = (status) => $locale.invoices[status.toLowerCase().replace('_', '')];
   const statusTone = (status) => ({ PAID: 'success', PARTIALLY_PAID: 'warning', OVERDUE: 'danger', CANCELLED: 'neutral', UNPAID: 'info' }[status] || 'neutral');
-  const tenantName = (lease) => `${lease.tenant.firstName} ${lease.tenant.lastName}`.trim();
+  const tenantName = (lease) => `${lease.tenant.firstName}`.trim();
   // The apartment, and who it is let to: what is being billed, and to whom.
   const leaseLabel = (lease) => `${lease.apartment.apartmentNumber}${lease.apartment.name ? ` — ${lease.apartment.name}` : ''} · ${tenantName(lease)} · ${lease.apartment.floor.building.name}`;
   const tenantLabel = (lease) => [tenantName(lease), lease.tenant.phone].filter(Boolean).join(' — ');
@@ -411,7 +411,7 @@
       <button slot="empty-action" class="btn btn-primary" type="button" on:click={openCreate}>{$locale.invoices.add}</button>
       <thead><tr>
         <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-        <th data-sort="invoiceNumber">{$locale.invoices.invoiceNumber}</th><th data-sort="invoiceDate">{$locale.invoices.invoiceDate}</th><th data-sort="dueDate">{$locale.invoices.dueDate}</th><th>{$locale.invoices.type}</th><th data-sort="lease.tenant.lastName">{$locale.invoices.tenant}</th><th data-sort="lease.apartment.floor.building.name">{$locale.invoices.building}</th><th data-sort="lease.apartment.apartmentNumber">{$locale.invoices.apartment}</th><th data-sort="lease.contractNumber">{$locale.invoices.contractNumber}</th><th class="amount-cell" data-sort="total">{$locale.invoices.total}</th><th class="amount-cell" data-sort="paidAmount">{$locale.invoices.paid}</th><th class="amount-cell">{$locale.invoices.balance}</th><th data-sort="status">{$locale.invoices.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.invoices.view}</span></th>
+        <th data-sort="invoiceNumber">{$locale.invoices.invoiceNumber}</th><th data-sort="invoiceDate">{$locale.invoices.invoiceDate}</th><th data-sort="dueDate">{$locale.invoices.dueDate}</th><th>{$locale.invoices.type}</th><th data-sort="lease.tenant.firstName">{$locale.invoices.tenant}</th><th data-sort="lease.apartment.floor.building.name">{$locale.invoices.building}</th><th data-sort="lease.apartment.apartmentNumber">{$locale.invoices.apartment}</th><th data-sort="lease.contractNumber">{$locale.invoices.contractNumber}</th><th class="amount-cell" data-sort="total">{$locale.invoices.total}</th><th class="amount-cell" data-sort="paidAmount">{$locale.invoices.paid}</th><th class="amount-cell">{$locale.invoices.balance}</th><th data-sort="status">{$locale.invoices.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.invoices.view}</span></th>
       </tr></thead>
       <tbody>{#each view as invoice (invoice.id)}
         <tr class:is-selected={selectedIds.has(invoice.id)}>

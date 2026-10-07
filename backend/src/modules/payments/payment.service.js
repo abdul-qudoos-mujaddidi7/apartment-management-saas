@@ -32,7 +32,7 @@ const paymentSelect = {
   voidReason: true,
   createdAt: true,
   receiveAccount: { select: { id: true, name: true, type: true } },
-  tenant: { select: { id: true, firstName: true, lastName: true, phone: true } },
+  tenant: { select: { id: true, firstName: true, phone: true } },
   lease: {
     select: {
       id: true,
@@ -546,7 +546,6 @@ async function listPayments(organizationId, query) {
       { paymentNumber: { contains: query.search } },
       { reference: { contains: query.search } },
       { tenant: { firstName: { contains: query.search } } },
-      { tenant: { lastName: { contains: query.search } } },
     ] } : {}),
   };
   const [items, total] = await prisma.$transaction([

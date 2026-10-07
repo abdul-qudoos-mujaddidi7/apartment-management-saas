@@ -1,6 +1,5 @@
 <script>
   import { createEventDispatcher, onDestroy, tick } from 'svelte';
-  import { locale } from '../../i18n';
 
   import { isTopDialog, nextDialogId, registerDialog, unregisterDialog } from '../../utils/dialogStack';
 
@@ -8,8 +7,6 @@
   export let title = '';
   export let description = ''; // one-line subtitle shown under the title
   export let busy = false;
-  export let dirty = false;
-  let edited = false;
   export let size = ''; // '' | 'modal-lg' | 'modal-xl'
   export let bodyClass = ''; // extra classes for .modal-body
   export let closeLabel = 'Close';
@@ -38,26 +35,16 @@
 
   function close() {
     if (busy || !isTopDialog(dialogId)) return;
-    if ((dirty || edited) && !window.confirm($locale.workflow.discardChanges)) return;
     dispatch('close');
   }
 
-  function guardInteractions(node) {
-    const changed = () => { edited = true; };
-    const cancel = event => {
-      if (event.target === node || event.target.classList.contains('modal-dialog')) { close(); return; }
-      if (!event.target.closest('.modal-footer button.btn-light')) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      close();
+  function dismissOutside(node) {
+    const dismiss = event => {
+      if (event.target === node || event.target.classList?.contains('modal-dialog')) close();
     };
-    node.addEventListener('input', changed, true);
-    node.addEventListener('change', changed, true);
-    node.addEventListener('click', cancel, true);
+    node.addEventListener('click', dismiss, true);
     return { destroy() {
-      node.removeEventListener('input', changed, true);
-      node.removeEventListener('change', changed, true);
-      node.removeEventListener('click', cancel, true);
+      node.removeEventListener('click', dismiss, true);
     } };
   }
 
@@ -108,7 +95,6 @@
   }
 
   $: if (open && !lastOpen) {
-    edited = false;
     lastOpen = true;
     dialogDepth = registerDialog(dialogId);
     previousFocus = typeof document !== 'undefined' ? document.activeElement : null;
@@ -155,7 +141,7 @@
       aria-labelledby={title ? `${dialogId}-title` : undefined}
       aria-describedby={description ? `${dialogId}-description` : undefined}
       bind:this={dialogElement}
-      use:guardInteractions
+      use:dismissOutside
     >
       <div class="modal-dialog modal-dialog-centered" class:modal-lg={size === 'modal-lg'} class:modal-xl={size === 'modal-xl'}>
         <div class="modal-content">

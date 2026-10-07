@@ -275,7 +275,7 @@
   }
 
   function tenantName(tenant) {
-    return [tenant?.firstName, tenant?.lastName].filter(Boolean).join(' ') || tenant?.phone || '—';
+    return [tenant?.firstName].filter(Boolean).join(' ') || tenant?.phone || '—';
   }
 
   /** Tenant label for the picker: the name, plus the apartment when known, so

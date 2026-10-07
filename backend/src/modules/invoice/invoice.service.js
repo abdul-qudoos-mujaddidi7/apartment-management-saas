@@ -87,7 +87,7 @@ function invoiceSelect(includeItems = false) {
         // What the invoice was billed on: the number of months one cycle covers,
         // shown beside the rent and the fee on the invoice page.
         rentCycleMonths: true,
-        tenant: { select: { id: true, firstName: true, lastName: true } },
+        tenant: { select: { id: true, firstName: true } },
         apartment: {
           select: {
             id: true,
@@ -535,7 +535,6 @@ async function listInvoices(organizationId, filters) {
         { invoiceNumber: { contains: search } },
         { lease: { contractNumber: { contains: search } } },
         { lease: { tenant: { firstName: { contains: search } } } },
-        { lease: { tenant: { lastName: { contains: search } } } },
         { lease: { apartment: { apartmentNumber: { contains: search } } } },
         { lease: { apartment: { floor: { building: { name: { contains: search } } } } } },
       ],

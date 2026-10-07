@@ -1,7 +1,8 @@
 import { api } from './api';
 
-export const listTenants = ({ page = 1, pageSize = 10, search = '' } = {}) => {
+export const listTenants = ({ page = 1, pageSize = 10, search = '', status } = {}) => {
   const query = new URLSearchParams({ page, pageSize, search });
+  if (status && status !== 'all') query.set('status', status);
   return api.get(`/tenants?${query.toString()}`);
 };
 
