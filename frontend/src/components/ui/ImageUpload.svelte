@@ -193,7 +193,7 @@
   {/if}
 </div>
 
-<div class="file-input-host" use:portalToBody>
+<div class="file-input-host" hidden use:portalToBody>
   <input
     bind:this={inputElement}
     type="file"

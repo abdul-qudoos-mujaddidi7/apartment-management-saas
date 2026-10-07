@@ -154,9 +154,12 @@
       onSearch={handleSearch}
       addLabel={$locale.buildings.add}
       onAdd={openCreate}
+      filtersCount={statusFilter === 'all' ? 0 : 1}
+      filtersClearLabel={$locale.common.clearFilters}
+      onClearFilters={() => handleTabChange({ detail: 'all' })}
     >
       <svelte:fragment slot="tabs">
-        <TabFilters tabs={statusTabs} active={statusFilter} on:select={handleTabChange} />
+        <TabFilters label={$locale.buildings.status} tabs={statusTabs} active={statusFilter} on:select={handleTabChange} />
       </svelte:fragment>
     </PageToolbar>
   </svelte:fragment>

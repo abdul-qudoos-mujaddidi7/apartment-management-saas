@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { createLeaseSchema, updateLeaseSchema } = require('./lease.validation');
+const { createLeaseSchema, leaseTypes, updateLeaseSchema } = require('./lease.validation');
 
 const baseLease = {
   tenantId: 'tenant-1',
@@ -25,6 +25,24 @@ test('defaults a new lease to a monthly rent cycle', () => {
   const result = createLeaseSchema.safeParse(baseLease);
   assert.equal(result.success, true);
   assert.equal(result.data.rentCycleMonths, 1);
+});
+
+test('lease type supports the allowed choices and defaults new leases to Rent', () => {
+  const defaulted = createLeaseSchema.safeParse(baseLease);
+  assert.equal(defaulted.success, true);
+  assert.equal(defaulted.data.leaseType, 'RENT');
+
+  for (const leaseType of leaseTypes) {
+    const result = createLeaseSchema.safeParse({ ...baseLease, leaseType });
+    assert.equal(result.success, true, `${leaseType} should be accepted`);
+    assert.equal(result.data.leaseType, leaseType);
+  }
+  assert.equal(createLeaseSchema.safeParse({ ...baseLease, leaseType: 'SALE' }).success, false);
+
+  const update = updateLeaseSchema.safeParse({ leaseType: 'FOR_SALE' });
+  assert.equal(update.success, true);
+  assert.equal(update.data.leaseType, 'FOR_SALE');
+  assert.equal('leaseType' in updateLeaseSchema.safeParse({ status: 'ACTIVE' }).data, false);
 });
 
 test('accepts only 1, 2, 3, 4, 6 or 12 month rent cycles', () => {

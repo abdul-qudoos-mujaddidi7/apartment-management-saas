@@ -4,7 +4,7 @@
   import { push } from 'svelte-spa-router';
   import { api } from '../services/api';
   import { listFloors } from '../services/floors';
-  import { listApartments } from '../services/apartments';
+  import { createApartment, listApartments } from '../services/apartments';
   import { createMeter, deleteMeter, listMeters, updateMeter } from '../services/meters';
   import { readingBaseline, createMeterReading, listMeterReadings } from '../services/meterReadings';
   import PageToolbar from '../components/ui/PageToolbar.svelte';
@@ -30,7 +30,7 @@
   const UTILITIES = [{ value: 'ELECTRICITY', icon: 'bi-lightning-charge' }, { value: 'WATER', icon: 'bi-droplet' }, { value: 'GAS', icon: 'bi-fire' }];
   const STATUSES = ['ACTIVE', 'INACTIVE', 'REPLACED'];
   const SUGGESTED_UNITS = { ELECTRICITY: 'kWh', WATER: 'm³', GAS: 'm³' };
-  const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', meterNumber: '', utilityType: 'ELECTRICITY', unit: SUGGESTED_UNITS.ELECTRICITY, defaultUnitPrice: 0, initialReading: '', installationDate: '', status: 'ACTIVE', notes: '' });
+  const emptyForm = () => ({ buildingId: '', floorId: '', apartmentId: '', meterNumber: '', utilityType: 'ELECTRICITY', meterType: 'RESIDENTIAL', unit: SUGGESTED_UNITS.ELECTRICITY, defaultUnitPrice: 0, initialReading: '', installationDate: '', status: 'ACTIVE', notes: '' });
   const emptyReadingForm = () => ({ readingDate: new Date().toISOString().slice(0, 10), currentReading: '', periodStart: '', leaseId: '', unitPrice: '', currency: $baseCurrency, readingKind: 'BILLING', resetBaseline: '', notes: '' });
 
   let meters = [];
@@ -49,6 +49,10 @@
   let editingId = null;
   let formErrors = {};
   let form = emptyForm();
+  let quickApartmentOpen = false;
+  let quickApartmentSaving = false;
+  let quickApartmentError = '';
+  let quickApartment = { apartmentNumber: '', name: '', type: '' };
   let readingModalOpen = false;
   let selectedMeter = null;
   let latestReading = null;
@@ -109,7 +113,7 @@
     const buildingId = meter.apartment.floor.building.id;
     const floorId = meter.apartment.floor.id;
     editingId = meter.id; modalError = ''; formErrors = {}; floors = []; apartments = []; modalOpen = true;
-    form = { ...emptyForm(), buildingId, floorId: '', apartmentId: '', meterNumber: meter.meterNumber, utilityType: meter.utilityType, unit: meter.unit, defaultUnitPrice: meter.defaultUnitPrice, initialReading: meter.initialReading ?? '', installationDate: meter.installationDate ? meter.installationDate.slice(0, 10) : '', status: meter.status, notes: meter.notes || '' };
+    form = { ...emptyForm(), buildingId, floorId: '', apartmentId: '', meterNumber: meter.meterNumber, utilityType: meter.utilityType, meterType: meter.meterType || 'OTHER', unit: meter.unit, defaultUnitPrice: meter.defaultUnitPrice, initialReading: meter.initialReading ?? '', installationDate: meter.installationDate ? meter.installationDate.slice(0, 10) : '', status: meter.status, notes: meter.notes || '' };
     try { await loadFloors(buildingId); form = { ...form, floorId }; await loadApartments(floorId); form = { ...form, apartmentId: meter.apartment.id }; }
     catch (error) { modalError = error.message; }
   }
@@ -121,6 +125,51 @@
 
   async function buildingChanged() { form = { ...form, floorId: '', apartmentId: '' }; apartments = []; modalError = ''; try { await loadFloors(form.buildingId); } catch (error) { modalError = error.message; } }
   async function floorChanged() { form = { ...form, apartmentId: '' }; modalError = ''; try { await loadApartments(form.floorId); } catch (error) { modalError = error.message; } }
+  function openQuickApartment() {
+    quickApartment = { apartmentNumber: '', name: '', type: '' };
+    quickApartmentError = '';
+    quickApartmentOpen = true;
+  }
+  function closeQuickApartment() {
+    if (quickApartmentSaving) return;
+    quickApartmentOpen = false;
+    quickApartmentError = '';
+  }
+  async function saveQuickApartment() {
+    if (!form.floorId || quickApartmentSaving) return;
+    quickApartmentError = '';
+    if (!quickApartment.apartmentNumber.trim() || !quickApartment.name.trim() || !quickApartment.type) {
+      const field = !quickApartment.apartmentNumber.trim()
+        ? $locale.apartments.apartmentNumber
+        : !quickApartment.name.trim()
+          ? $locale.apartments.name
+          : $locale.apartments.type;
+      quickApartmentError = translate('apartments.required', { field });
+      return;
+    }
+
+    quickApartmentSaving = true;
+    try {
+      const response = await createApartment({
+        floorId: form.floorId,
+        apartmentNumber: quickApartment.apartmentNumber.trim(),
+        name: quickApartment.name.trim(),
+        type: quickApartment.type,
+        status: 'AVAILABLE'
+      });
+      const apartment = response.apartment || response;
+      apartments = [...apartments, apartment];
+      form = { ...form, apartmentId: apartment.id };
+      if (formErrors.apartmentId) formErrors = { ...formErrors, apartmentId: '' };
+      quickApartmentOpen = false;
+    } catch (error) {
+      quickApartmentError = error.data?.code === 'APARTMENT_NUMBER_EXISTS'
+        ? $locale.apartments.apartmentNumberExists
+        : error.message;
+    } finally {
+      quickApartmentSaving = false;
+    }
+  }
   function utilityChanged() { const suggested = SUGGESTED_UNITS[form.utilityType]; if (!form.unit || Object.values(SUGGESTED_UNITS).includes(form.unit)) { form = { ...form, unit: suggested }; } }
 
   function validateForm() {
@@ -140,7 +189,7 @@
   async function saveMeter() {
     if (!validateForm()) return;
     saving = true; modalError = ''; errorMessage = '';
-    const payload = { apartmentId: form.apartmentId, meterNumber: form.meterNumber.trim(), utilityType: form.utilityType, unit: form.unit.trim(), defaultUnitPrice: Number(form.defaultUnitPrice), initialReading: form.initialReading === '' ? null : Number(form.initialReading), installationDate: form.installationDate || null, status: form.status, notes: form.notes.trim() || null };
+    const payload = { apartmentId: form.apartmentId, meterNumber: form.meterNumber.trim(), utilityType: form.utilityType, meterType: form.meterType, unit: form.unit.trim(), defaultUnitPrice: Number(form.defaultUnitPrice), initialReading: form.initialReading === '' ? null : Number(form.initialReading), installationDate: form.installationDate || null, status: form.status, notes: form.notes.trim() || null };
     try {
       if (editingId) { await updateMeter(editingId, payload); notifySuccess($locale.meters.updated); }
       else { await createMeter(payload); notifySuccess($locale.meters.saved); }
@@ -277,13 +326,14 @@
       <ActionButton slot="empty-action" icon="bi-plus-lg" label={$locale.meters.add} on:click={openCreate} />
       <thead><tr>
         <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
-        <th data-sort="meterNumber">{$locale.meters.meterNumber}</th><th data-sort="utilityType">{$locale.meters.utilityType}</th><th data-sort="apartment.floor.building.name">{$locale.meters.building}</th><th data-sort="apartment.floor.name">{$locale.meters.floor}</th><th data-sort="apartment.apartmentNumber">{$locale.meters.apartment}</th><th data-sort="unit">{$locale.meters.unit}</th><th data-sort="defaultUnitPrice">{$locale.meters.defaultUnitPrice}</th><th data-sort="initialReading">{$locale.meters.initialReading}</th><th data-sort="installationDate">{$locale.meters.installationDate}</th><th data-sort="status">{$locale.meters.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.meters.edit}</span></th>
+        <th data-sort="meterNumber">{$locale.meters.meterNumber}</th><th data-sort="utilityType">{$locale.meters.utilityType}</th><th data-sort="meterType">{$locale.meters.meterType}</th><th data-sort="apartment.floor.building.name">{$locale.meters.building}</th><th data-sort="apartment.floor.name">{$locale.meters.floor}</th><th data-sort="apartment.apartmentNumber">{$locale.meters.apartment}</th><th data-sort="unit">{$locale.meters.unit}</th><th data-sort="defaultUnitPrice">{$locale.meters.defaultUnitPrice}</th><th data-sort="initialReading">{$locale.meters.initialReading}</th><th data-sort="installationDate">{$locale.meters.installationDate}</th><th data-sort="status">{$locale.meters.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.meters.edit}</span></th>
       </tr></thead>
       <tbody>{#each view as meter (meter.id)}
         <tr class:is-selected={selectedIds.has(meter.id)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(meter.id)} label={$locale.common.selectRow} on:change={() => toggleRow(meter.id)} /></td>
           <td class="meter-number">{meter.meterNumber}</td>
           <td><span class="utility-cell"><i class={`bi ${utilityIcon(meter.utilityType)}`} aria-hidden="true"></i>{utilityLabel(meter.utilityType)}</span></td>
+          <td>{$locale.meters.meterTypes[meter.meterType] || meter.meterType}</td>
           <td>{meter.apartment.floor.building.name}</td>
           <td>{meter.apartment.floor.name || meter.apartment.floor.floorNumber}</td>
           <td><span class="apartment-number">{meter.apartment.apartmentNumber}</span>{#if meter.apartment.name}<span class="cell-sub">{meter.apartment.name}</span>{/if}</td>
@@ -345,9 +395,9 @@
     <fieldset>
       <legend class="section-label">{$locale.meters.location}</legend>
       <div class="row g-3">
-        <div class="col-sm-4"><BuildingSelect selectId="meter-building" label={$locale.meters.building} buildings={buildings} icon="bi-building" bind:value={form.buildingId} on:change={buildingChanged} placeholder={$locale.meters.select} /></div>
+        <div class="col-sm-4"><BuildingSelect selectId="meter-building" label={$locale.meters.building} buildings={buildings} icon="bi-building" bind:value={form.buildingId} on:change={buildingChanged} placeholder={$locale.meters.select} allowCreate={false} /></div>
         <div class="col-sm-4"><label class="form-label" for="meter-floor">{$locale.meters.floor}</label><div class="field-control"><i class="bi bi-layers" aria-hidden="true"></i><select class="form-select" id="meter-floor" bind:value={form.floorId} on:change={floorChanged} disabled={!form.buildingId}><option value="">{$locale.meters.select}</option>{#each floors as floor (floor.id)}<option value={floor.id}>{floor.name || floor.floorNumber}</option>{/each}</select></div></div>
-        <div class="col-sm-4"><label class="form-label" for="meter-apartment">{$locale.meters.apartment}</label><div class="field-control"><i class="bi bi-door-open" aria-hidden="true"></i><select class:is-invalid={formErrors.apartmentId} class="form-select" id="meter-apartment" bind:value={form.apartmentId} disabled={!form.floorId}><option value="">{$locale.meters.select}</option>{#each apartments as apartment (apartment.id)}<option value={apartment.id}>{apartment.apartmentNumber}{apartment.name ? ` — ${apartment.name}` : ''}</option>{/each}</select></div>{#if formErrors.apartmentId}<div class="invalid-feedback">{formErrors.apartmentId}</div>{/if}</div>
+        <div class="col-sm-4"><label class="form-label" for="meter-apartment">{$locale.meters.apartment}</label><div class="field-control meter-apartment-select"><i class="bi bi-door-open" aria-hidden="true"></i><select class:is-invalid={formErrors.apartmentId} class="form-select" id="meter-apartment" bind:value={form.apartmentId} disabled={!form.floorId}><option value="">{$locale.meters.select}</option>{#each apartments as apartment (apartment.id)}<option value={apartment.id}>{apartment.apartmentNumber}{apartment.name ? ` — ${apartment.name}` : ''}</option>{/each}</select><button class="meter-apartment-add" type="button" on:click={openQuickApartment} disabled={!form.floorId} aria-label={$locale.apartments.add} title={$locale.apartments.add}><i class="bi bi-plus-lg" aria-hidden="true"></i></button></div>{#if formErrors.apartmentId}<div class="invalid-feedback">{formErrors.apartmentId}</div>{/if}</div>
       </div>
     </fieldset>
     <fieldset>
@@ -355,6 +405,7 @@
       <div class="row g-3">
         <div class="col-sm-6"><label class="form-label" for="meter-number">{$locale.meters.meterNumber}</label><div class="field-control"><i class="bi bi-upc" aria-hidden="true"></i><input class:is-invalid={formErrors.meterNumber} class="form-control" id="meter-number" bind:value={form.meterNumber} /></div>{#if formErrors.meterNumber}<div class="invalid-feedback">{formErrors.meterNumber}</div>{/if}</div>
         <div class="col-sm-3"><label class="form-label" for="meter-utility">{$locale.meters.utilityType}</label><div class="field-control"><i class="bi bi-lightning-charge" aria-hidden="true"></i><select class="form-select" id="meter-utility" bind:value={form.utilityType} on:change={utilityChanged}>{#each UTILITIES as utility (utility.value)}<option value={utility.value}>{utilityLabel(utility.value)}</option>{/each}</select></div></div>
+        <div class="col-sm-3"><label class="form-label" for="meter-type">{$locale.meters.meterType}</label><div class="field-control"><i class="bi bi-buildings" aria-hidden="true"></i><select class="form-select" id="meter-type" bind:value={form.meterType}>{#each Object.entries($locale.meters.meterTypes) as [type, label] (type)}<option value={type}>{label}</option>{/each}</select></div></div>
         <div class="col-sm-3"><label class="form-label" for="meter-unit">{$locale.meters.unit}</label><div class="field-control"><i class="bi bi-rulers" aria-hidden="true"></i><input class:is-invalid={formErrors.unit} class="form-control" id="meter-unit" bind:value={form.unit} /></div>{#if formErrors.unit}<div class="invalid-feedback">{formErrors.unit}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="meter-reading">{$locale.meters.initialReading}</label><div class="field-control"><i class="bi bi-speedometer" aria-hidden="true"></i><input class:is-invalid={formErrors.initialReading} class="form-control" id="meter-reading" type="number" min="0" step="0.001" bind:value={form.initialReading} /></div>{#if formErrors.initialReading}<div class="invalid-feedback">{formErrors.initialReading}</div>{/if}</div>
         <div class="col-sm-6"><label class="form-label" for="meter-default-unit-price">{$locale.meters.defaultUnitPrice}</label><div class="field-control"><i class="bi bi-currency-dollar" aria-hidden="true"></i><input class:is-invalid={formErrors.defaultUnitPrice} class="form-control" id="meter-default-unit-price" type="number" min="0" step="0.0001" bind:value={form.defaultUnitPrice} /></div><div class="form-text">{formatMoney(form.defaultUnitPrice || 0)} {$locale.meters.pricePerUnit} {form.unit || '—'}</div>{#if formErrors.defaultUnitPrice}<div class="invalid-feedback">{formErrors.defaultUnitPrice}</div>{/if}</div>
@@ -370,7 +421,44 @@
   </div>
 </Modal>
 
+<Modal bind:open={quickApartmentOpen} title={$locale.apartments.add} icon="bi-door-open" busy={quickApartmentSaving} closeLabel={$locale.meters.cancel} on:close={closeQuickApartment}>
+  <form id="meter-quick-apartment-form" on:submit|preventDefault={saveQuickApartment} novalidate>
+    {#if quickApartmentError}<div class="alert alert-danger" role="alert">{quickApartmentError}</div>{/if}
+    <div class="field">
+      <label class="field-label" for="meter-quick-apartment-number">{$locale.apartments.apartmentNumber}</label>
+      <div class="field-control"><i class="bi bi-123" aria-hidden="true"></i><input class="form-control" id="meter-quick-apartment-number" bind:value={quickApartment.apartmentNumber} required /></div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="meter-quick-apartment-name">{$locale.apartments.name}</label>
+      <div class="field-control"><i class="bi bi-tag" aria-hidden="true"></i><input class="form-control" id="meter-quick-apartment-name" bind:value={quickApartment.name} required /></div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="meter-quick-apartment-type">{$locale.apartments.type}</label>
+      <div class="field-control">
+        <i class="bi bi-tags" aria-hidden="true"></i>
+        <select class="form-select" id="meter-quick-apartment-type" bind:value={quickApartment.type} required>
+          <option value="">{$locale.apartments.selectType}</option>
+          {#each Object.keys($locale.apartments.types) as typeValue (typeValue)}
+            <option value={typeValue}>{$locale.apartments.types[typeValue]}</option>
+          {/each}
+        </select>
+      </div>
+    </div>
+  </form>
+  <div slot="footer">
+    <button class="btn btn-light" type="button" on:click={closeQuickApartment} disabled={quickApartmentSaving}>{$locale.meters.cancel}</button>
+    <button class="btn btn-primary" type="submit" form="meter-quick-apartment-form" disabled={quickApartmentSaving}>{quickApartmentSaving ? $locale.apartments.loading : $locale.apartments.save}</button>
+  </div>
+</Modal>
+
 <style>
+  .meter-apartment-select .form-select { width: 100%; padding-inline-end: 3.25rem; background-position: right 2.7rem center; }
+  :global([dir='rtl']) .meter-apartment-select .form-select { background-position: left 2.7rem center; }
+  .meter-apartment-add { position: absolute; z-index: 1; inset-inline-end: 0.35rem; top: 50%; display: inline-flex; align-items: center; justify-content: center; width: calc(var(--control-height) - 0.5rem); height: calc(var(--control-height) - 0.5rem); padding: 0; transform: translateY(-50%); border: 0; border-radius: var(--control-radius); color: var(--accent-text); background: transparent; font-size: 1rem; cursor: pointer; }
+  .meter-apartment-add:hover:not(:disabled) { color: var(--accent-hover); }
+  .meter-apartment-add:focus-visible { outline: 0; box-shadow: var(--ring); }
+  .meter-apartment-add:disabled { color: var(--text-placeholder); cursor: not-allowed; }
+  #meter-quick-apartment-form { display: grid; gap: var(--space-3); }
   .utility-cell { display: inline-flex; align-items: center; gap: 0.4rem; }
   .utility-cell i { color: var(--text-muted); font-size: 0.95rem; }
   .cell-sub { display: block; color: var(--text-muted); font-size: var(--text-xs); }

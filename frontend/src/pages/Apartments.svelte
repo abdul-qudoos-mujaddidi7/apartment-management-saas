@@ -473,8 +473,8 @@
 
 <PageLayout>
   <svelte:fragment slot="toolbar">
-    <PageToolbar bind:search searchPlaceholder={$locale.apartments.search} onSearch={() => loadApartments(1)} addLabel={$locale.apartments.add} onAdd={openAddApartment}>
-      <svelte:fragment slot="tabs"><TabFilters tabs={statusTabs} active={statusFilter} on:select={handleStatusChange} /></svelte:fragment>
+    <PageToolbar bind:search searchPlaceholder={$locale.apartments.search} onSearch={() => loadApartments(1)} addLabel={$locale.apartments.add} onAdd={openAddApartment} filtersCount={statusFilter === 'all' ? 0 : 1} filtersClearLabel={$locale.common.clearFilters} onClearFilters={() => handleStatusChange({ detail: 'all' })}>
+      <svelte:fragment slot="tabs"><TabFilters label={$locale.apartments.status} tabs={statusTabs} active={statusFilter} on:select={handleStatusChange} /></svelte:fragment>
       <svelte:fragment slot="actions">{#if floor?.building?.id}<button class="toolbar-back" type="button" on:click={goBackToBuilding}><i class="bi bi-arrow-left" aria-hidden="true"></i><span>{$locale.apartments.back}</span></button>{/if}</svelte:fragment>
     </PageToolbar>
   </svelte:fragment>

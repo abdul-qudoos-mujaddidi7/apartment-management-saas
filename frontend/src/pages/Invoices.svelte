@@ -49,7 +49,7 @@
 
   // Status is a chip row in the toolbar; the panel holds what chips cannot say.
   $: statusTabs = [{ key: '', label: $locale.common.all }, ...STATUSES.map((status) => ({ key: status, label: statusLabel(status) }))];
-  $: activeFilterCount = [filters.buildingId, filters.dateFrom, filters.dateTo].filter(Boolean).length;
+  $: activeFilterCount = [filters.status, filters.buildingId, filters.dateFrom, filters.dateTo].filter(Boolean).length;
 
   $: rowIds = invoices.map((invoice) => invoice.id);
   $: allRowsSelected = isAllSelected(selectedIds, rowIds);
@@ -106,7 +106,7 @@
   }
 
   function handleStatusChange(event) { filters = { ...filters, status: event.detail }; loadInvoices(1); }
-  function clearFilters() { filters = { ...filters, buildingId: '', dateFrom: '', dateTo: '' }; loadInvoices(1); }
+  function clearFilters() { filters = { ...filters, status: '', buildingId: '', dateFrom: '', dateTo: '' }; loadInvoices(1); }
   function toggleRow(id) { selectedIds = toggleSelected(selectedIds, id); }
   function toggleAllRows() { selectedIds = toggleAllSelected(selectedIds, rowIds); }
 
@@ -379,7 +379,7 @@
       onClearFilters={clearFilters}
     >
       <svelte:fragment slot="tabs">
-        <TabFilters tabs={statusTabs} active={filters.status} on:select={handleStatusChange} />
+        <TabFilters label={$locale.invoices.status} tabs={statusTabs} active={filters.status} on:select={handleStatusChange} />
       </svelte:fragment>
 
       <svelte:fragment slot="filters">

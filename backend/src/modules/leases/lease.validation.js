@@ -6,6 +6,7 @@ const currencyCode = z.preprocess(
   z.string().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code such as USD.').optional(),
 );
 const leaseStatuses = ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED'];
+const leaseTypes = ['RENT', 'MORTGAGED', 'FOR_SALE', 'OTHER'];
 // The intervals a lease may bill on. Anything else is a mistake, not a cycle.
 const rentCycleMonths = z.coerce.number().int().refine(
   (value) => [1, 2, 3, 4, 6, 12].includes(value),
@@ -14,6 +15,7 @@ const rentCycleMonths = z.coerce.number().int().refine(
 const fields = {
   guarantorId: optionalText(191),
   tenantId: z.string().trim().min(1), apartmentId: z.string().trim().min(1), contractNumber: z.string().trim().min(1).max(100),
+  leaseType: z.enum(leaseTypes).optional(),
   startDate: z.coerce.date(), endDate: z.coerce.date(), monthlyRent: z.coerce.number().positive(), securityDeposit: z.coerce.number().min(0), currency: currencyCode, securityDepositCurrency: currencyCode,
   /* The recurring fee billed on top of the rent, agreed once and carried by
      every invoice raised on this lease. */
@@ -32,6 +34,7 @@ const dates = (schema) => schema.refine((v) => !v.startDate || !v.endDate || v.s
  */
 const createLeaseSchema = dates(z.object({
   ...fields,
+  leaseType: z.enum(leaseTypes).default('RENT'),
   securityDeposit: fields.securityDeposit.default(0),
   serviceFee: fields.serviceFee.default(0),
   rentCycleMonths: fields.rentCycleMonths.default(1),
@@ -39,4 +42,4 @@ const createLeaseSchema = dates(z.object({
 }));
 const updateLeaseSchema = dates(z.object(fields).partial().refine((v) => Object.keys(v).length, { message: 'At least one field is required.' }));
 const listLeasesSchema = z.object({ page:z.coerce.number().int().min(1).default(1), pageSize:z.coerce.number().int().min(1).max(100).default(10), tenantId:z.string().optional(), apartmentId:z.string().optional(), buildingId:z.string().optional(), status:z.enum(leaseStatuses).optional(), search:z.string().trim().max(100).default('') });
-module.exports = { createLeaseSchema, updateLeaseSchema, listLeasesSchema };
+module.exports = { createLeaseSchema, updateLeaseSchema, listLeasesSchema, leaseTypes };

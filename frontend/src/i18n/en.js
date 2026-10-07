@@ -158,7 +158,9 @@ const translations = {
       invalidCurrency: 'Enter a three-letter currency code such as USD.',
       create: 'Create Account', creating: 'Creating Account...', existing: 'Already have an account?', required: '{field} is required.', invalidEmail: 'Enter a valid email address.', minPassword: 'Password must be at least 8 characters.', mismatch: 'Passwords must match.', emailExists: 'Email is already registered.', organizationExists: 'Organization slug already exists.', rateLimited: 'Too many attempts. Please try again later.', requestBlocked: 'This request was blocked for security reasons.',
     },
-    footer: { description: 'Practical tools for better apartment operations.', quickLinks: 'Quick links', features: 'Features', contact: 'Contact', properties: 'Properties', tenants: 'Tenants', finances: 'Finances', contactDescription: 'Built for modern property teams.', copyright: '© 2026 ApartmentPro. All rights reserved.', platform: 'Apartment Management Platform' },
+    // The public footer: one sentence about the product, where every noun in
+    // the wording is on the token palette already — the bar is the navy one.
+    footer: { description: 'Practical tools for better apartment operations.', quickLinks: 'Quick links', features: 'Features', howItWorks: 'How it works', contact: 'Contact', properties: 'Properties', tenants: 'Tenants', finances: 'Finances', contactDescription: 'Built for modern property teams.', support: '24/7 customer support', copyright: '© 2026 ApartmentPro. All rights reserved.', platform: 'Apartment Management Platform' },
   },
   login: { ariaLabel: 'ApartmentPro', eyebrow: 'Secure access', title: 'Welcome back', subtitle: 'Sign in to manage your organization.', username: 'Username', usernameHint: 'For existing accounts, use your old email address as your username.', password: 'Password', remember: 'Remember me', forgot: 'Forgot password?', hidePassword: 'Hide password', showPassword: 'Show password', signingIn: 'Signing in...', submit: 'Sign In', footer: 'Protected by secure, cookie-based authentication.', requiredUsername: 'Enter your username.', requiredPassword: 'Enter your password.', noAccount: 'New to ApartmentPro?', createAccount: 'Create an account', invalidCredentials: 'Invalid username or password.', rateLimited: 'Too many attempts. Please try again later.', requestBlocked: 'This request was blocked for security reasons.' },
   /* shared chrome for the sign-in and create-account pages */
@@ -442,6 +444,8 @@ const translations = {
     loading: 'Loading meters...',
     meterNumber: 'Meter number',
     utilityType: 'Utility',
+    meterType: 'Meter type',
+    meterTypes: { RESIDENTIAL: 'Residential', COMMERCIAL: 'Commercial', OFFICE: 'Office', INDUSTRIAL: 'Industrial', OTHER: 'Other' },
     unit: 'Unit',
     defaultUnitPrice: 'Default unit price',
     pricePerUnit: 'per',
@@ -725,6 +729,10 @@ Object.assign(translations.guarantors, {
   profile: 'Guarantor profile', registeredOn: 'Registered on', guaranteedLeases: 'Guaranteed leases',
   totalLeases: 'Total leases', activeLeases: 'Active leases', draftLeases: 'Draft leases', closedLeases: 'Expired / terminated leases',
   noLeases: 'This guarantor has no assigned leases.', leasePermissionRequired: 'Lease view permission is required to see guaranteed lease details.',
+});
+Object.assign(translations.leases, {
+  leaseType: 'Lease type',
+  types: { RENT: 'Rent', MORTGAGED: 'Mortgaged', FOR_SALE: 'For Sale', OTHER: 'Other' },
 });
 
 export default translations;

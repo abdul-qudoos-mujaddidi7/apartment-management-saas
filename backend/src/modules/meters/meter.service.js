@@ -12,6 +12,7 @@ function meterSelect() {
     apartmentId: true,
     meterNumber: true,
     utilityType: true,
+    meterType: true,
     unit: true,
     defaultUnitPrice: true,
     initialReading: true,

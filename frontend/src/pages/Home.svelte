@@ -187,16 +187,81 @@
     </section>
   </main>
 
-  <footer class="lp-footer">
-    <div class="lp-wrap lp-footer-row">
-      <button class="lp-brand" type="button" on:click={() => scrollToSection('home')}>
-        <span class="lp-mark" aria-hidden="true"><i class="bi bi-buildings"></i></span>
-        <span>{$locale.common.apartmentPro}</span>
-      </button>
-      <p>{$locale.home.footer.copyright}</p>
-      <div class="lp-footer-actions">
-        <a href="mailto:hello@apartmentpro.com">hello@apartmentpro.com</a>
-        <button type="button" on:click={() => push('/login')}>{$locale.common.signIn}</button>
+  <footer class="lp-footer" id="contact">
+    <div class="lp-wrap lp-footer-grid">
+      <div class="lp-footer-brand-col">
+        <button class="lp-footer-brand" type="button" on:click={() => scrollToSection('home')} aria-label={$locale.home.nav.homeLabel}>
+          <span class="lp-mark" aria-hidden="true"><i class="bi bi-buildings"></i></span>
+          <span>{$locale.common.apartmentPro}</span>
+        </button>
+        <p class="lp-footer-copy">{$locale.home.footer.description}</p>
+        <ul class="lp-footer-tags">
+          <li>{$locale.home.footer.properties}</li>
+          <li>{$locale.home.footer.tenants}</li>
+          <li>{$locale.home.footer.finances}</li>
+        </ul>
+
+        <ul class="lp-footer-socials">
+          <li>
+            <a class="lp-social" href="https://www.facebook.com/ZenoERP/" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="bi bi-facebook" aria-hidden="true"></i></a>
+          </li>
+          <li>
+            <a class="lp-social" href="https://www.instagram.com/zenoerp/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="bi bi-instagram" aria-hidden="true"></i></a>
+          </li>
+          <li>
+            <a class="lp-social" href="https://www.tiktok.com/@zenoerp" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><i class="bi bi-tiktok" aria-hidden="true"></i></a>
+          </li>
+          <li>
+            <a class="lp-social" href="https://www.youtube.com/@zenoerp" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i class="bi bi-youtube" aria-hidden="true"></i></a>
+          </li>
+          <li>
+            <a class="lp-social" href="https://t.me/zenoerp" target="_blank" rel="noopener noreferrer" aria-label="Telegram"><i class="bi bi-telegram" aria-hidden="true"></i></a>
+          </li>
+          <li>
+            <a class="lp-social" href="https://x.com/zenoerp" target="_blank" rel="noopener noreferrer" aria-label="X"><i class="bi bi-twitter-x" aria-hidden="true"></i></a>
+          </li>
+        </ul>
+      </div>
+
+      <nav class="lp-footer-links-col" aria-labelledby="lp-footer-links-title">
+        <h2 class="lp-footer-title" id="lp-footer-links-title">{$locale.home.footer.quickLinks}</h2>
+        <ul class="lp-footer-links">
+          <li><button type="button" on:click={() => scrollToSection('features')}>{$locale.home.footer.features}</button></li>
+          <li><button type="button" on:click={() => scrollToSection('about')}>{$locale.home.footer.howItWorks}</button></li>
+          <li><button type="button" on:click={() => push('/login')}>{$locale.common.signIn}</button></li>
+          <li><button type="button" on:click={() => push('/register')}>{$locale.common.getStarted}</button></li>
+        </ul>
+      </nav>
+
+      <div class="lp-footer-contact-col">
+        <h2 class="lp-footer-title">{$locale.home.footer.contact}</h2>
+        <p class="lp-footer-copy">{$locale.home.footer.contactDescription}</p>
+        <ul class="lp-footer-contact">
+          <li>
+            <i class="bi bi-globe2" aria-hidden="true"></i>
+            <a href="https://ap.zenoerp.com" target="_blank" rel="noopener noreferrer" dir="ltr">ap.zenoerp.com</a>
+          </li>
+          <li>
+            <i class="bi bi-envelope-fill" aria-hidden="true"></i>
+            <a href="mailto:support@zenoerp.com" dir="ltr">support@zenoerp.com</a>
+          </li>
+          <li>
+            <i class="bi bi-telephone-fill" aria-hidden="true"></i>
+            <a href="https://wa.me/93704495743" target="_blank" rel="noopener noreferrer" dir="ltr">+93 70 449 5743</a>
+          </li>
+          <li>
+            <i class="bi bi-clock-fill" aria-hidden="true"></i>
+            <span>{$locale.home.footer.support}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lp-wrap">
+      <hr class="lp-footer-rule" />
+      <div class="lp-footer-bottom">
+        <p>{$locale.home.footer.copyright}</p>
+        <p>{$locale.home.footer.platform}</p>
       </div>
     </div>
   </footer>
@@ -317,12 +382,40 @@
   .lp-cta div > p:last-child { color: rgba(255,255,255,.8); }
   .lp-cta .lp-button { flex: 0 0 auto; }
 
-  .lp-footer { border-block-start: 1px solid var(--lp-border); }
-  .lp-footer-row { display: flex; align-items: center; gap: 1.5rem; min-height: 6rem; }
-  .lp-footer-row p { margin: 0 auto; color: var(--lp-muted); font-size: var(--text-xs); }
-  .lp-footer-actions { display: flex; align-items: center; gap: 1rem; }
-  .lp-footer-actions a,.lp-footer-actions button { display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; color: var(--lp-muted); background: transparent; font-size: var(--text-xs); font-weight: var(--weight-semibold); text-decoration: none; cursor: pointer; }
-  .lp-footer-actions a:hover,.lp-footer-actions button:hover { color: var(--lp-primary-readable); }
+  /* The footer is the page's one dark surface, taken from `--navy-deep` — the
+     token reserved for exactly this — so it closes the page the way the hero
+     opens it. Two very soft accent glows bleed off the corners; they are the
+     only decoration, and both are pinned with logical insets so the RTL flip
+     moves them with the text instead of leaving them stranded. */
+  .lp-footer { position: relative; overflow: hidden; color: rgba(255,255,255,.72); background: var(--navy-deep); }
+  .lp-footer::before,.lp-footer::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
+  .lp-footer::before { inset-block-start: -34%; inset-inline-start: -8%; width: 36rem; height: 36rem; background: radial-gradient(circle,rgba(53,134,255,.3) 0%,rgba(53,134,255,0) 68%); }
+  .lp-footer::after { inset-block-end: -46%; inset-inline-end: -6%; width: 30rem; height: 30rem; background: radial-gradient(circle,rgba(119,174,255,.18) 0%,rgba(119,174,255,0) 68%); }
+  .lp-footer .lp-wrap { position: relative; z-index: 1; }
+  .lp-footer-grid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(9rem,.75fr) minmax(15rem,1fr); gap: clamp(2rem,4.5vw,4rem); padding-block: clamp(2.75rem,5vw,4rem) 0; }
+  .lp-footer-brand { display: inline-flex; align-items: center; gap: .65rem; min-height: 44px; padding: 0; border: 0; color: #fff; background: transparent; font-size: 1.05rem; font-weight: var(--weight-bold); cursor: pointer; }
+  .lp-footer-copy { max-width: 32rem; margin: .9rem 0 0; color: rgba(255,255,255,.66); font-size: var(--text-sm); line-height: var(--leading-relaxed); }
+  .lp-footer-tags { display: flex; flex-wrap: wrap; gap: .45rem 1rem; margin: 1.1rem 0 0; padding: 0; list-style: none; }
+  .lp-footer-tags li { display: inline-flex; align-items: center; gap: .45rem; color: rgba(255,255,255,.84); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
+  .lp-footer-tags li::before { content: ''; width: .3rem; height: .3rem; border-radius: 50%; background: var(--brand-400); }
+  /* The developer's channels, on the About column: one square per network, so a
+     glyph alone carries the meaning and nothing needs a label. */
+  .lp-footer-socials { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.35rem 0 0; padding: 0; list-style: none; }
+  .lp-social { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 1px solid rgba(255,255,255,.14); border-radius: .65rem; color: rgba(255,255,255,.78); background: rgba(255,255,255,.07); font-size: 1rem; text-decoration: none; transition: color var(--transition),background var(--transition),border-color var(--transition),transform var(--transition); }
+  .lp-social:hover { border-color: rgba(169,205,255,.45); color: #fff; background: rgba(53,134,255,.28); transform: translateY(-2px); }
+  /* Two classes deep: the page's own heading rule (`.lp-page :is(h1,h2,h3)`) sets
+     the ink colour and outranks a lone class. */
+  .lp-footer .lp-footer-title { margin: 0 0 1rem; color: #fff; font-size: var(--text-sm); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); }
+  .lp-footer-links,.lp-footer-contact { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+  .lp-footer-links button { display: inline-flex; align-items: center; min-height: 30px; padding: 0; border: 0; color: rgba(255,255,255,.72); background: transparent; text-align: start; font-size: var(--text-sm); font-weight: var(--weight-medium); cursor: pointer; transition: color var(--transition); }
+  .lp-footer-links button:hover { color: #fff; }
+  .lp-footer-contact li { display: flex; align-items: center; gap: .6rem; color: rgba(255,255,255,.72); font-size: var(--text-sm); }
+  .lp-footer-contact i { flex-shrink: 0; color: var(--brand-400); font-size: 1rem; }
+  .lp-footer-contact a { display: inline-flex; align-items: center; min-height: 30px; color: inherit; text-decoration: none; transition: color var(--transition); }
+  .lp-footer-contact a:hover { color: #fff; }
+  .lp-footer-rule { margin: clamp(2rem,4vw,3rem) 0 0; border: 0; border-block-start: 1px solid rgba(255,255,255,.14); opacity: 1; }
+  .lp-footer-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1.5rem; padding-block: 1.1rem 1.35rem; }
+  .lp-footer-bottom p { margin: 0; color: rgba(255,255,255,.6); font-size: var(--text-xs); }
 
   @media (max-width: 920px) {
     .lp-links,.lp-signin,.lp-desktop-cta { display: none; }
@@ -340,6 +433,8 @@
     .lp-rent-status { justify-self: end; width: min(100%,18rem); margin-block: 1.5rem 0; }
     .lp-process-grid { grid-template-columns: 1fr; }
     .lp-process-heading { max-width: 44rem; }
+    .lp-footer-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+    .lp-footer-brand-col { grid-column: 1 / -1; }
   }
 
   @media (max-width: 660px) {
@@ -357,9 +452,8 @@
     .lp-feature,.lp-feature:first-child { padding: 1.5rem 0; border-inline-start: 0; border-block-end: 1px solid var(--lp-border); }
     .lp-cta { align-items: flex-start; flex-direction: column; }
     .lp-cta .lp-button { width: 100%; }
-    .lp-footer-row { align-items: flex-start; flex-direction: column; padding-block: 1.5rem; }
-    .lp-footer-row p { margin: 0; }
-    .lp-footer-actions { flex-wrap: wrap; }
+    .lp-footer-grid { grid-template-columns: 1fr; padding-block: 2.5rem 0; }
+    .lp-footer-bottom { flex-direction: column; align-items: flex-start; padding-block: 1rem 1.25rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {

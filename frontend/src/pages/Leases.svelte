@@ -62,7 +62,7 @@
   $: nextInvoicePreview = addMonths(editing?.lastInvoiceDate ? editing.lastInvoiceDate.slice(0, 10) : form.startDate, Number(form.rentCycleMonths) || 1);
   const blankForm = () => ({
     guarantorId: '', tenantId: '', buildingId: '', floorId: '', apartmentId: '',
-    contractNumber: '', startDate: '', endDate: '',
+    contractNumber: '', leaseType: 'RENT', startDate: '', endDate: '',
     monthlyRent: '', securityDeposit: '0', serviceFee: '0', rentCycleMonths: '1', paymentDueDay: '1',
     /* Rent, deposit and the service fee can each be agreed in their own
        currency: a deposit or a fee is routinely quoted in another one. */
@@ -80,6 +80,7 @@
   $: leaseApartmentOptions = apartments.filter(
     (apartment) => apartment.status !== 'OCCUPIED' || apartment.id === editing?.apartment?.id
   );
+  $: selectedLeaseApartment = apartments.find((apartment) => apartment.id === form.apartmentId);
   let loading = false;
   let saving = false;
   let optionsLoading = false;
@@ -267,6 +268,7 @@
       tenantId: lease.tenant.id,
       buildingId, floorId: '', apartmentId: '',
       contractNumber: lease.contractNumber,
+      leaseType: lease.leaseType || 'RENT',
       startDate: lease.startDate.slice(0, 10),
       endDate: lease.endDate.slice(0, 10),
       monthlyRent: lease.monthlyRent,
@@ -324,6 +326,7 @@
       tenantId: form.tenantId,
       apartmentId: form.apartmentId,
       contractNumber: form.contractNumber.trim(),
+      leaseType: form.leaseType,
       startDate: form.startDate,
       endDate: form.endDate,
       monthlyRent: Number(form.monthlyRent),
@@ -386,6 +389,10 @@
     }
   }
 
+  function leaseTypeLabel(leaseType) {
+    return $locale.leases.types[leaseType] || leaseType;
+  }
+
   $: resultSummary = `${$locale.leases.title}: ${pagination.total}`;
   // Leading checkbox column — ids of the rows currently rendered.
   let selectedIds = createSelection();
@@ -438,6 +445,7 @@
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
           <th data-sort="contractNumber">{$locale.leases.contractNumber}</th>
+          <th data-sort="leaseType">{$locale.leases.leaseType}</th>
           <th data-sort="tenant.firstName">{$locale.leases.tenant}</th>
           <th data-sort="apartment.floor.building.name">{$locale.leases.building}</th>
           <th data-sort="apartment.floor.name">{$locale.leases.floor}</th>
@@ -454,6 +462,7 @@
           <tr class:is-selected={selectedIds.has(lease.id)}>
             <td class="select-column"><Checkbox checked={selectedIds.has(lease.id)} label={$locale.common.selectRow} on:change={() => toggleRow(lease.id)} /></td>
             <td class="contract-number">{lease.contractNumber}</td>
+            <td>{leaseTypeLabel(lease.leaseType || 'RENT')}</td>
             <td class="tenant-name">{lease.tenant.firstName}</td>
             <td>{lease.apartment.floor.building.name}</td>
             <td>{lease.apartment.floor.name}</td>
@@ -577,7 +586,7 @@
             <option value="">{$locale.leases.select}</option>
             {#each leaseApartmentOptions as apartment (apartment.id)}
               <option value={apartment.id} disabled={apartment.status !== 'AVAILABLE' && apartment.id !== editing?.apartment?.id}>
-                {apartment.apartmentNumber} — {apartment.name}
+                {apartment.apartmentNumber} — {apartment.name} ({$locale.apartments.types[apartment.type] || apartment.type})
               </option>
             {/each}
           </select>
@@ -592,12 +601,28 @@
             <i class="bi bi-plus-lg" aria-hidden="true"></i>
           </button>
         </div>
+        {#if selectedLeaseApartment}
+          <p class="field-hint">
+            {$locale.apartments.type}: {$locale.apartments.types[selectedLeaseApartment.type] || selectedLeaseApartment.type}
+          </p>
+        {/if}
       </div>
       <div class="field">
         <label class="field-label" for="lease-contract-number">{$locale.leases.contractNumber}</label>
         <div class="field-control">
           <i class="bi bi-hash" aria-hidden="true"></i>
           <input class="form-control" id="lease-contract-number" type="text" placeholder={$locale.leases.contractNumberPlaceholder} bind:value={form.contractNumber} required />
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="lease-type">{$locale.leases.leaseType}</label>
+        <div class="field-control">
+          <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+          <select class="form-select" id="lease-type" bind:value={form.leaseType} required>
+            {#each Object.entries($locale.leases.types) as [type, label] (type)}
+              <option value={type}>{label}</option>
+            {/each}
+          </select>
         </div>
       </div>
       <div class="field">
@@ -769,6 +794,7 @@
     <div class="detail-grid">
       <div class="detail-item"><span>{$locale.leases.tenant}</span><strong>{detail.tenant.firstName}</strong></div>
       <div class="detail-item"><span>{$locale.leases.contractNumber}</span><strong>{detail.contractNumber}</strong></div>
+      <div class="detail-item"><span>{$locale.leases.leaseType}</span><strong>{leaseTypeLabel(detail.leaseType || 'RENT')}</strong></div>
       <div class="detail-item"><span>{$locale.leases.building}</span><strong>{detail.apartment.floor.building.name}</strong></div>
       <div class="detail-item"><span>{$locale.leases.floor}</span><strong>{detail.apartment.floor.name}</strong></div>
       <div class="detail-item"><span>{$locale.leases.apartment}</span><strong>{detail.apartment.apartmentNumber}</strong></div>

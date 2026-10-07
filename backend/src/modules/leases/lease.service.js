@@ -2,7 +2,7 @@ const prisma = require('../../lib/prisma');
 const { lockGuarantor } = require('../guarantors/guarantor.service');
 const { addMonths, initialNextInvoiceDate, normalizeRentCycle } = require('../../lib/rent-cycle');
 const fail=(code,message)=>Object.assign(new Error(message),{code});
-const select={ guarantorId:true,guarantor:{select:{id:true,firstName:true,lastName:true,phone:true,nationalId:true,address:true}}, id:true,contractNumber:true,startDate:true,endDate:true,monthlyRent:true,securityDeposit:true,currency:true,securityDepositCurrency:true,serviceFee:true,serviceFeeCurrency:true,rentCycleMonths:true,nextInvoiceDate:true,lastInvoiceDate:true,paymentDueDay:true,status:true,notes:true,createdAt:true,updatedAt:true, tenant:{select:{id:true,firstName:true,phone:true,status:true}}, apartment:{select:{id:true,apartmentNumber:true,name:true,floor:{select:{id:true,floorNumber:true,name:true,building:{select:{id:true,name:true,code:true}}}}}} };
+const select={ guarantorId:true,guarantor:{select:{id:true,firstName:true,lastName:true,phone:true,nationalId:true,address:true}}, id:true,contractNumber:true,leaseType:true,startDate:true,endDate:true,monthlyRent:true,securityDeposit:true,currency:true,securityDepositCurrency:true,serviceFee:true,serviceFeeCurrency:true,rentCycleMonths:true,nextInvoiceDate:true,lastInvoiceDate:true,paymentDueDay:true,status:true,notes:true,createdAt:true,updatedAt:true, tenant:{select:{id:true,firstName:true,phone:true,status:true}}, apartment:{select:{id:true,apartmentNumber:true,name:true,floor:{select:{id:true,floorNumber:true,name:true,building:{select:{id:true,name:true,code:true}}}}}} };
 const scope=(organizationId)=>({organizationId,deletedAt:null});
 /**
  * The currency a lease's rent is agreed in.

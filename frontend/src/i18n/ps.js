@@ -52,7 +52,7 @@ const translations = {
     pricing: { kicker: 'ستاسو له ودې سره جوړېږي', title: 'ستاسو د ټولګې د هرې برخې لپاره یوه پلاتفورم.', description: 'نن له اړینو امکاناتو پیل وکړئ او د کار له ودې سره نور امکانات ورزیات کړئ.' },
     cta: { kicker: 'کله چې چمتو یاست', title: 'د خپلو ملکیتونو مدیریت', titleBreak: 'نن پیل کړئ.', description: 'له لومړۍ ودانۍ څخه خپل ټولګې ته روښانتیا راوړئ.' },
     registration: { ...en.home.registration, kicker: 'نن پیل وکړئ', title: 'ارامه', titleAccent: 'ملکي چارې جوړې کړئ.', description: 'خپل ApartmentPro کاري ځای جوړ کړئ او ملکیتونه، خلک او مالي فعالیتونه سره راټول کړئ.', secure: 'ستاسو معلومات شخصي او خوندي پاتې کېږي.', eyebrow: 'خپل کاري ځای جوړ کړئ', heading: 'پیل وکړئ', subtitle: 'د خپل ځان او سازمان په اړه لږ معلومات راکړئ.', fields: { organization: 'د سازمان / شرکت نوم', currency: 'د راپور سکه', firstName: 'د مدیر لومړی نوم', lastName: 'د مدیر تخلص', email: 'برېښنالیک', phone: 'د تلیفون شمېره', password: 'پټ نوم', confirmPassword: 'پټ نوم تایید کړئ' }, currencyHint: 'ټول راپورونه او د ډشبورډ ټولټال پرې ښودل کېږي. په دقت وټاکئ: د لومړي بل یا تادیې له ثبت وروسته ثابته کېږي.', currencyDefault: 'د AFN راپور لپاره یې خالي پرېږدئ.', currencyUnavailable: 'د اسعارو لیست بار نشو. درې توري کوډ پخپله ولیکئ، لکه USD.', invalidCurrency: 'د USD په څېر درې توري کوډ ولیکئ.', create: 'حساب جوړ کړئ', creating: 'حساب جوړېږي...', existing: 'له مخکې حساب لرئ؟', required: '{field} اړین دی.', invalidEmail: 'سم برېښنالیک ولیکئ.', minPassword: 'پټ نوم باید لږ تر لږه ۸ توري ولري.', mismatch: 'پټ نومونه یو شان نه دي.', emailExists: 'دا برېښنالیک مخکې ثبت شوی دی.', organizationExists: 'د سازمان پېژندونکی مخکې کارول شوی دی.', rateLimited: 'هڅې ډېرې شوې. وروسته بیا هڅه وکړئ.', requestBlocked: 'دا غوښتنه د امنیتي دلایلو له امله بنده شوه.' },
-    footer: { ...en.home.footer, description: 'د اپارتمانونو د غوره مدیریت لپاره عملي وسایل.', quickLinks: 'چټک لینکونه', features: 'ځانګړنې', contact: 'اړیکه', properties: 'ملکیتونه', tenants: 'اوسېدونکي', finances: 'مالي چارې', contactDescription: 'د عصري ملکیتونو ټیمونو لپاره جوړ شوی.', copyright: '© ۲۰۲۶ ApartmentPro. ټول حقوق خوندي دي.', platform: 'د اپارتمانونو د مدیریت پلاتفورم' },
+    footer: { ...en.home.footer, description: 'د اپارتمانونو د غوره مدیریت لپاره عملي وسایل.', quickLinks: 'چټک لینکونه', features: 'ځانګړنې', howItWorks: 'څنګه کار کوي', contact: 'اړیکه', properties: 'ملکیتونه', tenants: 'اوسېدونکي', finances: 'مالي چارې', contactDescription: 'د عصري ملکیتونو ټیمونو لپاره جوړ شوی.', support: '۲۴/۷ ملاتړ', copyright: '© ۲۰۲۶ ApartmentPro. ټول حقوق خوندي دي.', platform: 'د اپارتمانونو د مدیریت پلاتفورم' },
   },
   login: { ...en.login, ariaLabel: 'ApartmentPro', eyebrow: 'خوندي لاسرسی', title: 'بېرته ښه راغلاست', subtitle: 'د خپل سازمان د مدیریت لپاره ننوتئ.', username: 'کارن نوم', usernameHint: 'د پخوانیو حسابونو لپاره، خپل پخوانی برېښنالیک د کارن نوم په توګه ولیکئ.', password: 'پټ نوم', remember: 'ما په یاد وساته', forgot: 'پټ نوم مو هېر کړی؟', hidePassword: 'پټ نوم پټ کړئ', showPassword: 'پټ نوم ښکاره کړئ', signingIn: 'د ننوتلو په حال کې...', submit: 'ننوتل', footer: 'د خوندي کوکي پر بنسټ تصدیق له لارې خوندي شوی.', requiredUsername: 'خپل کارن نوم ولیکئ.', requiredPassword: 'خپل پټ نوم ولیکئ.', noAccount: 'په ApartmentPro کې نوی یاست؟', createAccount: 'حساب جوړ کړئ', invalidCredentials: 'کارن نوم یا پټ نوم ناسم دی.', rateLimited: 'هڅې ډېرې شوې. وروسته بیا هڅه وکړئ.', requestBlocked: 'دا غوښتنه د امنیتي دلایلو له امله بنده شوه.' },
   /* د ننوتلو او حساب جوړولو پاڼو ګډه څېره */
@@ -277,6 +277,8 @@ const translations = {
     loading: 'مېټرونه لوډېږي...',
     meterNumber: 'د مېټر شمېره',
     utilityType: 'د خدمت ډول',
+    meterType: 'د مېټر ډول',
+    meterTypes: { RESIDENTIAL: 'استوګنیز', COMMERCIAL: 'سوداګریز', OFFICE: 'دفتر', INDUSTRIAL: 'صنعتي', OTHER: 'نور' },
     unit: 'واحد',
     initialReading: 'لومړنۍ قرائت',
     installationDate: 'د نصب نېټه',
@@ -500,5 +502,9 @@ Object.assign(translations.guarantors, {
 
 Object.assign(translations.tenants, { primaryResidence: 'د اوسېدو اصلي پته' });
 Object.assign(translations.tenantProfile, { primaryResidence: 'د اوسېدو اصلي پته' });
+Object.assign(translations.leases, {
+  leaseType: 'د قرارداد ډول',
+  types: { RENT: 'کرایه', MORTGAGED: 'ګرو', FOR_SALE: 'د پلور لپاره', OTHER: 'نور' },
+});
 
 export default translations;

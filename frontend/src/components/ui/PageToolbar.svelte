@@ -1,18 +1,11 @@
 <script>
-  /**
-   * Page toolbar — one row of page controls.
-   *
-   * Reading order: search field, then the tab chips, then the filters button
-   * and the page actions. Anything the page cannot express as a chip belongs in
-   * the `filters` slot, which opens in a panel under the button; the button
-   * carries the count of active filters so the row stays honest when the panel
-   * is closed.
-   *
-   * Slots: tabs (chips), filters (panel body), actions
+  /** Search, a single filter panel, and page actions.
+   * Both the legacy tabs slot and the filters slot render inside the panel.
    */
 
   import { onDestroy, onMount } from 'svelte';
   import ActionButton from './ActionButton.svelte';
+  import { locale } from '../../i18n';
 
   export let search = '';
   export let searchPlaceholder = '';
@@ -25,7 +18,7 @@
   export let onReset = () => {};
 
   /** Button caption for the filter panel. */
-  export let filtersLabel = 'Filters';
+  export let filtersLabel = '';
   /** How many filters are currently narrowing the list — shown as a badge. */
   export let filtersCount = 0;
   /** Reset caption; the button only appears while a filter is active. */
@@ -76,14 +69,8 @@
     </div>
   {/if}
 
-  {#if $$slots.tabs}
-    <div class="toolbar-tabs">
-      <slot name="tabs" />
-    </div>
-  {/if}
-
   <div class="toolbar-actions">
-    {#if $$slots.filters}
+    {#if $$slots.filters || $$slots.tabs}
       <div class="filters-anchor" bind:this={filtersAnchor}>
         <button
           class="filters-button"
@@ -94,14 +81,15 @@
           on:click={() => (filtersOpen = !filtersOpen)}
         >
           <i class="bi bi-sliders" aria-hidden="true"></i>
-          <span>{filtersLabel}</span>
+          <span>{filtersLabel || $locale.common.filters}</span>
           {#if filtersCount > 0}
             <span class="filters-count">{filtersCount}</span>
           {/if}
         </button>
 
         {#if filtersOpen}
-          <div class="filters-panel" id={PANEL_ID} role="dialog" aria-label={filtersLabel}>
+          <div class="filters-panel" id={PANEL_ID} role="dialog" aria-label={filtersLabel || $locale.common.filters}>
+            <slot name="tabs" />
             <slot name="filters" />
 
             {#if filtersClearLabel && filtersCount > 0}
@@ -202,23 +190,6 @@
     color: var(--text-muted);
     font-size: var(--text-sm);
   }
-
-  /* --- Tab chips -------------------------------------------------------- */
-
-  /* `max-width` as well as `min-width`: a row of chips is wider than the band
-     on small screens, and without the cap it overflows the panel instead of
-     scrolling inside its own line. */
-  .toolbar-tabs {
-    display: flex;
-    align-items: center;
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .toolbar-tabs::-webkit-scrollbar { display: none; }
 
   /* --- Actions ---------------------------------------------------------- */
 
@@ -397,10 +368,6 @@
       flex: 1 1 16rem;
       min-width: 12rem;
       max-width: 21rem;
-    }
-
-    .toolbar-tabs {
-      flex: 1 1 auto;
     }
 
     .toolbar-actions {

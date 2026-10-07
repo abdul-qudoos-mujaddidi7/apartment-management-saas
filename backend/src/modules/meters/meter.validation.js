@@ -1,6 +1,7 @@
 const { z } = require('zod');
 
 const utilityTypes = ['ELECTRICITY', 'WATER', 'GAS'];
+const meterTypes = ['RESIDENTIAL', 'COMMERCIAL', 'OFFICE', 'INDUSTRIAL', 'OTHER'];
 
 const meterStatuses = ['ACTIVE', 'INACTIVE', 'REPLACED'];
 
@@ -35,6 +36,7 @@ const meterFields = {
   apartmentId: z.string().trim().min(1),
   meterNumber: z.string().trim().min(1).max(64),
   utilityType: z.enum(utilityTypes),
+  meterType: z.enum(meterTypes).optional(),
   unit: z.string().trim().min(1).max(16),
   defaultUnitPrice: z.coerce.number().finite().min(0).max(99999999999).multipleOf(0.0001).default(0),
   initialReading: optionalNumber(z.number().min(0).max(999999999999)),
@@ -43,7 +45,10 @@ const meterFields = {
   notes: optionalText(5000),
 };
 
-const createMeterSchema = z.object(meterFields)
+const createMeterSchema = z.object({
+  ...meterFields,
+  meterType: z.enum(meterTypes).default('OTHER'),
+})
   .refine(data => data.utilityType !== 'ELECTRICITY' || data.initialReading !== null, { path: ['initialReading'], message: 'An initial electricity meter reading is required.' })
   .refine(data => data.utilityType !== 'ELECTRICITY' || data.installationDate !== null, { path: ['installationDate'], message: 'An electricity meter installation date is required.' });
 
@@ -73,6 +78,7 @@ const listMetersSchema = z.object({
 module.exports = {
   createMeterSchema,
   listMetersSchema,
+  meterTypes,
   meterStatuses,
   updateMeterSchema,
   utilityTypes,
