@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
-  import LeaseNotifications from '../LeaseNotifications.svelte';
+  import Notifications from '../Notifications.svelte';
   import LanguageSwitcher from '../LanguageSwitcher.svelte';
   import ThemeToggle from '../ThemeToggle.svelte';
   import { user, signOut } from '../../stores/auth';
@@ -230,7 +230,7 @@
   <div class="app-topbar-actions">
     <ThemeToggle />
     <LanguageSwitcher compact />
-    <LeaseNotifications />
+    <Notifications />
 
     {#if $user}
       <div class="app-topbar-user" bind:this={profileContainer}>

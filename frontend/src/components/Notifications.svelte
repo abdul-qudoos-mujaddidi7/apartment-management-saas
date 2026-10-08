@@ -12,6 +12,28 @@
   let open = false;
   let container;
   let error = '';
+  const dismissedByAccount = new Map();
+  function dismissalKey() {
+    return `apartmentpro:notifications-read:${$user?.organizationId || ''}:${$user?.id || $user?.username || ''}`;
+  }
+  function dismissedNotifications() {
+    const key = dismissalKey();
+    const ids = dismissedByAccount.get(key) || new Set();
+    try {
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      if (Array.isArray(stored)) stored.filter(id => typeof id === 'string').forEach(id => ids.add(id));
+    } catch { /* Keep clicked notifications hidden if browser storage is unavailable. */ }
+    dismissedByAccount.set(key, ids);
+    return ids;
+  }
+  function dismissNotification(id) {
+    const ids = dismissedNotifications();
+    ids.add(id);
+    try { localStorage.setItem(dismissalKey(), JSON.stringify([...ids])); } catch { /* In-memory dismissal remains available. */ }
+    items = items.filter(item => item.notificationId !== id);
+    rentInvoices = rentInvoices.filter(item => item.notificationId !== id);
+    open = false;
+  }
   $: leaseAllowed = $user?.permissions?.includes('LEASE_VIEW');
   $: invoiceAllowed = $user?.permissions?.includes('INVOICE_VIEW');
   $: allowed = leaseAllowed || invoiceAllowed;
@@ -25,8 +47,9 @@
       invoiceAllowed ? api.get('/invoices/notifications') : Promise.resolve({ items: [] }),
     ]);
     if (disposed || version !== refreshVersion) return;
-    items = responses[0].status === 'fulfilled' ? responses[0].value.items || [] : [];
-    rentInvoices = responses[1].status === 'fulfilled' ? responses[1].value.items || [] : [];
+    const dismissed = dismissedNotifications();
+    items = (responses[0].status === 'fulfilled' ? responses[0].value.items || [] : []).filter(item => !dismissed.has(item.notificationId));
+    rentInvoices = (responses[1].status === 'fulfilled' ? responses[1].value.items || [] : []).filter(item => !dismissed.has(item.notificationId));
     error = responses.filter(response => response.status === 'rejected' && response.reason.status !== 403).map(response => response.reason.message).join(' ');
   }
   function outside(event) { if (open && !container?.contains(event.target)) open = false; }
@@ -42,7 +65,7 @@
 </script>
 <svelte:window on:pointerdown={outside} on:keydown={keydown} />
 {#if allowed}
-  <div class="lease-notifications" bind:this={container}>
+  <div class="notifications" bind:this={container}>
     <button
       type="button"
       class="notification-bell"
@@ -63,7 +86,7 @@
         {#if !notificationCount && !error}<p class="notification-empty">{copy.emptyNotifications}</p>{/if}
         {#if rentInvoices.length}
           {#each rentInvoices as invoice (invoice.notificationId)}
-            <a class="notification-item" href={`#/invoices?detail=${encodeURIComponent(invoice.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-invoice', { detail: invoice.id })); }}>
+            <a class="notification-item" href={`#/invoices?detail=${encodeURIComponent(invoice.id)}`} on:click={() => { dismissNotification(invoice.notificationId); window.dispatchEvent(new CustomEvent('apartmentpro:open-invoice', { detail: invoice.id })); }}>
               <span class="notification-content">
                 <span class="notification-title"><strong>{invoice.lease.tenant.firstName}</strong><span class="notification-reference" dir="ltr">{invoice.invoiceNumber}</span></span>
                 <span class="notification-description">{copy.invoiceCreated} · {invoice.lease.apartment.apartmentNumber}</span>
@@ -74,7 +97,7 @@
         {/if}
         {#if items.length}
         {#each items as lease (lease.notificationId)}
-          <a class="notification-item" href={`#/leases?detail=${encodeURIComponent(lease.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-lease', { detail: lease.id })); }}>
+          <a class="notification-item" href={`#/leases?detail=${encodeURIComponent(lease.id)}`} on:click={() => { dismissNotification(lease.notificationId); window.dispatchEvent(new CustomEvent('apartmentpro:open-lease', { detail: lease.id })); }}>
             <span class="notification-content">
               <span class="notification-title"><strong>{lease.tenant.firstName}</strong><span class="notification-reference">{lease.apartment.apartmentNumber}</span></span>
               <span class="notification-description">{lease.daysLeft} {$locale.workflow.daysRemaining}</span>
@@ -89,7 +112,7 @@
   </div>
 {/if}
 <style>
-  .lease-notifications { position: relative; }
+  .notifications { position: relative; }
   /* The same 36px square as the theme and language controls beside it, so the
      trailing cluster is one rhythm; the count rides the top-right corner as a
      pip rather than sitting inline as text. */

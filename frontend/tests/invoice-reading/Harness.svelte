@@ -1,6 +1,6 @@
 <script>
   import Invoices from '../../src/pages/Invoices.svelte';
-  import LeaseNotifications from '../../src/components/LeaseNotifications.svelte';
+  import Notifications from '../../src/components/Notifications.svelte';
   import { setLanguage } from '../../src/i18n';
   import { user } from '../../src/stores/auth';
   import { currencies } from '../../src/stores/currency';
@@ -44,5 +44,5 @@
   currencies.set([{ code: 'AFN', isActive: true }]);
   setLanguage('en');
 </script>
-<LeaseNotifications />
+<Notifications />
 <Invoices />

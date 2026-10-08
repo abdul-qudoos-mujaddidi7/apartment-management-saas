@@ -119,6 +119,10 @@ try {
   await send('Page.reload');
   await waitFor("document.querySelector('.invoice-meta') !== null");
   assert.ok(await evaluate("document.querySelector('.invoice-meta').closest('.modal').textContent.includes('INV1')"), 'Direct invoice link opens after reload');
+  await evaluate("document.querySelector('.invoice-meta').closest('.modal').querySelector('.btn-close').click()");
+  await click('.notification-bell');
+  await waitFor("document.querySelector('.notification-empty') !== null");
+  assert.equal(await evaluate("document.querySelector('.notification-panel a[href*=invoices]') === null && document.querySelector('.notification-count') === null"), true, 'Clicked notification stays hidden after reload and badge updates');
   console.log('Passed: create/edit quick actions; each pending reading has its own populated row; two electricity readings billed separately; paid, already billed, baseline and other-lease readings excluded; no duplicates.');
   console.log('Passed: invoice notifications load, click opens linked invoice, direct link opens after reload.');
 } finally {
