@@ -111,7 +111,7 @@ function must(label, result) {
 
   must('payment', await call('POST', '/payments', {
     tenantId, leaseId, paymentDate: '2026-09-20', currency: 'USD',
-    receiveAccountId: account.id, paymentMethod: 'CASH', amount: 200,
+    receiveAccountId: account.id, amount: 200,
     reference: 'REC-1', notes: 'Part payment.',
     allocations: item ? [{ invoiceItemId: item.id, amount: 200 }] : [],
   }));

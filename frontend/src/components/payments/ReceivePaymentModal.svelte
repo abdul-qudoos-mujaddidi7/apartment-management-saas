@@ -14,7 +14,6 @@
   export let invoice = null;
 
   const dispatch = createEventDispatcher();
-  const paymentMethods = ['CASH', 'BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'OTHER'];
   const today = () => new Date().toISOString().slice(0, 10);
   // Amounts are printed in the currency they are stated in: each invoice keeps
   // its own, and the allocation column is always in the receipt's currency.
@@ -35,7 +34,7 @@
 
   function emptyForm() {
     return {
-      paymentDate: today(), currency: $baseCurrency, receiveAccountId: '', paymentMethod: 'CASH',
+      paymentDate: today(), currency: $baseCurrency, receiveAccountId: '',
       amount: '', reference: '', notes: '',
     };
   }
@@ -248,7 +247,6 @@
         paymentDate: form.paymentDate,
         currency: form.currency,
         receiveAccountId: form.receiveAccountId,
-        paymentMethod: form.paymentMethod,
         amount: Number(form.amount),
         reference: form.reference.trim() || null,
         notes: form.notes.trim() || null,
@@ -297,7 +295,6 @@
                 <div class="col-md-4"><label class="form-label" for="payment-date">{$locale.payments.paymentDate}</label><ShamsiDatePicker id="payment-date" invalid={Boolean(formErrors.paymentDate)} bind:value={form.paymentDate}/>{#if formErrors.paymentDate}<div class="invalid-feedback">{formErrors.paymentDate}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="payment-currency">{$locale.currencies.currency}</label><div class="field-control"><i class="bi bi-currency-exchange" aria-hidden="true"></i><select id="payment-currency" class="form-select" value={form.currency} on:change={(event) => currencyChanged(event.currentTarget.value)}>{#each $activeCurrencies as item (item.id)}<option value={item.code}>{item.code} — {item.name}</option>{/each}</select></div>{#if form.currency !== $baseCurrency}<div class="form-text">1 {form.currency} = {money(convertAmount(1, form.currency, $baseCurrency, $activeCurrencies, $baseCurrency))}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="receive-account">{$locale.payments.receiveInto}</label><div class="field-control"><i class="bi bi-journal-bookmark" aria-hidden="true"></i><select id="receive-account" class:is-invalid={formErrors.receiveAccountId} class="form-select" bind:value={form.receiveAccountId}><option value="">{$locale.payments.selectAccount}</option>{#each accounts as account (account.id)}<option value={account.id}>{account.name}</option>{/each}</select></div>{#if formErrors.receiveAccountId}<div class="invalid-feedback">{formErrors.receiveAccountId}</div>{/if}</div>
-                <div class="col-md-4"><label class="form-label" for="payment-method">{$locale.payments.method}</label><div class="field-control"><i class="bi bi-credit-card-2-front" aria-hidden="true"></i><select id="payment-method" class="form-select" bind:value={form.paymentMethod}>{#each paymentMethods as method (method)}<option value={method}>{$locale.paymentMethods[method]}</option>{/each}</select></div></div>
                 <div class="col-md-4"><label class="form-label" for="payment-amount">{$locale.payments.amount}</label><div class="field-control"><i class="bi bi-currency-dollar" aria-hidden="true"></i><input id="payment-amount" class:is-invalid={formErrors.amount} class="form-control" type="number" min="0.01" step="0.01" bind:value={form.amount}/></div>{#if formErrors.amount}<div class="invalid-feedback">{formErrors.amount}</div>{/if}</div>
                 <div class="col-md-4"><label class="form-label" for="payment-reference">{$locale.payments.reference}</label><div class="field-control"><i class="bi bi-upc" aria-hidden="true"></i><input id="payment-reference" class="form-control" bind:value={form.reference}/></div></div>
                 <div class="col-md-4"><label class="form-label" for="payment-notes">{$locale.payments.notes}</label><div class="field-control"><i class="bi bi-card-text" aria-hidden="true"></i><input id="payment-notes" class="form-control" bind:value={form.notes}/></div></div>

@@ -35,7 +35,6 @@
     <div><dt>{$locale.invoices.location}</dt><dd>{#if apartment}{apartment.floor?.building?.name} / {apartment.floor?.name || number(apartment.floor?.floorNumber)} / <bdi>{apartment.apartmentNumber}</bdi>{:else}—{/if}</dd></div>
     <div><dt>{payment ? $locale.payments.paymentDate : invoice ? $locale.invoices.invoiceDate : $locale.meterReadings.date}</dt><dd><bdi>{date(payment ? record.paymentDate : invoice ? record.invoiceDate : record.readingDate)}</bdi></dd></div>
     {#if payment}
-      <div><dt>{$locale.payments.method}</dt><dd>{$locale.paymentMethods[record.paymentMethod] || record.paymentMethod}</dd></div>
       <div><dt>{$locale.payments.receiveInto}</dt><dd>{record.receiveAccount?.name || '—'}</dd></div>
       {#if record.reference}<div><dt>{$locale.payments.reference}</dt><dd><bdi>{record.reference}</bdi></dd></div>{/if}
     {:else if invoice}<div><dt>{$locale.invoices.dueDate}</dt><dd><bdi>{date(record.dueDate)}</bdi></dd></div>{:else}<div class="document-period"><dt>{$locale.workflow.periodStart}</dt><dd><bdi>{date(record.periodStart)} — {date(record.readingDate)}</bdi></dd></div>{/if}

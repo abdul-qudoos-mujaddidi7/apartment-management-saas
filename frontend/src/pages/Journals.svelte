@@ -19,6 +19,7 @@
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
+  import { accountNameLabel } from '../utils/accountLabels';
   import { formatMoney } from '../utils/formatters';
 
   /* Manual entries carry every line themselves; document postings are owned by
@@ -289,7 +290,7 @@
   /** Label of the receivable control account, for the picker's group heading. */
   $: receivableAccount = accounts.find((account) => account.id === receivableAccountId) || null;
   $: tenantGroupLabel = receivableAccount
-    ? `${$locale.journals.tenantAccounts} — ${receivableAccount.name}`
+    ? `${$locale.journals.tenantAccounts} — ${accountNameLabel(receivableAccount, $locale)}`
     : $locale.journals.tenantAccounts;
 
   /* --- Table helpers --------------------------------------------------- */
@@ -360,7 +361,7 @@
           <select class="form-select" id="journal-filter-account" bind:value={filters.accountId} on:change={() => loadJournals(1)}>
             <option value="">{$locale.journals.allAccounts}</option>
             {#each accounts as account (account.id)}
-              <option value={account.id}>{account.name}</option>
+              <option value={account.id}>{accountNameLabel(account, $locale)}</option>
             {/each}
           </select>
         </div>
@@ -524,7 +525,7 @@
                   <option value="">{$locale.journals.selectAccount}</option>
                   <optgroup label={$locale.journals.generalAccounts}>
                     {#each accounts as account (account.id)}
-                      <option value={`${ACCOUNT_PREFIX}${account.id}`}>{account.name}</option>
+                      <option value={`${ACCOUNT_PREFIX}${account.id}`}>{accountNameLabel(account, $locale)}</option>
                     {/each}
                   </optgroup>
                   {#if receivableAccountId && tenantAccounts.length}

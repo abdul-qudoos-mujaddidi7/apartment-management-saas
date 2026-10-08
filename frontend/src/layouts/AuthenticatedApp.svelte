@@ -25,6 +25,7 @@
   import Invoices from '../pages/Invoices.svelte';
   import Payments from '../pages/Payments.svelte';
   import Accounts from '../pages/Accounts.svelte';
+  import AccountProfile from '../pages/AccountProfile.svelte';
   import Journals from '../pages/Journals.svelte';
   import TenantAccounts from '../pages/TenantAccounts.svelte';
   import Settings from '../pages/Settings.svelte';
@@ -54,6 +55,7 @@
     '/invoices': Invoices,
     '/payments': Payments,
     '/accounts': Accounts,
+    '/accounts/:id': AccountProfile,
     '/journals': Journals,
     '/tenant-accounts': TenantAccounts,
     // Settings is one module with its pages under it. The page segment is a

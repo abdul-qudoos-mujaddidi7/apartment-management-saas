@@ -139,7 +139,7 @@ async function getTenantProfile(organizationId, tenantId) {
       where: { organizationId, tenantId },
       select: {
         id: true, paymentNumber: true, paymentDate: true, currency: true,
-        amount: true, baseAmount: true, paymentMethod: true, reference: true, status: true,
+        amount: true, baseAmount: true, reference: true, status: true,
         receiveAccount: { select: { name: true } },
       },
       orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }],

@@ -1,6 +1,5 @@
 const { z } = require('zod');
 
-const paymentMethods = ['CASH', 'BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'OTHER'];
 const paymentStatuses = ['POSTED', 'VOIDED'];
 
 const requiredDate = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -29,7 +28,6 @@ const createPaymentSchema = z.object({
   paymentDate: requiredDate,
   currency: optionalCurrencyCode,
   receiveAccountId: z.string().trim().min(1),
-  paymentMethod: z.enum(paymentMethods),
   amount: z.coerce.number().finite().positive().max(999999999999),
   reference: optionalText(191),
   notes: optionalText(5000),
@@ -63,7 +61,6 @@ module.exports = {
   createPaymentSchema,
   listPaymentsSchema,
   outstandingInvoicesSchema,
-  paymentMethods,
   paymentStatuses,
   voidPaymentSchema,
 };

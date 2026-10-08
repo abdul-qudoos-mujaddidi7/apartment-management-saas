@@ -346,7 +346,7 @@
     background: var(--white);
     box-shadow: 0 2px 6px rgb(38 35 35 / 9%);
   }
-  .sidebar-collapse { top: 28px; inset-inline-end: -12px; }
+  .sidebar-collapse { top: 40px; inset-inline-end: -12px; }
   .sidebar-collapse i { font-size: 11px; }
   .sidebar-collapse:hover, .sidebar-close:hover { color: var(--accent-text); }
   .app-sidebar.sidebar-collapsed .app-sidebar-brand { padding: 1rem 8px; }

@@ -7,6 +7,7 @@
   import { replace } from 'svelte-spa-router';
   import { locale } from '../../i18n';
   import { moduleKeyForLocation } from '../../navigation';
+  import { accountTabs, accountTabIcons, accountTabFromSearch } from '../../utils/accountTabs';
 
   export let navigationOpen = false;
 
@@ -58,9 +59,11 @@
 
   // Read the initial hash and keep it in sync via hashchange events.
   let currentPath = window.location.hash.slice(1).split('?')[0] || '/';
+  let currentSearch = window.location.hash.split('?')[1] || '';
 
   function onHashChange() {
     currentPath = window.location.hash.slice(1).split('?')[0] || '/';
+    currentSearch = window.location.hash.split('?')[1] || '';
     profileOpen = false;
   }
 
@@ -77,7 +80,11 @@
 
   // Sub-navigation for the buildings module
   $: isAccountsModule = moduleKey === 'accounts';
-  $: accountsActive = currentPath === '/accounts';
+  $: isAccountProfile = /^\/accounts\/[^/]+$/.test(currentPath);
+  $: accountTab = accountTabFromSearch(currentSearch);
+  // An account's own page belongs to the Accounts module too, so the bar keeps
+  // naming it while the profile (with its own tabs) is open.
+  $: accountsActive = currentPath === '/accounts' || currentPath.startsWith('/accounts/');
   $: tenantAccountsActive = currentPath === '/tenant-accounts';
   $: isBuildingsModule = moduleKey === 'buildings';
   $: buildingsActive = currentPath === '/buildings';
@@ -112,7 +119,7 @@
 
 <svelte:window on:click={dismissProfile} on:focusin={dismissProfile} on:keydown={onProfileKeydown} />
 
-<header class="app-topbar">
+<header class="app-topbar" class:account-profile-topbar={isAccountProfile}>
   <div class="app-topbar-module">
     <button
       class="nav-toggle"
@@ -124,7 +131,7 @@
       <i class="bi bi-list" aria-hidden="true"></i>
     </button>
 
-    {#if moduleName}
+    {#if moduleName && !isAccountProfile}
       <h1 class="app-topbar-title">
         {#if isBuildingsModule || isMetersModule || isInvoicesModule || isAccountsModule || isTenantsModule}
           <button
@@ -174,7 +181,24 @@
         </button>
       </nav>
     {/if}
-    {#if isAccountsModule}
+    {#if isAccountProfile}
+      <nav class="app-topbar-subnav account-subnav" aria-label={$locale.accountProfile.sections}>
+        {#each accountTabs as key (key)}
+          <button
+            class="subnav-item account-subnav-item"
+            class:is-active={accountTab === key}
+            aria-current={accountTab === key ? 'page' : undefined}
+            type="button"
+            on:click={() => navigateSub(`${currentPath}${key === 'overview' ? '' : `?tab=${key}`}`)}
+          >
+            {#if key !== 'overview'}
+              <i class={`bi ${accountTabIcons[key]}`} aria-hidden="true"></i>
+            {/if}
+            <span>{$locale.accountProfile[key]}</span>
+          </button>
+        {/each}
+      </nav>
+    {:else if isAccountsModule}
       <nav class="app-topbar-subnav" aria-label="Accounts sub-navigation">
         <button
           class="subnav-item"
@@ -269,6 +293,16 @@
 </header>
 
 <style>
+  .account-profile-topbar { flex-wrap: wrap; }
+  .account-profile-topbar .app-topbar-module { flex: 1; min-width: 0; flex-wrap: wrap; }
+  .app-topbar-subnav.account-subnav { flex-wrap: wrap; gap: var(--space-2); margin-inline-start: 0; padding-inline-start: 0; border-inline-start: 0; }
+  .account-subnav-item { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 44px; font-size: var(--text-sm); }
+  .account-subnav-item:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+  @media (max-width: 1199.98px) {
+    .account-profile-topbar .app-topbar-module { display: contents; }
+    .account-subnav { order: 3; width: 100%; margin-inline-start: 0; padding-inline-start: 0; border-inline-start: 0; }
+    .account-profile-topbar .app-topbar-actions { margin-inline-start: auto; }
+  }
   .app-topbar-subnav {
     display: flex;
     align-items: center;

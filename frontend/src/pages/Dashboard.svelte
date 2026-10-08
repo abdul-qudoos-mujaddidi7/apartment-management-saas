@@ -753,7 +753,7 @@
               <div class="row-main">
                 <a class="row-title" use:link href="/payments">{tenantName(payment.tenant)}</a>
                 <p class="row-meta">
-                  {payment.paymentNumber} · {$locale.paymentMethods[payment.paymentMethod]}
+                  {payment.paymentNumber}
                 </p>
               </div>
 

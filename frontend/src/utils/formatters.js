@@ -3,7 +3,10 @@ import { PERSIAN_DIGITS, formatShamsiDate } from './shamsiDate';
 export function formatMoney(value, currency = 'AFN') {
   const num = Number(value) || 0;
   const formatted = num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${formatted} ${currency}`;
+  const language = typeof document !== 'undefined' ? document.documentElement.lang : 'en';
+  const afghaniLabels = { fa: 'افغانی', ps: 'افغانۍ' };
+  const currencyLabel = currency === 'AFN' ? afghaniLabels[language] || currency : currency;
+  return `${formatted} ${currencyLabel}`;
 }
 
 export function formatNumber(value, decimals = 0) {

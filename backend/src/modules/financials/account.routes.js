@@ -6,4 +6,5 @@ router.use(requireAuth);
 router.get('/', controller.list);
 router.get('/:id', controller.get);
 router.get('/:id/ledger', controller.ledger);
+router.get('/:id/summary', controller.summary);
 module.exports = router;

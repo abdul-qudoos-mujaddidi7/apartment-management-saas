@@ -127,18 +127,6 @@ enum PaymentStatus {
   VOIDED
 }
 
-enum PaymentMethod {
-  CASH
-  BANK_TRANSFER
-  CARD
-  MOBILE_MONEY
-  OTHER
-  // Rent settled out of a security deposit the landlord already holds. The
-  // money never passes through a cash account: the receipt is drawn from the
-  // deposit liability instead.
-  DEPOSIT
-}
-
 enum TenantLedgerEntryType {
   INVOICE
   PAYMENT
@@ -880,7 +868,6 @@ model Payment {
   // Amount received, converted to the base currency at the frozen rate above.
   baseAmount       Decimal       @default(0) @db.Decimal(15, 2)
   receiveAccountId String
-  paymentMethod    PaymentMethod
   reference        String?       @db.VarChar(191)
   notes            String?       @db.Text
   status           PaymentStatus @default(POSTED)

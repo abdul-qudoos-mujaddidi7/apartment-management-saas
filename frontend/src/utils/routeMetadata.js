@@ -15,6 +15,7 @@ const routes = [
   { matches: (path) => path === '/meter-readings', title: ['meterReadings', 'title'], icon: 'bi-clipboard-data' },
   { matches: (path) => path === '/invoices', title: ['invoices', 'title'], icon: 'bi-receipt' },
   { matches: (path) => path === '/payments', title: ['payments', 'title'], icon: 'bi-credit-card-2-front' },
+  { matches: (path) => /^\/accounts\/[^/]+$/.test(path), title: ['accounts', 'title'], icon: 'bi-bank' },
   { matches: (path) => path === '/accounts', title: ['accounts', 'title'], icon: 'bi-bank' },
   { matches: (path) => path === '/tenant-accounts', title: ['accounts', 'title'], icon: 'bi-bank' },
 ];

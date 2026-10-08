@@ -111,12 +111,31 @@ async function getAccount(organizationId, id) {
 
 async function getAccountLedger(organizationId, id, query) {
   const prisma = require('../../lib/prisma');
-  await getAccount(organizationId, id);
-  const where = { accountId: id, journal: { organizationId } };
-  const [items, total] = await prisma.$transaction([
-    prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, currency: true, exchangeRate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true } } }, orderBy: [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+  const account = await getAccount(organizationId, id);
+  const range = {};
+  if (query.from) range.gte = new Date(`${query.from}T00:00:00.000Z`);
+  if (query.to) range.lte = new Date(`${query.to}T23:59:59.999Z`);
+  const journalWhere = { organizationId, ...(Object.keys(range).length ? { transactionDate: range } : {}) };
+  const where = { accountId: id, journal: journalWhere };
+  const orderBy = [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }];
+  const [items, total, movements] = await prisma.$transaction([
+    prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, currency: true, exchangeRate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true } } }, orderBy, skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
     prisma.journalLine.count({ where }),
+    // The running balance must be true for a page in the middle of the history —
+    // and for a date-filtered statement — so the cumulative sum is walked from
+    // the account's very first line, ignoring the range filter. Only the two
+    // mirrored figures travel here, not the whole rows.
+    prisma.journalLine.findMany({ where: { accountId: id, journal: { organizationId } }, select: { id: true, baseDebit: true, baseCredit: true }, orderBy }),
   ]);
+  const positive = ['ASSET', 'EXPENSE'].includes(account.type);
+  const balances = new Map();
+  let running = new Decimal(0);
+  for (const line of movements) {
+    const debit = new Decimal(line.baseDebit || 0);
+    const credit = new Decimal(line.baseCredit || 0);
+    running = running.plus(positive ? debit.minus(credit) : credit.minus(debit));
+    balances.set(line.id, Number(running));
+  }
   return {
     items: items.map((line) => ({
       ...line,
@@ -124,8 +143,48 @@ async function getAccountLedger(organizationId, id, query) {
       credit: Number(line.credit),
       baseDebit: Number(line.baseDebit),
       baseCredit: Number(line.baseCredit),
+      balanceAfter: balances.get(line.id) ?? 0,
     })),
     pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) },
+  };
+}
+
+/**
+ * Per-year and per-source totals for one account, taken from the posted
+ * base-currency mirrors only, so they agree with the balance on the register.
+ * The grouping runs in SQL so the size of the account's history never lands in
+ * memory. `net` follows the account's own direction, exactly like
+ * `accountBalance`.
+ */
+async function getAccountSummary(organizationId, id, client) {
+  const prisma = client || require('../../lib/prisma');
+  const account = await prisma.financialAccount.findFirst({ where: { id, organizationId, deletedAt: null } });
+  if (!account) throw Object.assign(new Error('Account not found.'), { code: 'ACCOUNT_NOT_FOUND' });
+  const [yearRows, sourceRows] = await Promise.all([
+    prisma.$queryRaw`
+      SELECT YEAR(j.transactionDate) AS year, COUNT(*) AS entries,
+             COALESCE(SUM(l.baseDebit), 0) AS debit, COALESCE(SUM(l.baseCredit), 0) AS credit
+      FROM \`JournalLine\` l JOIN \`Journal\` j ON j.id = l.journalId
+      WHERE l.accountId = ${id} AND j.organizationId = ${organizationId} AND j.status = 'POSTED'
+      GROUP BY YEAR(j.transactionDate) ORDER BY year ASC`,
+    prisma.$queryRaw`
+      SELECT j.referenceType AS referenceType, COUNT(*) AS entries,
+             COALESCE(SUM(l.baseDebit), 0) AS debit, COALESCE(SUM(l.baseCredit), 0) AS credit
+      FROM \`JournalLine\` l JOIN \`Journal\` j ON j.id = l.journalId
+      WHERE l.accountId = ${id} AND j.organizationId = ${organizationId} AND j.status = 'POSTED'
+      GROUP BY j.referenceType ORDER BY referenceType ASC`,
+  ]);
+  const shape = (row) => ({
+    entries: Number(row.entries),
+    debit: Number(row.debit),
+    credit: Number(row.credit),
+    net: Number(accountBalance(account, row.debit, row.credit)),
+  });
+  const totals = sourceRows.reduce((sum, row) => ({ entries: sum.entries + Number(row.entries), debit: sum.debit + Number(row.debit), credit: sum.credit + Number(row.credit) }), { entries: 0, debit: 0, credit: 0 });
+  return {
+    totals: { ...totals, net: Number(accountBalance(account, totals.debit, totals.credit)) },
+    byYear: yearRows.map((row) => ({ year: Number(row.year), ...shape(row) })),
+    bySource: sourceRows.map((row) => ({ referenceType: row.referenceType, ...shape(row) })),
   };
 }
 
@@ -136,4 +195,5 @@ module.exports = {
   listAccountsWithBalances,
   getAccount,
   getAccountLedger,
+  getAccountSummary,
 };

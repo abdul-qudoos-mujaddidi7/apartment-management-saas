@@ -23,6 +23,7 @@
   import { notifySuccess } from '../stores/toasts';
   import { sortRows } from '../utils/sortRows';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
+  import { accountNameLabel } from '../utils/accountLabels';
   import { formatMoney } from '../utils/formatters';
 
   const blankTransaction = () => ({
@@ -291,7 +292,7 @@
                 <select class="form-select" id="transaction-account" bind:value={transaction.accountId}>
                   <option value="">{$locale.securityDeposits.defaultAccount}</option>
                   {#each accounts as account (account.id)}
-                    <option value={account.id}>{account.name}</option>
+                    <option value={account.id}>{accountNameLabel(account, $locale)}</option>
                   {/each}
                 </select>
               </div>
@@ -382,7 +383,7 @@
                   </td>
                   <td>{item.reference || '—'}
                     {#if item.account}
-                      <small class="cell-sub">{item.account.name}</small>
+                      <small class="cell-sub">{accountNameLabel(item.account, $locale)}</small>
                     {/if}
                   </td>
                   <td>{item.notes || '—'}</td>
