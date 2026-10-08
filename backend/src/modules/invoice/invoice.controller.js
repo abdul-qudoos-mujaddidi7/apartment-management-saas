@@ -2,6 +2,7 @@ const { z } = require('zod');
 
 const invoiceService = require('./invoice.service');
 const invoiceGeneration = require('./invoice-generation.service');
+const { rentInvoiceNotifications } = require('./invoice-notifications');
 const {
   createInvoiceSchema,
   listInvoicesSchema,
@@ -10,6 +11,11 @@ const {
 
 function getOrganizationId(req) {
   return req.user.organizationId;
+}
+
+async function notifications(req, res, next) {
+  try { return res.json({ success: true, items: await rentInvoiceNotifications(getOrganizationId(req)) }); }
+  catch (error) { next(error); }
 }
 
 function validationError(res, result) {
@@ -109,4 +115,4 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { cancel, create, generateDue, get, list, remove, update };
+module.exports = { cancel, create, generateDue, get, list, notifications, remove, update };

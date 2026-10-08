@@ -93,11 +93,34 @@ try {
   await click('.add-button');
   await waitFor("document.querySelector('#invoice-apartment option[value=l1]') !== null");
   await change('#invoice-apartment', 'l1');
-  await waitFor("document.querySelectorAll('.items-table tbody tr').length === 3");
-  assert.deepEqual(await evaluate("Array.from(document.querySelectorAll('.reading-picker select')).map(node=>node.value).sort()"), ['gasToday','waterToday']);
+  await waitFor("document.querySelectorAll('.items-table tbody tr').length === 5");
+  assert.deepEqual(await evaluate("Array.from(document.querySelectorAll('.reading-picker select')).map(node=>node.value).sort()"), ['earlier','earlier2','gasToday','waterToday']);
+  assert.equal(await evaluate("Array.from(document.querySelectorAll('.items-table tbody tr > td:first-child select')).filter(node=>node.value==='ELECTRICITY').length"), 2, 'Two pending electricity readings appear as two populated rows');
   await change('#invoice-apartment', 'l1');
-  assert.equal(await evaluate("document.querySelectorAll('.items-table tbody tr').length"), 3, 'Matching readings are not duplicated');
-  console.log('Passed: create/edit quick action opens and saves with mouse clicks; invoice submits reading; same-date rent readings auto-fill without baselines, other leases, earlier dates or duplicates.');
+  assert.equal(await evaluate("document.querySelectorAll('.items-table tbody tr').length"), 5, 'Matching readings are not duplicated');
+  await click('button[form=invoice-form]');
+  await waitFor("document.querySelector('#invoice-form') === null");
+  assert.ok(await evaluate("window.quickRequests.some(r=>r.method==='POST' && r.path==='/api/invoices' && r.body.items.length===5 && r.body.items.filter(item=>item.type==='ELECTRICITY').length===2)"), 'Both electricity readings submitted without paid or already billed readings');
+  await evaluate('window.rentOnlyEdit = true; window.sameDateReadings = false');
+  await evaluate("document.querySelector('.actions-cell button').click()");
+  await pause(80);
+  await evaluate("document.querySelector('.row-menu-item:has(.bi-pencil)').click()");
+  await waitFor("document.querySelectorAll('.items-table tbody tr').length === 2");
+  assert.deepEqual(await evaluate("Array.from(document.querySelectorAll('.items-table tbody tr > td:first-child select')).map(node=>node.value)"), ['RENT','ELECTRICITY'], 'Installed electricity appears automatically in rent invoice edit');
+  await evaluate("document.querySelector('#invoice-form').closest('.modal').querySelector('.btn-close').click()");
+  await click('.notification-bell');
+  await waitFor("document.querySelector('.notification-panel a[href*=invoices]') !== null");
+  assert.ok(await evaluate("document.querySelector('.notification-panel').textContent.includes('Tenant') && document.querySelector('.notification-panel').textContent.includes('Invoice created')"));
+  await click('.notification-panel a[href*=invoices]');
+  await waitFor("document.querySelector('.invoice-meta') !== null");
+  assert.equal(await evaluate('location.hash'), '#/invoices?detail=i1');
+  assert.ok(await evaluate("document.querySelector('.invoice-meta').closest('.modal').textContent.includes('INV1')"));
+  await evaluate("document.querySelector('.invoice-meta').closest('.modal').querySelector('.btn-close').click()");
+  await send('Page.reload');
+  await waitFor("document.querySelector('.invoice-meta') !== null");
+  assert.ok(await evaluate("document.querySelector('.invoice-meta').closest('.modal').textContent.includes('INV1')"), 'Direct invoice link opens after reload');
+  console.log('Passed: create/edit quick actions; each pending reading has its own populated row; two electricity readings billed separately; paid, already billed, baseline and other-lease readings excluded; no duplicates.');
+  console.log('Passed: invoice notifications load, click opens linked invoice, direct link opens after reload.');
 } finally {
   if (socket?.readyState === WebSocket.OPEN && send) { await send('Browser.close').catch(() => {}); socket.close(); }
   browser?.kill();

@@ -9,6 +9,7 @@ const { requirePermission } = require('../../middleware/permission');
 router.use(requireAuth);
 router.use((req, res, next) => requirePermission('INVOICE_' + (req.method === 'GET' ? 'VIEW' : 'MANAGE'))(req, res, next));
 router.get('/', invoiceController.list);
+router.get('/notifications', invoiceController.notifications);
 // Raise every rent-cycle invoice that has come due for this organization.
 // POST because it writes; the router already demands INVOICE_MANAGE for it.
 router.post('/generate-due', invoiceController.generateDue);

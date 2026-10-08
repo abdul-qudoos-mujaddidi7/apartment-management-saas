@@ -2,17 +2,32 @@
   import { onMount } from 'svelte';
   import { api } from '../services/api';
   import { user } from '../stores/auth';
-  import { locale } from '../i18n';
+  import { language, locale } from '../i18n';
+  import notificationsCopy from '../i18n/notifications';
   import { formatDate } from '../utils/formatters';
   let items = [];
+  let rentInvoices = [];
+  let disposed = false;
+  let refreshVersion = 0;
   let open = false;
   let container;
   let error = '';
-  $: allowed = $user?.permissions?.includes('LEASE_VIEW');
+  $: leaseAllowed = $user?.permissions?.includes('LEASE_VIEW');
+  $: invoiceAllowed = $user?.permissions?.includes('INVOICE_VIEW');
+  $: allowed = leaseAllowed || invoiceAllowed;
+  $: copy = notificationsCopy[$language] || notificationsCopy.en;
+  $: notificationCount = items.length + rentInvoices.length;
   async function refresh() {
-    if (!allowed) { items = []; return; }
-    try { items = (await api.get('/leases/expiring-soon')).items || []; error = ''; }
-    catch (e) { items = []; error = e.status === 403 ? '' : e.message; }
+    const version = ++refreshVersion;
+    if (!allowed) { items = []; rentInvoices = []; return; }
+    const responses = await Promise.allSettled([
+      leaseAllowed ? api.get('/leases/expiring-soon') : Promise.resolve({ items: [] }),
+      invoiceAllowed ? api.get('/invoices/notifications') : Promise.resolve({ items: [] }),
+    ]);
+    if (disposed || version !== refreshVersion) return;
+    items = responses[0].status === 'fulfilled' ? responses[0].value.items || [] : [];
+    rentInvoices = responses[1].status === 'fulfilled' ? responses[1].value.items || [] : [];
+    error = responses.filter(response => response.status === 'rejected' && response.reason.status !== 403).map(response => response.reason.message).join(' ');
   }
   function outside(event) { if (open && !container?.contains(event.target)) open = false; }
   function keydown(event) { if (open && event.key === 'Escape') { event.preventDefault(); open = false; } }
@@ -21,7 +36,8 @@
     const timer = setInterval(refresh, 60000);
     window.addEventListener('focus', refresh);
     window.addEventListener('apartmentpro:leases-changed', refresh);
-    return () => { clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('apartmentpro:leases-changed', refresh); };
+    window.addEventListener('apartmentpro:invoices-changed', refresh);
+    return () => { disposed = true; refreshVersion++; clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('apartmentpro:leases-changed', refresh); window.removeEventListener('apartmentpro:invoices-changed', refresh); };
   });
 </script>
 <svelte:window on:pointerdown={outside} on:keydown={keydown} />
@@ -35,22 +51,41 @@
       on:click={() => { open = !open; if (open) refresh(); }}
     >
       <i class="bi bi-bell" aria-hidden="true"></i>
-      {#if items.length}
-        <span class="notification-count">{items.length > 99 ? '99+' : items.length}</span>
+      {#if notificationCount}
+        <span class="notification-count">{notificationCount > 99 ? '99+' : notificationCount}</span>
       {/if}
     </button>
     {#if open}
-      <section class="notification-panel card" aria-label={$locale.workflow.expiringSoon}>
-        <strong>{$locale.workflow.expiringSoon}</strong>
+      <section class="notification-panel card" aria-label={$locale.workflow.notifications}>
+        <header class="notification-header"><strong>{$locale.workflow.notifications}</strong>{#if notificationCount}<span>{notificationCount}</span>{/if}</header>
+        <div class="notification-list">
         {#if error}<p role="alert">{error}</p>{/if}
-        {#if !items.length && !error}<p>{$locale.dashboard.noExpiringLeases}</p>{/if}
+        {#if !notificationCount && !error}<p class="notification-empty">{copy.emptyNotifications}</p>{/if}
+        {#if rentInvoices.length}
+          {#each rentInvoices as invoice (invoice.notificationId)}
+            <a class="notification-item" href={`#/invoices?detail=${encodeURIComponent(invoice.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-invoice', { detail: invoice.id })); }}>
+              <span class="notification-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+              <span class="notification-content">
+                <span class="notification-title"><strong>{invoice.lease.tenant.firstName}</strong><span class="notification-reference" dir="ltr">{invoice.invoiceNumber}</span></span>
+                <span class="notification-description">{copy.invoiceCreated} · {invoice.lease.apartment.apartmentNumber}</span>
+                <span class="notification-date">{formatDate(invoice.invoiceDate)}</span>
+              </span>
+            </a>
+          {/each}
+        {/if}
+        {#if items.length}
         {#each items as lease (lease.notificationId)}
-          <a href={`#/leases?detail=${encodeURIComponent(lease.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-lease', { detail: lease.id })); }}>
-            <strong>{lease.tenant.firstName}</strong>
-            <span>{lease.apartment.apartmentNumber} · {lease.contractNumber}</span>
-            <span>{formatDate(lease.endDate)} · {lease.daysLeft} {$locale.workflow.daysRemaining}</span>
+          <a class="notification-item" href={`#/leases?detail=${encodeURIComponent(lease.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-lease', { detail: lease.id })); }}>
+            <span class="notification-icon"><i class="bi bi-file-earmark-text" aria-hidden="true"></i></span>
+            <span class="notification-content">
+              <span class="notification-title"><strong>{lease.tenant.firstName}</strong><span class="notification-reference">{lease.apartment.apartmentNumber}</span></span>
+              <span class="notification-description">{lease.daysLeft} {$locale.workflow.daysRemaining}</span>
+              <span class="notification-date">{formatDate(lease.endDate)}</span>
+            </span>
           </a>
         {/each}
+        {/if}
+        </div>
       </section>
     {/if}
   </div>
@@ -94,8 +129,22 @@
     /* The pip sits half outside the square, over the bar's own surface. */
     box-shadow: 0 0 0 2px var(--canvas);
   }
-  .notification-panel { position: absolute; inset-inline-end: 0; top: 100%; z-index: 1040; padding: 1rem; width: min(230px, calc(100vw - 2 * var(--space-3))); max-height: 70vh; overflow: auto; }
+  .notification-panel { position: absolute; inset-inline-end: 0; top: calc(100% + 10px); z-index: 1040; padding: 0; width: min(340px, calc(100vw - 2 * var(--space-3))); overflow: hidden; text-align: start; }
+  .notification-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--card-border); }
+  .notification-header strong { font-size: 14px; font-weight: 600; }
+  .notification-header > span { color: var(--text-muted); font-size: 12px; }
+  .notification-list { max-height: min(360px, 65vh); overflow-y: auto; padding: 4px 8px; }
+  .notification-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 8px; border-radius: 8px; color: var(--text-strong); text-decoration: none; }
+  .notification-item + .notification-item { border-top: 1px solid var(--card-border); }
+  .notification-item:hover { background: var(--surface-muted); }
+  .notification-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .notification-icon { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 8px; color: var(--accent); background: var(--surface-muted); font-size: 16px; }
+  .notification-content { display: grid; gap: 3px; flex: 1; min-width: 0; }
+  .notification-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .notification-title strong { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+  .notification-reference { flex-shrink: 0; font-size: 11px; color: var(--text-muted); }
+  .notification-description { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+  .notification-date { font-size: 11px; color: var(--text-muted); }
+  .notification-empty { margin: 0; padding: 24px 12px; text-align: center; color: var(--text-muted); font-size: 13px; }
   :global([data-theme='dark']) .notification-panel { background: var(--surface); }
-  a { display: grid; gap: .25rem; padding: .75rem 0; border-bottom: 1px solid var(--card-border); color: var(--text-strong); text-decoration: none; }
-  span { font-size: .875rem; }
 </style>

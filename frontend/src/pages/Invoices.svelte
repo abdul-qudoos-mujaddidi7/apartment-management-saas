@@ -3,6 +3,7 @@
   import { api } from '../services/api';
   import { listLeases } from '../services/leases';
   import { listMeterReadings } from '../services/meterReadings';
+  import { listMeters } from '../services/meters';
   import QuickReadingModal from '../components/meters/QuickReadingModal.svelte';
   import { user } from '../stores/auth';
   import { cancelInvoice, createInvoice, deleteInvoice, generateDueInvoices, getInvoice, listInvoices, updateInvoice } from '../services/invoices';
@@ -66,6 +67,7 @@
   let leases = [];
   let readings = [];
   let readingsLoading = false;
+  let apartmentMeters = [];
   let quickReading = null;
   function openQuickReading(index) {
     const lease = selectedLease();
@@ -112,7 +114,17 @@
     // reader without invoice rights silently keeps the list it already has.
     try { await generateDueInvoices(); } catch { /* the register still loads */ }
     try { await Promise.all([loadBuildings(), loadInvoices(1)]); } catch (error) { await handleRequestError(error); }
+    window.dispatchEvent(new CustomEvent('apartmentpro:invoices-changed'));
+    const invoiceId = new URLSearchParams(window.location.hash.split('?')[1] || '').get('detail');
+    if (invoiceId) await openInvoiceById(invoiceId);
   });
+
+  async function openInvoiceById(id) {
+    if (!id) return;
+    try { detailsInvoice = (await getInvoice(id)).invoice; detailsOpen = true; }
+    catch (error) { await handleRequestError(error); }
+  }
+  function handleOpenInvoice(event) { openInvoiceById(event.detail); }
 
   async function handleRequestError(error) { if (error.status === 401) return true; errorMessage = error.message; return false; }
   async function loadBuildings() { const response = await api.get('/buildings?page=1&pageSize=100'); buildings = response.items || []; }
@@ -138,7 +150,7 @@
    * which is the point — the apartment is what is billed.
    */
   async function openCreate() {
-    editingId = null; readings = []; modalError = ''; formErrors = {}; form = emptyForm(); modalOpen = true;
+    editingId = null; readings = []; apartmentMeters = []; modalError = ''; formErrors = {}; form = emptyForm(); modalOpen = true;
     try { const response = await listLeases({ page: 1, pageSize: 100 }); leases = response.items || []; }
     catch (error) { modalError = error.message; }
   }
@@ -155,29 +167,62 @@
     if (!lease) { readings = []; return; }
     applyLeaseDefaults(lease);
     await loadReadings(lease.apartment.id);
-    form = { ...form, items: form.items.map((item, index) => resolveReading(item, index)) };
-    addRentDateReadings();
+    form = { ...form, items: form.items.map((item, index) => emptyAutomaticUtility(item) ? item : resolveReading(item, index)) };
+    addUnbilledReadings();
+    addInstalledUtilityLines();
   }
 
-  function addRentDateReadings() {
-    if (!form.items.some(item => item.type === 'RENT')) return;
-    const matching = readings.filter(reading => reading.readingDate.slice(0, 10) === form.invoiceDate
-      && reading.leaseId === form.leaseId && reading.readingKind !== 'MOVE_IN'
+  function addInstalledUtilityLines() {
+    const types = [...new Set(apartmentMeters.map(meter => meter.utilityType))];
+    const missing = types.filter(type => UTILITY_TYPES.includes(type) && !form.items.some(item => item.type === type));
+    if (missing.length) form = { ...form, items: [...form.items, ...missing.map(type => ({ ...newItem(), type, automaticUtility: true }))] };
+  }
+  const emptyAutomaticUtility = item => item.automaticUtility && !item.meterReadingId && !item.description.trim() && item.unitPrice === '';
+
+  function addUnbilledReadings() {
+    const matching = readings.filter(reading => reading.leaseId === form.leaseId && reading.readingKind !== 'MOVE_IN'
+      && reading.billingStatus !== 'PAID' && !reading.invoiceItem
       && !form.items.some(item => item.meterReadingId === reading.id));
-    if (matching.length) form = { ...form, items: [...form.items, ...matching.map(reading => billedFrom(newItem(), reading))] };
+    if (matching.length) {
+      const items = [...form.items];
+      for (const reading of matching) {
+        const index = items.findIndex(item => item.type === reading.meter.utilityType && emptyAutomaticUtility(item));
+        if (index >= 0) items[index] = billedFrom(items[index], reading);
+        else items.push(billedFrom(newItem(), reading));
+      }
+      form = { ...form, items };
+    }
   }
 
   async function loadReadings(apartmentId) {
     readings = [];
+    apartmentMeters = [];
     if (!apartmentId) return;
     readingsLoading = true;
     try {
-      const response = await listMeterReadings({ apartmentId, unbilled: true, page: 1, pageSize: 100 });
+      const [pendingReadings, meterResponse] = await Promise.all([
+        loadAllUnbilledReadings(apartmentId),
+        listMeters({ apartmentId, status: 'ACTIVE', page: 1, pageSize: 100 }),
+      ]);
+      apartmentMeters = meterResponse.items || [];
       // Oldest first: the reading that has been waiting longest is the one a
       // utility line is filled from.
-      readings = (response.items || []).filter(r => r.readingKind !== 'MOVE_IN' && r.leaseId === form.leaseId).slice().sort((a, b) => String(a.readingDate).localeCompare(String(b.readingDate)));
+      readings = pendingReadings.filter(r => r.readingKind !== 'MOVE_IN' && r.leaseId === form.leaseId && r.billingStatus !== 'PAID' && !r.invoiceItem).slice().sort((a, b) => String(a.readingDate).localeCompare(String(b.readingDate)));
     } catch (error) { modalError = error.message; }
     finally { readingsLoading = false; }
+  }
+
+  async function loadAllUnbilledReadings(apartmentId) {
+    const items = [];
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const response = await listMeterReadings({ apartmentId, unbilled: true, page, pageSize: 100 });
+      items.push(...(response.items || []));
+      totalPages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= totalPages);
+    return items;
   }
 
   /*
@@ -291,7 +336,8 @@
       // saving recomputes them as.
       form = { leaseId: lease.id, invoiceDate: fi.invoiceDate.slice(0, 10), dueDate: fi.dueDate ? fi.dueDate.slice(0, 10) : '', notes: fi.notes || '', items: fi.items.map((item) => ({ type: item.type, meterReadingId: item.meterReadingId || null, description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, amount: item.amount })) };
       await loadReadings(lease.apartment.id);
-      addRentDateReadings();
+      addUnbilledReadings();
+      addInstalledUtilityLines();
     } catch (error) { await handleRequestError(error); modalError = error.message; }
   }
 
@@ -308,7 +354,7 @@
     form.items.forEach((item, index) => {
       // A line billed from a meter reading carries that reading's own figures:
       // the server derives them, so there is nothing here to type-check.
-      if (item.meterReadingId) return;
+      if (item.meterReadingId || emptyAutomaticUtility(item)) return;
       if (!item.description.trim()) errors[`item-${index}-description`] = translate('invoices.required', { field: copy.itemDescription });
       if (Number(item.quantity) <= 0) errors[`item-${index}-quantity`] = copy.positiveQuantity;
       if (item.unitPrice === '' || Number(item.unitPrice) < 0) errors[`item-${index}-unitPrice`] = copy.notNegative;
@@ -332,7 +378,7 @@
   async function saveInvoice() {
     if (!validateForm()) return;
     saving = true; modalError = ''; errorMessage = '';
-    const payload = { invoiceDate: form.invoiceDate, dueDate: form.dueDate || null, notes: form.notes.trim() || null, items: form.items.map(serializeItem) };
+    const payload = { invoiceDate: form.invoiceDate, dueDate: form.dueDate || null, notes: form.notes.trim() || null, items: form.items.filter(item => !emptyAutomaticUtility(item)).map(serializeItem) };
     try {
       if (editingId) { await updateInvoice(editingId, payload); notifySuccess($locale.invoices.updated); }
       else { await createInvoice({ leaseId: form.leaseId, ...payload }); notifySuccess($locale.invoices.saved); }
@@ -392,6 +438,7 @@
   $: resultSummary = `${$locale.invoices.title}: ${pagination.total}`;
 </script>
 
+<svelte:window on:apartmentpro:open-invoice={handleOpenInvoice} />
 <svelte:head><title>{$locale.invoices.title} | {$locale.common.apartmentPro}</title></svelte:head>
 
 <PageLayout>
@@ -520,7 +567,7 @@
       </div>
     </div></fieldset>
     <fieldset><legend class="section-label">{$locale.invoices.details}</legend><div class="row g-3">
-      <div class="col-sm-6"><label class="form-label" for="invoice-date">{$locale.invoices.invoiceDate}</label><ShamsiDatePicker invalid={Boolean(formErrors.invoiceDate)} id="invoice-date" bind:value={form.invoiceDate} on:change={addRentDateReadings} />{#if formErrors.invoiceDate}<div class="invalid-feedback">{formErrors.invoiceDate}</div>{/if}</div>
+      <div class="col-sm-6"><label class="form-label" for="invoice-date">{$locale.invoices.invoiceDate}</label><ShamsiDatePicker invalid={Boolean(formErrors.invoiceDate)} id="invoice-date" bind:value={form.invoiceDate} />{#if formErrors.invoiceDate}<div class="invalid-feedback">{formErrors.invoiceDate}</div>{/if}</div>
       <div class="col-sm-6"><label class="form-label" for="invoice-due-date">{$locale.invoices.dueDate}</label><ShamsiDatePicker invalid={Boolean(formErrors.dueDate)} id="invoice-due-date" bind:value={form.dueDate} />{#if formErrors.dueDate}<div class="invalid-feedback">{formErrors.dueDate}</div>{/if}</div>
       <div class="col-12"><label class="form-label" for="invoice-notes">{$locale.invoices.notes}</label><textarea class="form-control" id="invoice-notes" rows="2" bind:value={form.notes}></textarea></div>
     </div></fieldset>
@@ -544,7 +591,7 @@
                   {#if UTILITY_TYPES.includes(item.type)}
                     <!-- A utility charge is a reading, so what is chosen here is
                          which reading; the amount is the reading's own. -->
-                    <div class="reading-picker">
+                    <div class="reading-picker" class:has-quick-action={$user?.permissions?.includes('UTILITY_MANAGE')}>
                     <select class="form-select" value={item.meterReadingId || ''} on:change={(event) => readingChanged(index, event.currentTarget.value)}>
                       <option value="">{readingsLoading ? $locale.invoices.loadingUtilities : $locale.invoices.selectReading}</option>
                       {#if item.meterReadingId && !readings.some(reading => reading.id === item.meterReadingId)}<option value={item.meterReadingId}>{item.description}</option>{/if}
@@ -635,12 +682,15 @@
   .items-heading .section-label { margin: 0; }
   .items-table { min-inline-size: 50rem; }
   .items-table .form-control, .items-table .form-select { min-inline-size: 7rem; }
+  #invoice-form .items-table td { vertical-align: top; }
   /* A line billed from a reading is not typed: it is the reading, so it reads
      back as one with the rest of its own figures beside it. */
   .items-table :global(tr.utility-item) { background: var(--surface-muted); }
-  .reading-picker { display: flex; align-items: center; gap: 0.5rem; }
-  .reading-picker select { flex: 1; min-width: 0; }
-  .quick-reading-button { flex: 0 0 auto; padding-inline: 0.7rem; }
+  .reading-picker { position: relative; }
+  .reading-picker select { width: 100%; min-width: 0; appearance: none; background-image: none; padding-inline-end: 0.75rem; }
+  .reading-picker.has-quick-action select { padding-inline-end: 3rem; }
+  .reading-picker .quick-reading-button { position: absolute; inset-inline-end: 0.4rem; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 2rem; height: 2rem; min-height: 2rem; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; box-shadow: none; }
+  .reading-picker .quick-reading-button:hover:not(:disabled) { background: var(--accent-soft); }
   .reading-detail { display: block; margin-block-start: 0.25rem; color: var(--text-muted); font-size: var(--text-xs); }
   /* The currency a charge is stated in: not a control, just the fact that says
      what the amount beside it means. */
