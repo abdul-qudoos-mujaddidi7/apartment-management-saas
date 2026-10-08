@@ -56,7 +56,7 @@
       {/if}
     </button>
     {#if open}
-      <section class="notification-panel card" aria-label={$locale.workflow.notifications}>
+      <section class="notification-panel" aria-label={$locale.workflow.notifications}>
         <header class="notification-header"><strong>{$locale.workflow.notifications}</strong>{#if notificationCount}<span>{notificationCount}</span>{/if}</header>
         <div class="notification-list">
         {#if error}<p role="alert">{error}</p>{/if}
@@ -64,7 +64,6 @@
         {#if rentInvoices.length}
           {#each rentInvoices as invoice (invoice.notificationId)}
             <a class="notification-item" href={`#/invoices?detail=${encodeURIComponent(invoice.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-invoice', { detail: invoice.id })); }}>
-              <span class="notification-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
               <span class="notification-content">
                 <span class="notification-title"><strong>{invoice.lease.tenant.firstName}</strong><span class="notification-reference" dir="ltr">{invoice.invoiceNumber}</span></span>
                 <span class="notification-description">{copy.invoiceCreated} · {invoice.lease.apartment.apartmentNumber}</span>
@@ -76,7 +75,6 @@
         {#if items.length}
         {#each items as lease (lease.notificationId)}
           <a class="notification-item" href={`#/leases?detail=${encodeURIComponent(lease.id)}`} on:click={() => { open = false; window.dispatchEvent(new CustomEvent('apartmentpro:open-lease', { detail: lease.id })); }}>
-            <span class="notification-icon"><i class="bi bi-file-earmark-text" aria-hidden="true"></i></span>
             <span class="notification-content">
               <span class="notification-title"><strong>{lease.tenant.firstName}</strong><span class="notification-reference">{lease.apartment.apartmentNumber}</span></span>
               <span class="notification-description">{lease.daysLeft} {$locale.workflow.daysRemaining}</span>
@@ -129,22 +127,20 @@
     /* The pip sits half outside the square, over the bar's own surface. */
     box-shadow: 0 0 0 2px var(--canvas);
   }
-  .notification-panel { position: absolute; inset-inline-end: 0; top: calc(100% + 10px); z-index: 1040; padding: 0; width: min(340px, calc(100vw - 2 * var(--space-3))); overflow: hidden; text-align: start; }
-  .notification-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--card-border); }
-  .notification-header strong { font-size: 14px; font-weight: 600; }
-  .notification-header > span { color: var(--text-muted); font-size: 12px; }
-  .notification-list { max-height: min(360px, 65vh); overflow-y: auto; padding: 4px 8px; }
-  .notification-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 8px; border-radius: 8px; color: var(--text-strong); text-decoration: none; }
-  .notification-item + .notification-item { border-top: 1px solid var(--card-border); }
-  .notification-item:hover { background: var(--surface-muted); }
-  .notification-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .notification-icon { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 8px; color: var(--accent); background: var(--surface-muted); font-size: 16px; }
+  .notification-panel { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + var(--space-2)); z-index: 1040; width: min(230px, calc(100vw - 2 * var(--space-3))); overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--text-strong); box-shadow: var(--shadow-lg); text-align: start; }
+  .notification-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--border); }
+  .notification-header strong { font-size: var(--text-sm); font-weight: var(--weight-semibold); line-height: 1.5; }
+  .notification-header > span { color: var(--text-secondary); font-size: var(--text-xs); }
+  .notification-list { max-height: min(360px, 65vh); overflow-y: auto; padding-block: var(--space-2); }
+  .notification-item { display: flex; align-items: center; min-height: 44px; padding: var(--space-2) var(--space-5); color: var(--text-strong); font-size: var(--text-sm); line-height: 1.5; text-decoration: none; cursor: pointer; transition: background var(--transition); }
+  .notification-item + .notification-item { border-block-start: 1px solid var(--border); }
+  .notification-item:hover { background: var(--surface-hover); }
+  .notification-item:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -3px; background: var(--surface-hover); }
   .notification-content { display: grid; gap: 3px; flex: 1; min-width: 0; }
   .notification-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-  .notification-title strong { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-  .notification-reference { flex-shrink: 0; font-size: 11px; color: var(--text-muted); }
-  .notification-description { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
-  .notification-date { font-size: 11px; color: var(--text-muted); }
-  .notification-empty { margin: 0; padding: 24px 12px; text-align: center; color: var(--text-muted); font-size: 13px; }
-  :global([data-theme='dark']) .notification-panel { background: var(--surface); }
+  .notification-title strong { font-size: var(--text-sm); font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
+  .notification-reference { flex-shrink: 0; font-size: var(--text-xs); color: var(--text-secondary); }
+  .notification-description { font-size: var(--text-xs); color: var(--text-strong); line-height: 1.5; }
+  .notification-date { font-size: var(--text-xs); color: var(--text-secondary); }
+  .notification-empty { margin: 0; padding: var(--space-4) var(--space-5); color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.5; }
 </style>
