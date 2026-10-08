@@ -51,3 +51,24 @@ passed. The rename SQL also passed against a temporary MySQL table with sample
 accounts, preserving exact username values, password hashes, IDs and ownership
 values, and continuing to reject duplicate usernames. The real User table was
 not modified.
+
+## Changing your own account
+
+Two routes let the signed-in user edit their own record; both take the account
+from the session cookie, so neither accepts an id from the request body and
+neither can reach another organization's user (`findActiveUser` resolves the
+account inside the session's organization).
+
+- `PATCH /api/auth/me` with `{ firstName, lastName }` rewrites the display name
+  and answers with the same user shape as `GET /api/auth/me`, so the store can
+  adopt it directly. The username and role are not editable here: the username is
+  the login identifier and the role is the administrator's call.
+- `POST /api/auth/change-password` with `{ currentPassword, newPassword }`
+  replaces the password hash once the current password is proven. The new
+  password must be at least 8 characters and different from the current one. A
+  wrong current password is answered as a field error:
+  `400 { code: 'INVALID_CURRENT_PASSWORD', errors: { currentPassword: [message] } }`.
+
+Both are surfaced in the app under Settings › Profile
+(`frontend/src/pages/Profile.svelte`), and both are covered by
+`backend/src/modules/auth/auth.test.js`.

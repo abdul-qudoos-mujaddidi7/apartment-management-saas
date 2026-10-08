@@ -42,6 +42,19 @@ export function loadSession(force = false) {
   return sessionPromise;
 }
 
+/**
+ * Adopt a user record the API has just returned.
+ *
+ * Editing your own profile replaces the session user with the record the API
+ * wrote, so the name in the topbar changes with the form rather than on the
+ * next reload. Nothing here is trusted for authorization — permissions travel
+ * with the same response — but it is still omitted if absent, so a partial
+ * payload can never blank the store.
+ */
+export function applyUser(userRecord) {
+  if (userRecord) user.set(userRecord);
+}
+
 export function resetAuth() {
   sessionVersion += 1;
   sessionPromise = null;

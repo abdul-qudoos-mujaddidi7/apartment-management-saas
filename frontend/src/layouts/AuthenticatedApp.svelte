@@ -18,8 +18,8 @@
   import TenantProfile from '../pages/TenantProfile.svelte';
   import Leases from '../pages/Leases.svelte';
   import LeaseContract from '../pages/LeaseContract.svelte';
-  import LeaseContractSettings from '../pages/LeaseContractSettings.svelte';
   import SecurityDeposits from '../pages/SecurityDeposits.svelte';
+  import MeterReport from '../pages/MeterReport.svelte';
   import Meters from '../pages/Meters.svelte';
   import MeterReadings from '../pages/MeterReadings.svelte';
   import Invoices from '../pages/Invoices.svelte';
@@ -27,7 +27,7 @@
   import Accounts from '../pages/Accounts.svelte';
   import Journals from '../pages/Journals.svelte';
   import TenantAccounts from '../pages/TenantAccounts.svelte';
-  import Currencies from '../pages/Currencies.svelte';
+  import Settings from '../pages/Settings.svelte';
   import NotFound from '../pages/NotFound.svelte';
 
   // Both routers observe the same hash. This router matches full application
@@ -49,14 +49,19 @@
     '/leases/:leaseId/contract': LeaseContract,
     '/security-deposits': SecurityDeposits,
     '/meters': Meters,
+    '/meters/:id/report': MeterReport,
     '/meter-readings': MeterReadings,
     '/invoices': Invoices,
     '/payments': Payments,
     '/accounts': Accounts,
     '/journals': Journals,
     '/tenant-accounts': TenantAccounts,
-    '/settings/currencies': Currencies,
-    '/settings/lease-contract': LeaseContractSettings,
+    // Settings is one module with its pages under it. The page segment is a
+    // route param rather than component state, so `/settings/currencies` is a
+    // deep link that survives a bookmark, a reload and the back button — the
+    // module reads it back and shows the same page in its own menu.
+    '/settings': Settings,
+    '/settings/:page': Settings,
     '*': NotFound,
   };
 

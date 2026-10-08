@@ -31,3 +31,9 @@ export async function readingBaseline(meter, readingDate, ignoreId = null) {
   const prior = (result.items || []).find(r => r.id !== ignoreId);
   return { previousReading: prior?.resetBaseline ?? prior?.currentReading ?? meter.initialReading ?? 0, periodStart: prior?.readingDate.slice(0,10) || meter.installationDate?.slice(0,10) || '' };
 }
+
+export const getMeterReport = (filters = {}) => {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) if (value !== '' && value != null) query.set(key, value);
+  return api.get('/meter-readings/report?' + query.toString());
+};

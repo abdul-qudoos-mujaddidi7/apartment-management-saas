@@ -221,8 +221,8 @@ async function recalculateMeterReadings(meterId, client) {
   }
 }
 
-async function listMeterReadings(organizationId, filters) {
-  const { page, pageSize, search, buildingId, floorId, apartmentId, meterId, utilityType, unbilled, dateFrom, dateTo } = filters;
+function readingWhere(organizationId, filters) {
+  const { search, buildingId, floorId, apartmentId, meterId, utilityType, unbilled, dateFrom, dateTo } = filters;
   const where = {
     deletedAt: null,
     meter: {
@@ -250,6 +250,12 @@ async function listMeterReadings(organizationId, filters) {
       ],
     } : {}),
   };
+  return where;
+}
+
+async function listMeterReadings(organizationId, filters) {
+  const { page, pageSize } = filters;
+  const where = readingWhere(organizationId, filters);
   const [items, total] = await prisma.$transaction([
     prisma.meterReading.findMany({
       where, select: readingSelect(), orderBy: [{ readingDate: 'desc' }, { createdAt: 'desc' }],
@@ -394,6 +400,7 @@ async function softDeleteMeterReading(organizationId, id) {
 }
 
 module.exports = {
+  readingWhere, readingSelect, formatReading,
   assertMonthIsFree, createMeterReading, getMeterReading, listMeterReadings, recalculateMeterReadings,
   softDeleteMeterReading, updateMeterReading,
 };

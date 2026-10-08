@@ -499,6 +499,16 @@ html hr {
   min-height: 0;
 }
 
+/* Settings splits the page into the module's own menu and the open page. The
+   column shell is what keeps the two independent: the page scrolls inside its
+   half while the menu stays where it is, instead of a long page carrying the
+   menu off the top of the screen as you read. */
+.app-page:has(> .settings-shell) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* ==========================================================================
    5. Topbar
    ========================================================================== */

@@ -14,9 +14,34 @@ export const navigationItems = [
   { key: 'invoices', icon: 'bi-receipt', href: '/invoices' },
   { key: 'accounts', icon: 'bi-bank', href: '/accounts' },
   { key: 'journals', icon: 'bi-journal-text', href: '/journals' },
-  { key: 'currencies', icon: 'bi-cash-coin', href: '/settings/currencies' },
-  { key: 'leaseContract', icon: 'bi-file-earmark-ruled', href: '/settings/lease-contract' }
+  // Settings is one module with its own pages, the way a workspace setting is
+  // one place rather than four sidebar rows: the rail carries the entry and the
+  // module itself lists Profile, Currencies and the contract settings.
+  { key: 'settings', icon: 'bi-gear', href: '/settings' }
 ];
+
+/**
+ * The pages inside the Settings module, in the order its own menu shows them.
+ *
+ * The rail names the module and this list names the pages within it, so a page
+ * cannot be reachable from the sidebar but missing from the module's menu (or
+ * labelled differently in each). `key` matches a `dashboard.nav` label and
+ * `segment` the URL the page is served at — the two differ wherever the label
+ * is two words (`leaseContract` is `/settings/lease-contract`), so they are
+ * stated side by side rather than derived from each other.
+ */
+const settingsPage = (key, segment, icon) => ({ key, segment, icon, href: `/settings/${segment}` });
+
+export const settingsPages = [
+  settingsPage('profile', 'profile', 'bi-person-vcard'),
+  settingsPage('currencies', 'currencies', 'bi-cash-coin'),
+  settingsPage('leaseContract', 'lease-contract', 'bi-file-earmark-ruled')
+];
+
+/** True for the Settings module itself and every page inside it. */
+export function isSettingsLocation(location) {
+  return location === '/settings' || location.startsWith('/settings/');
+}
 
 /**
  * Sidebar sections that cluster related modules under one header the reader

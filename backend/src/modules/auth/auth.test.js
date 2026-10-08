@@ -6,7 +6,7 @@ const prisma = require('../../lib/prisma');
 const currencyService = require('../currency/currency.service');
 const service = require('./auth.service');
 const controller = require('./auth.controller');
-const { loginSchema, registrationSchema } = require('./auth.validation');
+const { loginSchema, passwordChangeSchema, profileSchema, registrationSchema } = require('./auth.validation');
 
 const signup = {
   organizationName: 'Test Building', firstName: 'Test', lastName: 'Admin',
@@ -143,5 +143,136 @@ test('controller keeps the legacy email login API and reports username uniquenes
     service.authenticateUser = original.authenticate;
     service.createAccessToken = original.token;
     service.registerOrganizationAdmin = original.register;
+  }
+});
+
+test('profile and password schemas trim the name, enforce a usable password and reject a no-op change', () => {
+  assert.deepEqual(profileSchema.parse({ firstName: '  Zahra ', lastName: ' Ahmadi ' }),
+    { firstName: 'Zahra', lastName: 'Ahmadi' });
+  for (const body of [{ firstName: '', lastName: 'Ahmadi' }, { firstName: 'Zahra' },
+    { firstName: 'a'.repeat(81), lastName: 'Ahmadi' }]) {
+    assert.equal(profileSchema.safeParse(body).success, false);
+  }
+  assert.equal(passwordChangeSchema.safeParse({ currentPassword: 'old-secret', newPassword: 'new-secret' }).success, true);
+  for (const body of [
+    { currentPassword: 'old-secret', newPassword: 'short' },
+    { currentPassword: '', newPassword: 'new-secret' },
+    { currentPassword: 'same-secret', newPassword: 'same-secret' },
+  ]) {
+    assert.equal(passwordChangeSchema.safeParse(body).success, false);
+  }
+});
+
+test('a profile update resolves the account inside its organization and returns the session user shape', async () => {
+  const original = { find: prisma.user.findFirst, update: prisma.user.update };
+  const record = {
+    id: 'user1', username: 'manager', passwordHash: 'hash', firstName: 'Zahra', lastName: 'Ahmadi',
+    organization: { id: 'org1', name: 'Building', slug: 'building', baseCurrency: 'AFN' },
+    role: { id: 'role1', name: 'ADMIN', rolePermissions: [] },
+  };
+  let lookup;
+  let written;
+  prisma.user.findFirst = async ({ where }) => {
+    lookup = where;
+    assert.equal(where.deletedAt, null);
+    assert.equal(where.organization.is.deletedAt, null);
+    // The re-read after the write carries no organization, so only a lookup
+    // that names a *different* workspace resolves nobody.
+    return where.organizationId && where.organizationId !== 'org1' ? null : record;
+  };
+  prisma.user.update = async ({ where, data }) => { written = { where, data }; return record; };
+  try {
+    const updated = await service.updateOwnProfile('user1', 'org1', { firstName: ' Zahra ', lastName: ' Ahmadi ' });
+    assert.equal(written.where.id, 'user1');
+    assert.deepEqual(written.data, { firstName: 'Zahra', lastName: 'Ahmadi' });
+    assert.equal(updated.id, 'user1');
+    assert.equal(updated.organizationId, 'org1');
+    assert.equal(updated.organizations[0].role.name, 'ADMIN');
+    // Another organization's id resolves no user, so nothing is written.
+    written = null;
+    assert.equal(await service.updateOwnProfile('user1', 'org2', { firstName: 'Zahra', lastName: 'Ahmadi' }), null);
+    assert.equal(written, null);
+    assert.equal(lookup.organizationId, 'org2');
+  } finally {
+    prisma.user.findFirst = original.find;
+    prisma.user.update = original.update;
+  }
+});
+
+test('changing a password proves the current one and stores a fresh hash', async () => {
+  const original = { find: prisma.user.findFirst, update: prisma.user.update };
+  const record = {
+    id: 'user1', username: 'manager', passwordHash: await bcrypt.hash('existing-password', 4),
+    organization: { id: 'org1', name: 'Building', slug: 'building', baseCurrency: 'AFN' },
+    role: { id: 'role1', name: 'ADMIN', rolePermissions: [] },
+  };
+  let written;
+  prisma.user.findFirst = async ({ where }) => (where.organizationId === 'org1' ? record : null);
+  prisma.user.update = async ({ data }) => { written = data; return record; };
+  try {
+    assert.equal(await service.changeOwnPassword('user1', 'org1',
+      { currentPassword: 'existing-password', newPassword: 'brand-new-password' }), true);
+    assert.equal(await bcrypt.compare('brand-new-password', written.passwordHash), true);
+    assert.notEqual(written.passwordHash, record.passwordHash);
+    written = null;
+    await assert.rejects(
+      service.changeOwnPassword('user1', 'org1', { currentPassword: 'wrong-password', newPassword: 'brand-new-password' }),
+      { code: 'INVALID_CURRENT_PASSWORD' });
+    assert.equal(written, null);
+    // A password is never changed on an account outside the session's workspace.
+    assert.equal(await service.changeOwnPassword('user1', 'org2',
+      { currentPassword: 'existing-password', newPassword: 'brand-new-password' }), false);
+  } finally {
+    prisma.user.findFirst = original.find;
+    prisma.user.update = original.update;
+  }
+});
+
+test('the profile and password endpoints answer field errors without leaking a wrong password as a server fault', async () => {
+  const original = { update: service.updateOwnProfile, password: service.changeOwnPassword };
+  let status;
+  let body;
+  const res = { status(value) { status = value; return this; }, json(value) { body = value; return this; } };
+  const next = error => { throw error; };
+  const request = { user: { id: 'user1', organizationId: 'org1' } };
+  let scoped;
+  service.updateOwnProfile = async (id, organizationId, data) => { scoped = { id, organizationId, data }; return { id: 'user1', username: 'manager' }; };
+  try {
+    await controller.updateProfile({ ...request, body: { firstName: 'Zahra', lastName: 'Ahmadi' } }, res, next);
+    assert.equal(status, 200);
+    assert.deepEqual(scoped, { id: 'user1', organizationId: 'org1', data: { firstName: 'Zahra', lastName: 'Ahmadi' } });
+    assert.equal(body.user.id, 'user1');
+
+    await controller.updateProfile({ ...request, body: { firstName: '', lastName: '' } }, res, next);
+    assert.equal(status, 400);
+    assert.equal(body.code, 'INVALID_PROFILE_DATA');
+    assert.equal(body.errors.firstName.length, 1);
+
+    // A body-supplied id must never redirect the write to another account.
+    scoped = null;
+    await controller.updateProfile({ ...request, body: { firstName: 'Zahra', lastName: 'Ahmadi', id: 'someone-else' } }, res, next);
+    assert.equal(scoped.id, 'user1');
+
+    service.changeOwnPassword = async () => true;
+    await controller.changePassword({ ...request, body: { currentPassword: 'old-secret', newPassword: 'new-secret' } }, res, next);
+    assert.equal(status, 200);
+
+    await controller.changePassword({ ...request, body: { currentPassword: 'old-secret', newPassword: 'short' } }, res, next);
+    assert.equal(status, 400);
+    assert.equal(body.code, 'INVALID_PASSWORD_DATA');
+    assert.equal(body.errors.newPassword.length, 1);
+
+    service.changeOwnPassword = async () => { throw Object.assign(new Error('Your current password is not correct.'), { code: 'INVALID_CURRENT_PASSWORD' }); };
+    await controller.changePassword({ ...request, body: { currentPassword: 'wrong', newPassword: 'new-secret' } }, res, next);
+    assert.equal(status, 400);
+    assert.equal(body.code, 'INVALID_CURRENT_PASSWORD');
+    assert.equal(body.errors.currentPassword.length, 1);
+
+    service.changeOwnPassword = async () => false;
+    await controller.changePassword({ ...request, body: { currentPassword: 'old-secret', newPassword: 'new-secret' } }, res, next);
+    assert.equal(status, 404);
+  } finally {
+    service.updateOwnProfile = original.update;
+    service.changeOwnPassword = original.password;
   }
 });

@@ -45,6 +45,17 @@ test('already billed readings and duplicate references cannot create another cha
   await assert.rejects(prepare(clientFor(null)), { code: 'METER_READING_NOT_AVAILABLE' });
   await assert.rejects(prepare(clientFor(), lease, [{ type: 'ELECTRICITY', meterReadingId: 'r1' }, { type: 'ELECTRICITY', meterReadingId: 'r1' }]), { code: 'METER_READING_NOT_AVAILABLE' });
 });
+test('invoice edits reuse their own reading without accepting another invoice reading', async () => {
+  const client = clientFor();
+  client.meterReading.findFirst = async ({ where }) => {
+    assert.deepEqual(where.OR, [{ invoiceItem: null }, { invoiceItem: { invoiceId: 'invoice1' } }]);
+    return reading;
+  };
+  const items = await prepareInvoiceItems(client, 'org1', lease, [{ type: 'ELECTRICITY', meterReadingId: 'r1' }], { baseCurrency: 'AFN', date: day('2026-03-01'), existingInvoiceId: 'invoice1' });
+  assert.equal(items[0].meterReadingId, 'r1');
+  client.meterReading.findFirst = async () => null;
+  await assert.rejects(prepareInvoiceItems(client, 'org1', lease, [{ type: 'ELECTRICITY', meterReadingId: 'r1' }], { baseCurrency: 'AFN', date: day('2026-03-01'), existingInvoiceId: 'invoice1' }), { code: 'METER_READING_NOT_AVAILABLE' });
+});
 test('current tenant cannot receive historical consumption and incoming baselines cannot be invoiced', async () => {
   await assert.rejects(prepare(clientFor(), { ...lease, id: 'current', startDate: day('2026-02-15') }), { code: 'METER_READING_NOT_AVAILABLE' });
   await assert.rejects(prepare(clientFor({ ...reading, readingKind: 'MOVE_IN' })), { code: 'METER_READING_NOT_AVAILABLE' });

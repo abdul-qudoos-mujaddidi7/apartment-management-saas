@@ -37,4 +37,21 @@ const registrationSchema = z.object({
   username: data.username || email.trim().toLowerCase(),
 }));
 
-module.exports = { loginSchema, registrationSchema };
+// The signed-in user's own record. Only the display name is editable here: the
+// username is the login identifier and the role is the administrator's call, so
+// neither is accepted from this endpoint's body.
+const profileSchema = z.object({
+  firstName: z.string().trim().min(1, 'Enter your first name.').max(80, 'That name is too long.'),
+  lastName: z.string().trim().min(1, 'Enter your last name.').max(80, 'That name is too long.'),
+});
+
+// A new password must be long enough to matter and must not be the one already
+// in place, which is the usual way a "change" turns out to have changed nothing.
+const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1, 'Enter your current password.'),
+  newPassword: z.string().min(8, 'Use at least 8 characters.').max(128, 'That password is too long.'),
+}).refine(value => value.newPassword !== value.currentPassword, {
+  message: 'Choose a password different from your current one.', path: ['newPassword'],
+});
+
+module.exports = { loginSchema, passwordChangeSchema, profileSchema, registrationSchema };

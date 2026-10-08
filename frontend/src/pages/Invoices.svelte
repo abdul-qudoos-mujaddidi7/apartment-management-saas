@@ -3,6 +3,8 @@
   import { api } from '../services/api';
   import { listLeases } from '../services/leases';
   import { listMeterReadings } from '../services/meterReadings';
+  import QuickReadingModal from '../components/meters/QuickReadingModal.svelte';
+  import { user } from '../stores/auth';
   import { cancelInvoice, createInvoice, deleteInvoice, generateDueInvoices, getInvoice, listInvoices, updateInvoice } from '../services/invoices';
   import PageLayout from '../components/ui/PageLayout.svelte';
   import DataTable from '../components/ui/DataTable.svelte';
@@ -64,6 +66,23 @@
   let leases = [];
   let readings = [];
   let readingsLoading = false;
+  let quickReading = null;
+  function openQuickReading(index) {
+    const lease = selectedLease();
+    if (!lease) {
+      formErrors = { ...formErrors, leaseId: translate('invoices.required', { field: $locale.invoices.apartment }) };
+      document.getElementById('invoice-apartment')?.focus();
+      return;
+    }
+    quickReading = { index, lease, utilityType: form.items[index].type };
+  }
+  function quickReadingSaved(event) {
+    const reading = event.detail;
+    readings = [...readings, reading];
+    updateItem(quickReading.index, billedFrom(form.items[quickReading.index], reading));
+    quickReading = null;
+    notifySuccess($locale.meterReadings.saved);
+  }
   let loading = false;
   let saving = false;
   let errorMessage = '';
@@ -110,7 +129,7 @@
   function toggleRow(id) { selectedIds = toggleSelected(selectedIds, id); }
   function toggleAllRows() { selectedIds = toggleAllSelected(selectedIds, rowIds); }
 
-  function resetModal() { modalOpen = false; modalError = ''; formErrors = {}; }
+  function resetModal() { modalOpen = false; quickReading = null; modalError = ''; formErrors = {}; }
   function closeModal() { if (!saving) resetModal(); }
   /*
    * The apartment is the choice, so the picker offers the active leases: each
@@ -137,6 +156,15 @@
     applyLeaseDefaults(lease);
     await loadReadings(lease.apartment.id);
     form = { ...form, items: form.items.map((item, index) => resolveReading(item, index)) };
+    addRentDateReadings();
+  }
+
+  function addRentDateReadings() {
+    if (!form.items.some(item => item.type === 'RENT')) return;
+    const matching = readings.filter(reading => reading.readingDate.slice(0, 10) === form.invoiceDate
+      && reading.leaseId === form.leaseId && reading.readingKind !== 'MOVE_IN'
+      && !form.items.some(item => item.meterReadingId === reading.id));
+    if (matching.length) form = { ...form, items: [...form.items, ...matching.map(reading => billedFrom(newItem(), reading))] };
   }
 
   async function loadReadings(apartmentId) {
@@ -262,7 +290,8 @@
       // lines are shown in the currencies their sources state, which is what
       // saving recomputes them as.
       form = { leaseId: lease.id, invoiceDate: fi.invoiceDate.slice(0, 10), dueDate: fi.dueDate ? fi.dueDate.slice(0, 10) : '', notes: fi.notes || '', items: fi.items.map((item) => ({ type: item.type, meterReadingId: item.meterReadingId || null, description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, amount: item.amount })) };
-      readings = [];
+      await loadReadings(lease.apartment.id);
+      addRentDateReadings();
     } catch (error) { await handleRequestError(error); modalError = error.message; }
   }
 
@@ -491,7 +520,7 @@
       </div>
     </div></fieldset>
     <fieldset><legend class="section-label">{$locale.invoices.details}</legend><div class="row g-3">
-      <div class="col-sm-6"><label class="form-label" for="invoice-date">{$locale.invoices.invoiceDate}</label><ShamsiDatePicker invalid={Boolean(formErrors.invoiceDate)} id="invoice-date" bind:value={form.invoiceDate} />{#if formErrors.invoiceDate}<div class="invalid-feedback">{formErrors.invoiceDate}</div>{/if}</div>
+      <div class="col-sm-6"><label class="form-label" for="invoice-date">{$locale.invoices.invoiceDate}</label><ShamsiDatePicker invalid={Boolean(formErrors.invoiceDate)} id="invoice-date" bind:value={form.invoiceDate} on:change={addRentDateReadings} />{#if formErrors.invoiceDate}<div class="invalid-feedback">{formErrors.invoiceDate}</div>{/if}</div>
       <div class="col-sm-6"><label class="form-label" for="invoice-due-date">{$locale.invoices.dueDate}</label><ShamsiDatePicker invalid={Boolean(formErrors.dueDate)} id="invoice-due-date" bind:value={form.dueDate} />{#if formErrors.dueDate}<div class="invalid-feedback">{formErrors.dueDate}</div>{/if}</div>
       <div class="col-12"><label class="form-label" for="invoice-notes">{$locale.invoices.notes}</label><textarea class="form-control" id="invoice-notes" rows="2" bind:value={form.notes}></textarea></div>
     </div></fieldset>
@@ -512,13 +541,19 @@
                   </select>
                 </td>
                 <td>
-                  {#if UTILITY_TYPES.includes(item.type) && !editingId}
+                  {#if UTILITY_TYPES.includes(item.type)}
                     <!-- A utility charge is a reading, so what is chosen here is
                          which reading; the amount is the reading's own. -->
+                    <div class="reading-picker">
                     <select class="form-select" value={item.meterReadingId || ''} on:change={(event) => readingChanged(index, event.currentTarget.value)}>
                       <option value="">{readingsLoading ? $locale.invoices.loadingUtilities : $locale.invoices.selectReading}</option>
+                      {#if item.meterReadingId && !readings.some(reading => reading.id === item.meterReadingId)}<option value={item.meterReadingId}>{item.description}</option>{/if}
                       {#each availableReadings(item.type, index) as reading (reading.id)}<option value={reading.id}>{readingLabel(reading)}</option>{/each}
                     </select>
+                    {#if $user?.permissions?.includes('UTILITY_MANAGE')}
+                      <button class="btn btn-outline-primary quick-reading-button" type="button" title={$locale.meterReadings.add} aria-label={$locale.meterReadings.add} disabled={saving} on:click={() => openQuickReading(index)}><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                    {/if}
+                    </div>
                     {#if item.description}<small class="reading-detail">{item.description}</small>{/if}
                   {:else}
                     <input class:is-invalid={formErrors[`item-${index}-description`]} class="form-control" bind:value={item.description} disabled={Boolean(item.meterReadingId)} />
@@ -587,6 +622,10 @@
 <DocumentPreview record={printInvoice} kind="invoice" on:close={() => printInvoice = null} />
 <ReceivePaymentModal open={paymentModalOpen} invoice={paymentInvoice} on:close={closeReceivePayment} on:saved={async () => { notifySuccess($locale.payments.saved); closeReceivePayment(); await loadInvoices(pagination.page); }} />
 
+{#if quickReading}
+  <QuickReadingModal lease={quickReading.lease} utilityType={quickReading.utilityType} on:close={() => quickReading = null} on:saved={quickReadingSaved} />
+{/if}
+
 <style>
   .cell-sub { display: block; color: var(--text-muted); font-size: var(--text-xs); font-weight: var(--weight-medium); }
   .tenant-name { color: var(--text-strong); font-weight: var(--weight-bold); }
@@ -599,6 +638,9 @@
   /* A line billed from a reading is not typed: it is the reading, so it reads
      back as one with the rest of its own figures beside it. */
   .items-table :global(tr.utility-item) { background: var(--surface-muted); }
+  .reading-picker { display: flex; align-items: center; gap: 0.5rem; }
+  .reading-picker select { flex: 1; min-width: 0; }
+  .quick-reading-button { flex: 0 0 auto; padding-inline: 0.7rem; }
   .reading-detail { display: block; margin-block-start: 0.25rem; color: var(--text-muted); font-size: var(--text-xs); }
   /* The currency a charge is stated in: not a control, just the fact that says
      what the amount beside it means. */

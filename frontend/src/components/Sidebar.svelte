@@ -1,18 +1,19 @@
 <script>
   import { onMount } from 'svelte';
-  import { link, replace } from 'svelte-spa-router';
+  import { link } from 'svelte-spa-router';
   import { locale } from '../i18n';
-  import { navigationItems, navigationGroups, moduleKeyForLocation } from '../navigation';
-  import { signOut } from '../stores/auth';
+  import { navigationItems, navigationGroups, moduleKeyForLocation, isSettingsLocation } from '../navigation';
 
   export let user = null;
   export let open = false;
 
   const COLLAPSED_KEY = 'apartmentpro.sidebar-collapsed';
   let collapsed = false;
-  let loggingOut = false;
-  const primaryItems = navigationItems.filter(item => !item.href.startsWith('/settings/'));
-  const settingsItems = navigationItems.filter(item => item.href.startsWith('/settings/'));
+  // Settings is lifted out of the rail and pinned in the footer: it is a
+  // destination you visit to configure the workspace, not one of the modules
+  // you work in all day.
+  const primaryItems = navigationItems.filter(item => !isSettingsLocation(item.href));
+  const settingsItems = navigationItems.filter(item => isSettingsLocation(item.href));
 
   /* Sidebar order for the primary rail: a module named by navigationGroups is
      lifted out of the flat list and rendered under its group's header. The
@@ -78,7 +79,6 @@
     const group = moduleKey ? groupByModule.get(moduleKey) : null;
     if (group && openGroups[group.key] === false) toggleGroup(group.key);
   }
-  $: logoutLabel = loggingOut ? $locale.common.loggingOut : $locale.common.logout;
 
   function readCollapsed() {
     try {
@@ -110,18 +110,6 @@
     open = false;
   }
 
-  async function handleLogout() {
-    if (loggingOut) return;
-    loggingOut = true;
-    try {
-      await signOut();
-      await replace('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      loggingOut = false;
-    }
-  }
 </script>
 
 <svelte:window on:keydown={(event) => { if (event.key === 'Escape') open = false; }} />
@@ -217,7 +205,10 @@
         </a>
       {/if}
     {/each}
-    <div class="sidebar-settings" role="group" aria-label={$locale.dashboard.sidebarGroups.settings}>
+
+  </nav>
+
+  <div class="app-sidebar-foot">
       {#each settingsItems as item (item.key)}
         {@const label = $locale.dashboard.nav[item.key]}
         <a
@@ -233,21 +224,6 @@
           <span>{label}</span>
         </a>
       {/each}
-    </div>
-  </nav>
-
-  <div class="app-sidebar-foot">
-    <button
-      type="button"
-      class="app-nav-item app-nav-item--action"
-      on:click={handleLogout}
-      disabled={loggingOut}
-      title={collapsed ? logoutLabel : undefined}
-      aria-label={logoutLabel}
-    >
-      <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
-      <span>{logoutLabel}</span>
-    </button>
   </div>
 </aside>
 
@@ -293,8 +269,6 @@
     scrollbar-width: none;
   }
   .app-sidebar-nav::-webkit-scrollbar { display: none; width: 0; height: 0; }
-  .sidebar-settings { padding-block-start: 6px; }
-  .sidebar-settings .app-nav-item + .app-nav-item { margin-block-start: 2px; }
 
   /* Collapsible module group: a quiet section header over its own rows. */
   .sidebar-group { display: flex; flex-direction: column; }
@@ -364,10 +338,6 @@
   .app-nav-item.is-active > i,
   .app-nav-item.is-active:hover > i { color: var(--sidebar-active-text); }
   .app-sidebar-foot { flex-shrink: 0; padding: 0.65rem 1rem 1rem; margin: 0; border: 0; border-block-start: 1px solid var(--sidebar-border); }
-  .app-sidebar-foot .app-nav-item--action { color: var(--sidebar-text); font-weight: var(--weight-heavy); margin: 0; }
-  .app-sidebar-foot .app-nav-item--action > i { color: var(--sidebar-icon); }
-  .app-sidebar-foot .app-nav-item--action:hover { color: var(--danger); background: var(--danger-soft); }
-  .app-sidebar-foot .app-nav-item--action:hover > i { color: var(--danger); }
   .sidebar-collapse, .sidebar-close {
     width: 24px; height: 24px;
     border: 1px solid var(--sidebar-border);
@@ -417,8 +387,7 @@
   }
   @media (max-width: 991.98px), (pointer: coarse) {
     .app-nav-item { min-height: 44px; }
-    .sidebar-settings .app-nav-item + .app-nav-item { margin-block-start: 4px; }
-  }
+    }
   @media (prefers-reduced-motion: reduce) {
     .app-sidebar, .app-nav-item, .sidebar-collapse, .sidebar-close { transition: none; }
     .app-nav-item:hover,

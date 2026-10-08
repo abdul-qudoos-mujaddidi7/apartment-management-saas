@@ -252,7 +252,7 @@ function utilityDescription(reading) {
  * mirror is what the invoice's totals add up, so a lease agreed in one currency
  * and a meter priced in another can be billed on the same invoice.
  */
-async function prepareInvoiceItems(client, organizationId, lease, sourceItems, { baseCurrency, date }) {
+async function prepareInvoiceItems(client, organizationId, lease, sourceItems, { baseCurrency, date, existingInvoiceId = null }) {
   const utilityReadingIds = new Set();
   const rates = new Map();
   const items = [];
@@ -323,7 +323,7 @@ async function prepareInvoiceItems(client, organizationId, lease, sourceItems, {
       where: {
         id: item.meterReadingId,
         deletedAt: null,
-        invoiceItem: null,
+        ...(existingInvoiceId ? { OR: [{ invoiceItem: null }, { invoiceItem: { invoiceId: existingInvoiceId } }] } : { invoiceItem: null }),
         meter: {
           apartmentId: lease.apartmentId,
           deletedAt: null,
@@ -674,7 +674,6 @@ async function updateInvoice(organizationId, id, data) {
     if (!current) throw serviceError('INVOICE_NOT_FOUND', 'Invoice not found.');
     if (current.status === 'CANCELLED') throw serviceError('INVOICE_CANCELLED', 'Cancelled invoices cannot be edited.');
     if (new Decimal(current.paidAmount).greaterThan(0)) throw serviceError('INVOICE_HAS_PAYMENTS', 'Invoices with payments cannot be edited.');
-    if (current.items.length > 0) throw serviceError('INVOICE_HAS_METER_READINGS', 'Invoices with utility readings must be cancelled and recreated to preserve the billing audit.');
 
     const invoiceDate = data.invoiceDate || current.invoiceDate;
     const dueDate = data.dueDate === undefined ? current.dueDate : data.dueDate;
@@ -700,6 +699,7 @@ async function updateInvoice(organizationId, id, data) {
       const items = await prepareInvoiceItems(tx, organizationId, lease, data.items, {
         baseCurrency,
         date: invoiceDate,
+        existingInvoiceId: current.id,
       });
       const totals = calculateTotals(items);
       updateData.subtotal = totals.subtotal;

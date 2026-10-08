@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/utils/numericInput.test.js src/utils/contractDocumentLabels.test.js",
-    "test:workflow-ui": "node tests/workflow/browser.mjs"
+    "test": "node --test src/utils/numericInput.test.js src/utils/contractDocumentLabels.test.js src/utils/reportCsv.test.js",
+    "test:workflow-ui": "node tests/workflow/browser.mjs",
+    "test:meter-report-ui": "node tests/meter-report/browser.mjs",
+    "test:invoice-reading-ui": "node tests/invoice-reading/browser.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",

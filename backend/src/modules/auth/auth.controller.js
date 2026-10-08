@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const authService = require('./auth.service');
-const { loginSchema, registrationSchema } = require('./auth.validation');
+const { loginSchema, passwordChangeSchema, profileSchema, registrationSchema } = require('./auth.validation');
 
 const cookieOptions = {
   httpOnly: true,
@@ -111,4 +111,82 @@ function me(req, res) {
   return res.status(200).json({ success: true, user: req.user });
 }
 
-module.exports = { login, logout, me, register };
+async function updateProfile(req, res, next) {
+  try {
+    const result = profileSchema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_PROFILE_DATA',
+        message: 'Invalid profile data.',
+        errors: z.flattenError(result.error).fieldErrors,
+      });
+    }
+
+    // The account is the session's, never the request body's: this endpoint can
+    // only ever change the record of whoever is signed in.
+    const user = await authService.updateOwnProfile(
+      req.user.id,
+      req.user.organizationId,
+      result.data,
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        code: 'USER_NOT_FOUND',
+        message: 'This account is no longer available.',
+      });
+    }
+
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function changePassword(req, res, next) {
+  try {
+    const result = passwordChangeSchema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_PASSWORD_DATA',
+        message: 'Invalid password data.',
+        errors: z.flattenError(result.error).fieldErrors,
+      });
+    }
+
+    const changed = await authService.changeOwnPassword(
+      req.user.id,
+      req.user.organizationId,
+      result.data,
+    );
+
+    if (!changed) {
+      return res.status(404).json({
+        success: false,
+        code: 'USER_NOT_FOUND',
+        message: 'This account is no longer available.',
+      });
+    }
+
+    return res.status(200).json({ success: true, message: 'Password updated.' });
+  } catch (error) {
+    // A mistyped current password is a field error, not a failed request.
+    if (error.code === 'INVALID_CURRENT_PASSWORD') {
+      return res.status(400).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+        errors: { currentPassword: [error.message] },
+      });
+    }
+
+    return next(error);
+  }
+}
+
+module.exports = { changePassword, login, logout, me, register, updateProfile };

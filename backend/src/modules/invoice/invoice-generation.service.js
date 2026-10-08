@@ -78,6 +78,19 @@ function cycleInvoiceItems(lease, charges) {
   return items;
 }
 
+async function rentDateReadingItems(tx, organizationId, leaseId, invoiceDate) {
+  const readings = await tx.meterReading.findMany({
+    where: {
+      leaseId, readingDate: invoiceDate, deletedAt: null, invoiceItem: null,
+      readingKind: { not: 'MOVE_IN' },
+      meter: { deletedAt: null, apartment: { deletedAt: null, floor: { deletedAt: null, building: { organizationId, deletedAt: null } } } },
+    },
+    select: { id: true, meter: { select: { utilityType: true } } },
+    orderBy: { id: 'asc' },
+  });
+  return readings.map(reading => ({ type: reading.meter.utilityType, meterReadingId: reading.id }));
+}
+
 /**
  * Raise the next invoice for one lease and move its schedule on, atomically.
  *
@@ -135,7 +148,7 @@ async function runCycleForLease(leaseId, asOf) {
         dueDate: paymentDueDate(periodEnd, lease.paymentDueDay),
         notes: null,
         billingPeriodStart: periodStart,
-        items: cycleInvoiceItems(lease, cycleCharges(lease)),
+        items: [...cycleInvoiceItems(lease, cycleCharges(lease)), ...await rentDateReadingItems(tx, lease.organizationId, leaseId, periodEnd)],
       });
     }
 
@@ -227,6 +240,7 @@ function startInvoiceScheduler({ intervalMs = DEFAULT_INTERVAL_MS, onError = con
 }
 
 module.exports = {
+  rentDateReadingItems,
   cycleInvoiceItems,
   generateDueInvoices,
   runCycleForLease,

@@ -353,7 +353,7 @@
   --sidebar-width-expanded: clamp(14rem, 15vw, 15.25rem);
   --sidebar-width-collapsed: 4.25rem;
   --sidebar-width: var(--sidebar-width-expanded);
-  --topbar-height: 68px;
+  --topbar-height: 52px;
   --index-footer-height: 3.25rem;
 
   /* Table density — roomier rows than a spreadsheet: the row is the unit you

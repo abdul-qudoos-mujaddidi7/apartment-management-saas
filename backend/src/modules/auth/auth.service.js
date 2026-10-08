@@ -18,7 +18,7 @@ function createSlug(value) {
   return slug || 'organization';
 }
 
-function createConflictError(code, message) {
+function createCodedError(code, message) {
   const error = new Error(message);
   error.code = code;
   return error;
@@ -104,11 +104,11 @@ async function registerOrganizationAdmin({
   ]);
 
   if (existingUsername) {
-    throw createConflictError('USERNAME_ALREADY_EXISTS', 'Username is already registered.');
+    throw createCodedError('USERNAME_ALREADY_EXISTS', 'Username is already registered.');
   }
 
   if (existingOrganization) {
-    throw createConflictError('SLUG_ALREADY_EXISTS', 'Organization slug already exists.');
+    throw createCodedError('SLUG_ALREADY_EXISTS', 'Organization slug already exists.');
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -182,11 +182,59 @@ async function getCurrentUser(userId) {
   return user ? formatUser(user) : null;
 }
 
+/**
+ * Change the display name on the signed-in user's own record.
+ *
+ * The organization is part of the lookup, not a separate check: an account is
+ * resolved inside its workspace or not at all, so a stray id can never reach
+ * another organization's user. The updated record is re-read through
+ * `getCurrentUser` rather than being echoed from the update, so the caller gets
+ * the same shape — with permissions and organization — as `GET /auth/me`.
+ */
+async function updateOwnProfile(userId, organizationId, { firstName, lastName }) {
+  const user = await findActiveUser({ id: userId, organizationId });
+
+  if (!user) return null;
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { firstName: firstName.trim(), lastName: lastName.trim() },
+  });
+
+  return getCurrentUser(user.id);
+}
+
+/**
+ * Replace the signed-in user's password after proving the current one.
+ *
+ * Returns false when there is no such account in this workspace and throws
+ * `INVALID_CURRENT_PASSWORD` when the current password does not match, so the
+ * caller can tell "wrong password" (a field error) from "no account".
+ */
+async function changeOwnPassword(userId, organizationId, { currentPassword, newPassword }) {
+  const user = await findActiveUser({ id: userId, organizationId });
+
+  if (!user) return false;
+
+  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    throw createCodedError('INVALID_CURRENT_PASSWORD', 'Your current password is not correct.');
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await bcrypt.hash(newPassword, 12) },
+  });
+
+  return true;
+}
+
 module.exports = {
   authenticateUser,
+  changeOwnPassword,
   createSlug,
   createAccessToken,
   getCurrentUser,
   registerOrganizationAdmin,
+  updateOwnProfile,
   verifyAccessToken,
 };

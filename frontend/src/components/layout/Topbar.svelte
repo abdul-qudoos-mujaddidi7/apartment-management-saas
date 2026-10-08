@@ -253,6 +253,7 @@
               <span class="profile-username" dir="auto">{$user.username}</span>
             </div>
             <nav class="profile-links" aria-label={$locale.profile.menu}>
+              <a class="profile-menu-item" data-profile-link on:keydown={profileMenuKeydown} href="#/settings/profile" on:click={() => profileOpen = false}>{$locale.dashboard.nav.profile}</a>
               <a class="profile-menu-item" data-profile-link on:keydown={profileMenuKeydown} href="#/dashboard" on:click={() => profileOpen = false}>{$locale.dashboard.nav.dashboard}</a>
               <div class="profile-footer">
                 <button class="profile-menu-item" data-profile-link on:keydown={profileMenuKeydown} type="button" disabled={loggingOut} on:click={handleProfileLogout}>{loggingOut ? $locale.common.loggingOut : $locale.common.logout}</button>

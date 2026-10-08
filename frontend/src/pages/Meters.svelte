@@ -1,4 +1,5 @@
 <script>
+  import { rowNavigation } from '../utils/rowNavigation';
   import PageLayout from '../components/ui/PageLayout.svelte';
   import { onMount } from 'svelte';
   import { push } from 'svelte-spa-router';
@@ -329,9 +330,9 @@
         <th data-sort="meterNumber">{$locale.meters.meterNumber}</th><th data-sort="utilityType">{$locale.meters.utilityType}</th><th data-sort="meterType">{$locale.meters.meterType}</th><th data-sort="apartment.floor.building.name">{$locale.meters.building}</th><th data-sort="apartment.floor.name">{$locale.meters.floor}</th><th data-sort="apartment.apartmentNumber">{$locale.meters.apartment}</th><th data-sort="unit">{$locale.meters.unit}</th><th data-sort="defaultUnitPrice">{$locale.meters.defaultUnitPrice}</th><th data-sort="initialReading">{$locale.meters.initialReading}</th><th data-sort="installationDate">{$locale.meters.installationDate}</th><th data-sort="status">{$locale.meters.status}</th><th class="actions-heading"><span class="visually-hidden">{$locale.meters.edit}</span></th>
       </tr></thead>
       <tbody>{#each view as meter (meter.id)}
-        <tr class:is-selected={selectedIds.has(meter.id)}>
+        <tr class="meter-report-row" class:is-selected={selectedIds.has(meter.id)} use:rowNavigation={() => push(`/meters/${encodeURIComponent(meter.id)}/report`)}>
           <td class="select-column"><Checkbox checked={selectedIds.has(meter.id)} label={$locale.common.selectRow} on:change={() => toggleRow(meter.id)} /></td>
-          <td class="meter-number">{meter.meterNumber}</td>
+          <td class="meter-number"><a href={`#/meters/${encodeURIComponent(meter.id)}/report`}>{meter.meterNumber}</a></td>
           <td><span class="utility-cell"><i class={`bi ${utilityIcon(meter.utilityType)}`} aria-hidden="true"></i>{utilityLabel(meter.utilityType)}</span></td>
           <td>{$locale.meters.meterTypes[meter.meterType] || meter.meterType}</td>
           <td>{meter.apartment.floor.building.name}</td>
@@ -344,6 +345,7 @@
           <td><StatusBadge label={statusLabel(meter.status)} tone={meterStatusTone(meter.status)} /></td>
           <td class="actions-cell">
             <RowActions label={$locale.meters.edit}>
+              <button class="row-menu-item" type="button" on:click={() => push(`/meters/${encodeURIComponent(meter.id)}/report`)}><i class="bi bi-bar-chart-line" aria-hidden="true"></i>{$locale.meterReport.report}</button>
               <button class="row-menu-item" type="button" on:click={() => openReadingModal(meter)} disabled={meter.status !== 'ACTIVE'}><i class="bi bi-clipboard-plus" aria-hidden="true"></i>{$locale.meters.addReading}</button>
               <button class="row-menu-item" type="button" on:click={() => openEdit(meter)}><i class="bi bi-pencil" aria-hidden="true"></i>{$locale.common.actions.edit}</button>
               <button class="row-menu-item danger" type="button" on:click={() => removeMeter(meter)}><i class="bi bi-trash3" aria-hidden="true"></i>{$locale.meters.delete}</button>
@@ -452,6 +454,7 @@
 </Modal>
 
 <style>
+  .meter-report-row { cursor: pointer; }
   .meter-apartment-select .form-select { width: 100%; padding-inline-end: 3.25rem; background-position: right 2.7rem center; }
   :global([dir='rtl']) .meter-apartment-select .form-select { background-position: left 2.7rem center; }
   .meter-apartment-add { position: absolute; z-index: 1; inset-inline-end: 0.35rem; top: 50%; display: inline-flex; align-items: center; justify-content: center; width: calc(var(--control-height) - 0.5rem); height: calc(var(--control-height) - 0.5rem); padding: 0; transform: translateY(-50%); border: 0; border-radius: var(--control-radius); color: var(--accent-text); background: transparent; font-size: 1rem; cursor: pointer; }
