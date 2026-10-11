@@ -1,26 +1,39 @@
 <script>
   import { push } from 'svelte-spa-router';
-
   import LanguageSwitcher from '../components/LanguageSwitcher.svelte';
-  import { locale } from '../i18n';
+  import { language, locale } from '../i18n';
+  import { homeLandingCopy } from '../i18n/homeLanding';
 
   const features = [
-    { key: 'property', icon: 'bi-buildings' },
-    { key: 'tenant', icon: 'bi-people' },
-    { key: 'invoices', icon: 'bi-receipt' },
+    { key: 'property', icon: 'bi-buildings', subtitle: 'properties' },
+    { key: 'tenant', icon: 'bi-people', subtitle: 'tenants' },
+    { key: 'invoices', icon: 'bi-wallet2', subtitle: 'finances' },
   ];
-  const steps = ['add', 'manage', 'track'];
-  const stats = ['units', 'onTime', 'adminTime'];
-  const rentTiles = ['paid','paid','paid','paid','paid','paid','paid','paid','due','paid','paid','empty'];
-
+  const steps = [
+    { key: 'add', icon: 'bi-building-add' },
+    { key: 'manage', icon: 'bi-person-check' },
+    { key: 'track', icon: 'bi-house-check' },
+  ];
+  const socials = [
+    ['Facebook', 'facebook', 'https://www.facebook.com/ZenoERP/'],
+    ['Instagram', 'instagram', 'https://www.instagram.com/zenoerp/'],
+    ['TikTok', 'tiktok', 'https://www.tiktok.com/@zenoerp'],
+    ['YouTube', 'youtube', 'https://www.youtube.com/@zenoerp'],
+    ['Telegram', 'telegram', 'https://t.me/zenoerp'],
+    ['X', 'twitter-x', 'https://x.com/zenoerp'],
+  ];
   let navigationOpen = false;
+  $: copy = homeLandingCopy[$language] || homeLandingCopy.en;
 
   function scrollToSection(id) {
     navigationOpen = false;
-    const target = document.getElementById(id);
-    if (!target) return;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    document.getElementById(id)?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }
+  function showFeature(key) {
+    scrollToSection(`step-${key}`);
   }
 </script>
 
@@ -29,434 +42,240 @@
   <meta name="description" content={$locale.home.description} />
 </svelte:head>
 
-<div class="lp-page">
-  <header class="lp-header">
-    <nav class="lp-nav lp-wrap" aria-label="Primary navigation">
-      <button class="lp-brand" type="button" on:click={() => scrollToSection('home')} aria-label={$locale.home.nav.homeLabel}>
-        <span class="lp-mark" aria-hidden="true"><i class="bi bi-buildings"></i></span>
-        <span>{$locale.common.apartmentPro}</span>
-      </button>
-
-      <ul class="lp-links">
-        <li><button type="button" on:click={() => scrollToSection('features')}>{$locale.home.nav.features}</button></li>
-        <li><button type="button" on:click={() => scrollToSection('about')}>{$locale.home.nav.about}</button></li>
-      </ul>
-
-      <div class="lp-actions">
-        <LanguageSwitcher />
-        <button class="lp-signin" type="button" on:click={() => push('/login')}>{$locale.common.signIn}</button>
-        <button class="lp-button lp-button-primary lp-desktop-cta" type="button" on:click={() => push('/register')}>
-          {$locale.common.getStarted}
-          <i class="bi bi-arrow-right lp-arrow" aria-hidden="true"></i>
-        </button>
-        <button
-          class="lp-toggle"
-          type="button"
-          aria-expanded={navigationOpen}
-          aria-controls="lp-mobile-menu"
-          aria-label={$locale.home.nav.toggle}
-          on:click={() => (navigationOpen = !navigationOpen)}
-        >
-          <i class={`bi ${navigationOpen ? 'bi-x-lg' : 'bi-list'}`} aria-hidden="true"></i>
-        </button>
+<div class="home-page" id="home">
+  <div class="hero-wrap">
+    <section class="hero" aria-labelledby="hero-title">
+      <img class="hero-photo" src="/images/home/residences-hero.webp" alt="" aria-hidden="true" width="1536" height="1024" fetchpriority="high" />
+      <div class="hero-tint" aria-hidden="true"></div>
+      <header class="home-header">
+        <nav class="home-nav" aria-label={$locale.home.nav.homeLabel}>
+          <a class="home-brand" href="#/" aria-label={$locale.home.nav.homeLabel}><i class="bi bi-houses-fill" aria-hidden="true"></i><span>{$locale.common.apartmentPro}</span></a>
+          <div class="nav-links">
+            <button type="button" on:click={() => scrollToSection('home')}>{$locale.home.nav.home}</button>
+            <button type="button" on:click={() => scrollToSection('how-it-works')}>{copy.how}</button>
+            <button type="button" on:click={() => scrollToSection('contact')}>{$locale.home.footer.contact}</button>
+          </div>
+          <div class="nav-actions">
+            <LanguageSwitcher />
+            <button class="signin" type="button" on:click={() => push('/login')}>{$locale.common.signIn}</button>
+            <button class="menu-toggle" type="button" aria-expanded={navigationOpen} aria-controls="home-mobile-menu" aria-label={$locale.home.nav.toggle} on:click={() => navigationOpen = !navigationOpen}><i class={`bi ${navigationOpen ? 'bi-x-lg' : 'bi-list'}`} aria-hidden="true"></i></button>
+          </div>
+        </nav>
+        {#if navigationOpen}
+          <div class="mobile-menu" id="home-mobile-menu">
+            <button type="button" on:click={() => scrollToSection('how-it-works')}>{copy.how}</button>
+            <button type="button" on:click={() => scrollToSection('contact')}>{$locale.home.footer.contact}</button>
+            <button type="button" on:click={() => push('/login')}>{$locale.common.signIn}</button>
+          </div>
+        {/if}
+      </header>
+      <div class="hero-copy">
+        <h1 id="hero-title">{$locale.home.hero.title}<span>{$locale.home.hero.titleAccent}</span></h1>
+        <p class="hero-description">{copy.description}</p>
       </div>
-    </nav>
-
-    <div class="lp-mobile-menu lp-wrap" id="lp-mobile-menu" hidden={!navigationOpen}>
-      <button type="button" on:click={() => scrollToSection('features')}>{$locale.home.nav.features}</button>
-      <button type="button" on:click={() => scrollToSection('about')}>{$locale.home.nav.about}</button>
-      <button type="button" on:click={() => push('/login')}>{$locale.common.signIn}</button>
-      <button class="lp-button lp-button-primary" type="button" on:click={() => push('/register')}>
-        {$locale.common.getStarted}
-      </button>
-      <div class="lp-mobile-language"><LanguageSwitcher /></div>
+      <div class="hero-curve" aria-hidden="true"></div>
+    </section>
+    <div class="quick-bar" aria-label={$locale.home.features.kicker}>
+      {#each features as feature}
+        <button class="quick-item" type="button" on:click={() => showFeature(feature.key)}><span class="quick-icon"><i class={`bi ${feature.icon}`} aria-hidden="true"></i></span><span class="quick-copy"><strong>{$locale.home.footer[feature.subtitle]}</strong><span>{copy[feature.subtitle]}</span></span><i class="bi bi-chevron-down quick-chevron" aria-hidden="true"></i></button>
+      {/each}
+      <button class="home-button primary hero-cta" type="button" on:click={() => push('/register')}>{$locale.common.getStarted}<i class="bi bi-arrow-right arrow" aria-hidden="true"></i></button>
     </div>
-  </header>
-
+  </div>
   <main>
-    <section class="lp-hero" id="home">
-      <picture class="lp-hero-media" aria-hidden="true">
-        <source media="(max-width: 660px)" srcset="/images/home/hero-tall.jpg" />
-        <img src="/images/home/hero-wide.jpg" alt="" width="1280" height="853" fetchpriority="high" />
-      </picture>
-      <div class="lp-hero-veil" aria-hidden="true"></div>
-
-      <div class="lp-wrap lp-hero-grid">
-        <div class="lp-hero-copy">
-          <p class="lp-kicker">{$locale.home.hero.kicker}</p>
-          <h1>
-            {$locale.home.hero.title}
-            <span>{$locale.home.hero.titleAccent}</span>
-          </h1>
-          <p class="lp-hero-lede">{$locale.home.hero.description}</p>
-
-          <div class="lp-hero-actions">
-            <button class="lp-button lp-button-primary" type="button" on:click={() => push('/register')}>
-              {$locale.common.getStarted}
-              <i class="bi bi-arrow-right lp-arrow" aria-hidden="true"></i>
-            </button>
-            <button class="lp-button lp-button-secondary" type="button" on:click={() => scrollToSection('features')}>
-              {$locale.home.hero.seeHow}
-            </button>
-          </div>
-
-          <ul class="lp-hero-stats" aria-label={$locale.home.hero.chip.summary}>
-            {#each stats as stat}
-              <li>
-                <strong>{$locale.home.hero.stats[stat][0]}</strong>
-                <span>{$locale.home.hero.stats[stat][1]}</span>
-              </li>
-            {/each}
-          </ul>
-        </div>
-
-        <aside class="lp-rent-status" aria-label={$locale.home.hero.chip.summary}>
-          <div class="lp-rent-copy">
-            <strong>{$locale.home.hero.chip.title}</strong>
-            <span>{$locale.home.hero.chip.detail}</span>
-          </div>
-          <div class="lp-rent-tiles" aria-hidden="true">
-            {#each rentTiles as tile}
-              <i class:due={tile === 'due'} class:empty={tile === 'empty'}></i>
-            {/each}
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <section class="lp-section" id="features">
-      <div class="lp-wrap">
-        <div class="lp-section-heading">
-          <p class="lp-kicker">{$locale.home.features.kicker}</p>
-          <h2>{$locale.home.features.title} {$locale.home.features.titleBreak}</h2>
-          <p>{$locale.home.features.description}</p>
-        </div>
-
-        <div class="lp-feature-grid">
-          {#each features as feature}
-            <article class="lp-feature">
-              <span class="lp-feature-icon" aria-hidden="true"><i class={`bi ${feature.icon}`}></i></span>
-              <h3>{$locale.home.features.items[feature.key][0]}</h3>
-              <p>{$locale.home.features.items[feature.key][1]}</p>
-            </article>
-          {/each}
-        </div>
-      </div>
-    </section>
-
-    <section class="lp-section lp-process-section" id="about">
-      <div class="lp-wrap lp-process-grid">
-        <div class="lp-section-heading lp-process-heading">
-          <p class="lp-kicker">{$locale.home.process.kicker}</p>
-          <h2>{$locale.home.process.title} {$locale.home.process.titleBreak}</h2>
-          <p>{$locale.home.process.description}</p>
-          <button class="lp-text-link" type="button" on:click={() => push('/register')}>
-            {$locale.common.getStarted}
-            <i class="bi bi-arrow-right lp-arrow" aria-hidden="true"></i>
-          </button>
-        </div>
-
-        <ol class="lp-steps">
-          {#each steps as step, index}
-            <li>
-              <span class="lp-step-number" aria-hidden="true">{index + 1}</span>
-              <div>
-                <h3>{$locale.home.process.items[step][0]}</h3>
-                <p>{$locale.home.process.items[step][1]}</p>
-              </div>
-            </li>
-          {/each}
-        </ol>
-      </div>
-    </section>
-
-    <section class="lp-cta-section">
-      <div class="lp-wrap">
-        <div class="lp-cta">
-          <div>
-            <p class="lp-kicker">{$locale.home.cta.kicker}</p>
-            <h2>{$locale.home.cta.title} {$locale.home.cta.titleBreak}</h2>
-            <p>{$locale.home.cta.description}</p>
-          </div>
-          <button class="lp-button lp-button-light" type="button" on:click={() => push('/register')}>
-            {$locale.common.getStarted}
-            <i class="bi bi-arrow-right lp-arrow" aria-hidden="true"></i>
-          </button>
-        </div>
-      </div>
+    <section class="how-section home-wrap" id="how-it-works" aria-labelledby="how-title">
+      <div class="section-heading"><h2 id="how-title">{copy.how}</h2></div>
+      <ol class="steps">
+        {#each steps as step, index}
+          <li class="step" id={`step-${features[index].key}`}>
+            <span class="step-icon"><i class={`bi ${step.icon}`} aria-hidden="true"></i></span>
+            {#if index < steps.length - 1}<span class="step-connector" aria-hidden="true"></span>{/if}
+            <h3>{copy.steps[step.key][0]}</h3><p>{copy.steps[step.key][1]}</p>
+          </li>
+        {/each}
+      </ol>
     </section>
   </main>
-
-  <footer class="lp-footer" id="contact">
-    <div class="lp-wrap lp-footer-grid">
-      <div class="lp-footer-brand-col">
-        <button class="lp-footer-brand" type="button" on:click={() => scrollToSection('home')} aria-label={$locale.home.nav.homeLabel}>
-          <span class="lp-mark" aria-hidden="true"><i class="bi bi-buildings"></i></span>
-          <span>{$locale.common.apartmentPro}</span>
-        </button>
-        <p class="lp-footer-copy">{$locale.home.footer.description}</p>
-        <ul class="lp-footer-tags">
-          <li>{$locale.home.footer.properties}</li>
-          <li>{$locale.home.footer.tenants}</li>
-          <li>{$locale.home.footer.finances}</li>
-        </ul>
-
-        <ul class="lp-footer-socials">
-          <li>
-            <a class="lp-social" href="https://www.facebook.com/ZenoERP/" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="bi bi-facebook" aria-hidden="true"></i></a>
-          </li>
-          <li>
-            <a class="lp-social" href="https://www.instagram.com/zenoerp/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="bi bi-instagram" aria-hidden="true"></i></a>
-          </li>
-          <li>
-            <a class="lp-social" href="https://www.tiktok.com/@zenoerp" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><i class="bi bi-tiktok" aria-hidden="true"></i></a>
-          </li>
-          <li>
-            <a class="lp-social" href="https://www.youtube.com/@zenoerp" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i class="bi bi-youtube" aria-hidden="true"></i></a>
-          </li>
-          <li>
-            <a class="lp-social" href="https://t.me/zenoerp" target="_blank" rel="noopener noreferrer" aria-label="Telegram"><i class="bi bi-telegram" aria-hidden="true"></i></a>
-          </li>
-          <li>
-            <a class="lp-social" href="https://x.com/zenoerp" target="_blank" rel="noopener noreferrer" aria-label="X"><i class="bi bi-twitter-x" aria-hidden="true"></i></a>
-          </li>
-        </ul>
+  <footer class="home-footer" id="contact">
+    <div class="home-wrap footer-main">
+      <div class="footer-brand">
+        <a class="home-brand" href="#/"><i class="bi bi-houses-fill" aria-hidden="true"></i><span>{$locale.common.apartmentPro}</span></a>
+        <p>{copy.footer.description}</p>
+        <div class="footer-socials">{#each socials as [name, icon, href]}<a {href} target="_blank" rel="noopener noreferrer" aria-label={name}><i class={`bi bi-${icon}`} aria-hidden="true"></i></a>{/each}</div>
       </div>
-
-      <nav class="lp-footer-links-col" aria-labelledby="lp-footer-links-title">
-        <h2 class="lp-footer-title" id="lp-footer-links-title">{$locale.home.footer.quickLinks}</h2>
-        <ul class="lp-footer-links">
-          <li><button type="button" on:click={() => scrollToSection('features')}>{$locale.home.footer.features}</button></li>
-          <li><button type="button" on:click={() => scrollToSection('about')}>{$locale.home.footer.howItWorks}</button></li>
-          <li><button type="button" on:click={() => push('/login')}>{$locale.common.signIn}</button></li>
-          <li><button type="button" on:click={() => push('/register')}>{$locale.common.getStarted}</button></li>
+      <nav class="footer-column" aria-labelledby="footer-about-title">
+        <h2 id="footer-about-title">{copy.footer.about}</h2>
+        <ul class="footer-links">
+          <li><button type="button" on:click={() => scrollToSection('how-it-works')}>{copy.how}</button></li>
+          <li><a href="#/register">{$locale.common.getStarted}</a></li>
+          <li><a href="#/login">{$locale.common.signIn}</a></li>
         </ul>
       </nav>
-
-      <div class="lp-footer-contact-col">
-        <h2 class="lp-footer-title">{$locale.home.footer.contact}</h2>
-        <p class="lp-footer-copy">{$locale.home.footer.contactDescription}</p>
-        <ul class="lp-footer-contact">
-          <li>
-            <i class="bi bi-globe2" aria-hidden="true"></i>
-            <a href="https://ap.zenoerp.com" target="_blank" rel="noopener noreferrer" dir="ltr">ap.zenoerp.com</a>
-          </li>
-          <li>
-            <i class="bi bi-envelope-fill" aria-hidden="true"></i>
-            <a href="mailto:support@zenoerp.com" dir="ltr">support@zenoerp.com</a>
-          </li>
-          <li>
-            <i class="bi bi-telephone-fill" aria-hidden="true"></i>
-            <a href="https://wa.me/93704495743" target="_blank" rel="noopener noreferrer" dir="ltr">+93 70 449 5743</a>
-          </li>
-          <li>
-            <i class="bi bi-clock-fill" aria-hidden="true"></i>
-            <span>{$locale.home.footer.support}</span>
-          </li>
+      <nav class="footer-column" aria-labelledby="footer-support-title">
+        <h2 id="footer-support-title">{copy.footer.support}</h2>
+        <ul class="footer-links">
+          <li><a href="mailto:support@zenoerp.com">{copy.footer.emailSupport}</a></li>
+          <li><a href="https://wa.me/93704495743" target="_blank" rel="noopener noreferrer">{copy.footer.whatsappSupport}</a></li>
+          <li><a href="https://t.me/zenoerp" target="_blank" rel="noopener noreferrer">{copy.footer.telegramSupport}</a></li>
         </ul>
+      </nav>
+      <div class="footer-column footer-contact">
+        <h2>{$locale.home.footer.contact}</h2>
+        <p>{$locale.home.footer.contactDescription}</p>
+        <a href="https://ap.zenoerp.com" target="_blank" rel="noopener noreferrer"><span dir="ltr">ap.zenoerp.com</span></a>
+        <a href="mailto:support@zenoerp.com"><span dir="ltr">support@zenoerp.com</span></a>
+        <a href="https://wa.me/93704495743" target="_blank" rel="noopener noreferrer"><span dir="ltr">+93 70 449 5743</span></a>
       </div>
     </div>
-
-    <div class="lp-wrap">
-      <hr class="lp-footer-rule" />
-      <div class="lp-footer-bottom">
-        <p>{$locale.home.footer.copyright}</p>
-        <p>{$locale.home.footer.platform}</p>
-      </div>
-    </div>
+    <div class="footer-bottom"><p>{$locale.home.footer.copyright}</p></div>
   </footer>
 </div>
 
 <style>
-  :global(body) { background: var(--surface); }
-
-  .lp-page {
-    --lp-primary: var(--accent);
-    --lp-primary-readable: var(--accent-text);
-    --lp-primary-strong: var(--accent-active);
-    --lp-soft: var(--accent-soft);
-    --lp-soft-border: var(--accent-soft-border);
-    --lp-ink: var(--text-strong);
-    --lp-text: var(--text);
-    --lp-muted: var(--text-muted);
-    --lp-border: var(--border);
-    --lp-gutter: clamp(1.25rem, 4vw, 3rem);
-
-    min-height: 100vh;
-    color: var(--lp-text);
-    background: var(--surface);
-    font-family: var(--font-ui);
-    -webkit-font-smoothing: antialiased;
+  .home-page { --home-ink:var(--text-strong); --home-muted:var(--text-muted); --home-blue:var(--accent); --home-blue-hover:var(--accent-hover); --home-blue-text:var(--accent-text); --home-line:var(--border); display:flow-root; color:var(--home-ink); background:#fff; min-height:100svh; font-family:var(--font-ui); -webkit-font-smoothing:antialiased; }
+  .home-page :is(h1,h2,h3,p) { margin:0; }
+  .home-page :is(h1,h2,h3) { text-wrap:balance; }
+  .home-page :is(button,a) { font-family:inherit; -webkit-tap-highlight-color:transparent; }
+  .home-page button { cursor:pointer; }
+  .home-page a { color:inherit; text-decoration:none; }
+  .home-page :is(button,a):focus-visible { outline:3px solid var(--home-blue); outline-offset:4px; }
+  .home-header :is(button,a):focus-visible { outline-color:#fff; }
+  .home-wrap { width:min(100%,1060px); padding-inline:32px; margin-inline:auto; }
+  .hero-wrap { position:relative; width:100%; margin:0; }
+  .hero { position:relative; height:490px; overflow:hidden; background:var(--brand-400); isolation:isolate; }
+  .hero-photo,.hero-tint { position:absolute; inset:0; width:100%; height:100%; }
+  .hero-photo { object-fit:cover; object-position:center 50%; z-index:-3; }
+  .hero-tint { z-index:-2; background:linear-gradient(180deg,color-mix(in srgb,var(--accent-active) 83%,transparent) 0%,color-mix(in srgb,var(--accent) 55%,transparent) 28%,color-mix(in srgb,var(--accent) 12%,transparent) 65%,color-mix(in srgb,var(--navy-deep) 12%,transparent) 100%); }
+  .home-header { position:relative; z-index:5; padding-inline:35px; }
+  .home-nav { min-height:82px; display:flex; align-items:center; gap:30px; }
+  .home-brand { display:inline-flex; align-items:center; gap:8px; font-size:18px; font-weight:700; letter-spacing:-.4px; flex-shrink:0; min-height:44px; color:#fff; }
+  .home-brand > i { font-size:23px; }
+  .home-header .home-brand { color:#fff; }
+  .nav-links { display:flex; gap:20px; margin-inline-start:auto; }
+  .nav-links button { border:0; background:transparent; color:#fff; min-height:44px; padding:0 4px; font-size:12px; font-weight:500; }
+  .nav-links button:hover { text-decoration:underline; text-underline-offset:5px; }
+  .nav-actions { display:flex; align-items:center; gap:15px; }
+  .nav-actions :global(.language-switcher) { border:0; background:transparent; color:#fff; font-size:12px; min-height:44px; padding-inline-start:0; gap:5px; }
+  .nav-actions :global(.language-switcher select) { color:#fff; font-size:12px; min-height:44px; background-image:none; padding-inline-end:0; }
+  .nav-actions :global(.language-switcher option) { color:var(--home-ink); background:#fff; }
+  .signin { min-height:44px; padding:0 22px; border:1px solid #ffffff80; border-radius:5px; color:#fff; background:#ffffff08; font-size:12px; }
+  .signin:hover { background:#ffffff24; border-color:#fff; }
+  .menu-toggle { display:none; background:#ffffff12; border:1px solid #ffffff80; color:#fff; width:44px; height:44px; border-radius:6px; font-size:22px; }
+  .mobile-menu { position:absolute; inset:72px 20px auto; display:grid; gap:5px; padding:12px; border:1px solid #ffffff50; border-radius:12px; background:var(--accent-active); box-shadow:0 8px 25px #15204630; }
+  .mobile-menu button { min-height:44px; border:0; border-radius:6px; color:#fff; background:#ffffff08; text-align:start; padding-inline:14px; }
+  .mobile-menu button:hover { background:#ffffff20; }
+  .hero-copy { max-width:650px; margin:15px auto 0; text-align:center; padding-inline:25px; color:#fff; }
+  .hero-copy h1 { color:#fff; font-size:clamp(36px,3.5vw,49px); font-weight:700; line-height:1.22; letter-spacing:-1.1px; }
+  .hero-copy h1 span { display:block; }
+  .hero-description { max-width:430px; margin:14px auto 0 !important; font-size:13px; line-height:1.8; color:#fff; text-wrap:pretty; }
+  .hero-curve { position:absolute; z-index:1; width:140%; height:80px; bottom:-58px; inset-inline-start:-20%; background:#fff; border-radius:50% 50% 0 0; }
+  .quick-bar { position:relative; z-index:3; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) auto; align-items:center; gap:8px; width:min(calc(100% - 100px),920px); margin:-23px auto 0; padding:12px; border:1px solid #edf0f5; border-radius:9px; background:#fff; box-shadow:0 8px 28px #26335a12; }
+  .quick-item { display:flex; align-items:center; gap:10px; min-height:52px; padding:8px 14px; border:0; border-radius:5px; background:#f8f9fc; color:var(--home-ink); text-align:start; }
+  .quick-item:hover { background:var(--accent-soft); }
+  .quick-icon { font-size:17px; color:var(--home-blue); }
+  .quick-copy { display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .quick-copy strong { font-size:12px; font-weight:600; }
+  .quick-copy > span { font-size:10px; color:var(--home-muted); }
+  .quick-chevron { margin-inline-start:auto; color:var(--home-muted); font-size:10px; }
+  .home-button { display:inline-flex; align-items:center; justify-content:center; gap:12px; border:1px solid transparent; border-radius:5px; padding:12px 21px; min-height:44px; font-size:12px; line-height:1.4; font-weight:600; transition:background .18s,border-color .18s; }
+  .primary { background:var(--home-blue); color:var(--text-on-accent); }
+  .primary:hover { background:var(--home-blue-hover); }
+  .hero-cta { min-height:52px; padding-inline:25px; }
+  .how-section { padding-block:39px 35px; scroll-margin-top:24px; }
+  .section-heading { text-align:center; }
+  .section-heading h2 { font-size:24px; font-weight:700; letter-spacing:-.5px; color:var(--home-ink); }
+  .steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:60px; max-width:820px; margin:27px auto 0; padding:0; list-style:none; }
+  .step { position:relative; text-align:center; scroll-margin-top:32px; }
+  .step-connector { position:absolute; inset-inline-start:calc(50% + 35px); inset-block-start:24px; width:calc(100% - 10px); border-top:1px dashed var(--home-muted); }
+  .step-connector::before { content:''; position:absolute; inset-inline-start:0; top:-3px; width:5px; height:5px; background:var(--home-muted); transform:rotate(45deg); }
+  .step-connector::after { content:''; position:absolute; inset-inline-end:-1px; top:-4px; border-block:3px solid transparent; border-inline-start:5px solid var(--home-muted); }
+  .step-icon { display:inline-grid; place-items:center; width:49px; height:49px; border:1px solid var(--accent-border); border-radius:50%; background:#fff; color:var(--home-blue-text); font-size:22px; }
+  .step h3 { margin-top:11px; font-size:13px; font-weight:600; color:var(--home-ink); line-height:1.6; }
+  .step p { max-width:210px; margin:5px auto 0; color:var(--home-muted); font-size:12px; line-height:1.8; }
+  .home-footer { background:#fff; border-top:1px solid var(--home-line); }
+  .footer-main { display:grid; grid-template-columns:1.5fr .75fr .95fr 1.1fr; align-items:start; gap:48px; width:min(100%,1240px); padding-block:28px 22px; }
+  .footer-brand .home-brand { color:var(--home-blue-text); font-size:20px; min-height:32px; }
+  .footer-brand .home-brand > i { font-size:25px; }
+  .footer-brand > p { max-width:32ch; color:var(--home-muted); font-size:13px; line-height:1.85; margin-top:12px; }
+  .footer-column { min-width:0; }
+  .footer-column h2 { color:var(--home-ink); font-size:16px; font-weight:700; line-height:32px; margin-bottom:12px; letter-spacing:0; }
+  .footer-links { margin:0; padding:0; list-style:none; }
+  .footer-links :is(a,button),.footer-contact a { display:flex; align-items:center; min-height:32px; padding:4px 0; border:0; color:var(--home-muted); background:transparent; text-align:start; font-size:13px; line-height:1.6; }
+  .footer-links :is(a,button):hover,.footer-contact a:hover { color:var(--home-blue-text); }
+  .footer-contact > p { color:var(--home-muted); font-size:13px; line-height:1.85; margin-bottom:8px; }
+  .footer-contact a { overflow-wrap:anywhere; }
+  .footer-socials { display:flex; flex-wrap:wrap; gap:2px; margin-top:12px; }
+  .footer-socials a { display:grid; place-items:center; height:44px; width:44px; color:var(--home-blue-text); border-radius:50%; font-size:16px; }
+  .footer-socials a:hover { background:var(--accent-soft); }
+  .footer-bottom { padding:12px 20px; color:var(--text-on-accent); background:var(--home-blue); text-align:center; font-size:11px; line-height:1.8; }
+  :global([dir='rtl']) .home-page .arrow { transform:scaleX(-1); }
+  :global([dir='rtl']) .hero-copy h1 { letter-spacing:0; line-height:1.45; font-size:clamp(35px,3.3vw,46px); }
+  @media (max-width:1000px) {
+    .home-header { padding-inline:25px; }
+    .home-nav { gap:16px; }
+    .nav-links { gap:12px; }
+    .home-brand { font-size:16px; }
+    .nav-actions { gap:12px; }
+    .quick-bar { width:calc(100% - 70px); }
+    .quick-item { padding-inline:9px; gap:7px; }
+    .hero-cta { padding-inline:15px; }
+    .footer-main { gap:28px; grid-template-columns:1.3fr .75fr .95fr 1.1fr; }
   }
-
-  .lp-page :is(h1,h2,h3) { margin: 0; color: var(--lp-ink); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); line-height: 1.12; text-wrap: balance; }
-  .lp-page :is(button,a) { font-family: inherit; }
-  .lp-page :is(button,a):focus-visible { outline: 3px solid var(--brand-300); outline-offset: 3px; border-radius: var(--radius-sm); }
-  .lp-wrap { width: 100%; max-width: 76rem; margin-inline: auto; padding-inline: var(--lp-gutter); }
-  .lp-kicker { margin: 0 0 .75rem; color: var(--lp-primary-readable); font-size: var(--text-xs); font-weight: var(--weight-bold); letter-spacing: .1em; text-transform: uppercase; }
-
-  .lp-header { position: absolute; z-index: 20; inset: 0 0 auto; color: #fff; }
-  .lp-nav { display: flex; align-items: center; min-height: 6rem; gap: 1rem; }
-  .lp-brand { display: inline-flex; align-items: center; gap: .65rem; min-height: 44px; margin-inline-end: auto; padding: 0; border: 0; color: #fff; background: transparent; font-size: 1.08rem; font-weight: var(--weight-bold); cursor: pointer; }
-  .lp-mark { display: grid; place-items: center; width: 2.45rem; height: 2.45rem; border: 1px solid rgba(255,255,255,.35); border-radius: .72rem; color: #fff; background: rgba(53,134,255,.55); box-shadow: 0 8px 22px -12px rgba(0,0,0,.75); backdrop-filter: blur(8px); }
-  .lp-links { display: flex; align-items: center; gap: .2rem; margin: 0; padding: 0; list-style: none; }
-  .lp-links button,.lp-signin { min-height: 44px; padding: 0 .85rem; border: 0; border-radius: .55rem; color: rgba(255,255,255,.88); background: transparent; font-size: var(--text-sm); font-weight: var(--weight-semibold); cursor: pointer; transition: color var(--transition),background var(--transition); }
-  .lp-links button:hover,.lp-signin:hover { color: #fff; background: rgba(255,255,255,.12); }
-  .lp-actions { display: flex; align-items: center; gap: .35rem; }
-  .lp-actions :global(.language-switcher) { min-block-size: 44px; border-color: rgba(255,255,255,.3); border-radius: .65rem; color: #fff; background: rgba(8,24,38,.3); backdrop-filter: blur(10px); }
-  .lp-actions :global(.language-switcher select) { color: #fff; }
-  .lp-actions :global(.language-switcher option) { color: var(--text-strong); }
-  .lp-header .lp-desktop-cta { border-color: rgba(169,205,255,.7); color: #fff; background: rgba(53,134,255,.24); box-shadow: none; backdrop-filter: blur(10px); }
-  .lp-header .lp-desktop-cta:hover { border-color: #fff; background: rgba(53,134,255,.5); }
-  .lp-toggle { display: none; place-items: center; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.35); border-radius: .6rem; color: #fff; background: rgba(8,24,38,.28); font-size: 1.1rem; cursor: pointer; }
-  .lp-mobile-menu { display: none; padding-block: 0 1rem; }
-  .lp-mobile-menu[hidden] { display: none; }
-
-  .lp-button { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; min-height: 44px; padding: .65rem 1.2rem; border: 1px solid transparent; border-radius: .65rem; font-size: var(--text-sm); font-weight: var(--weight-bold); line-height: 1; cursor: pointer; transition: color var(--transition),background var(--transition),border-color var(--transition),box-shadow var(--transition); }
-  .lp-button-primary { color: #fff; background: var(--lp-primary-readable); box-shadow: 0 10px 22px -14px rgba(37,112,230,.8); }
-  .lp-button-primary:hover { background: var(--lp-primary-strong); box-shadow: 0 12px 26px -14px rgba(28,88,184,.85); }
-  .lp-button-secondary { border-color: var(--lp-border); color: var(--lp-ink); background: var(--surface); box-shadow: var(--control-shadow); }
-  .lp-button-secondary:hover { border-color: var(--accent-border); color: var(--lp-primary-readable); background: var(--lp-soft); }
-  .lp-button-light { color: var(--lp-primary-strong); background: #fff; box-shadow: 0 12px 26px -16px rgba(10,25,49,.55); }
-  .lp-button-light:hover { background: var(--brand-50); }
-  .lp-button:active { box-shadow: none; }
-  .lp-arrow { transition: transform var(--transition); }
-  .lp-button:hover .lp-arrow,.lp-text-link:hover .lp-arrow { transform: translateX(3px); }
-  :global([dir='rtl']) .lp-arrow { transform: scaleX(-1); }
-  :global([dir='rtl']) .lp-button:hover .lp-arrow,:global([dir='rtl']) .lp-text-link:hover .lp-arrow { transform: scaleX(-1) translateX(3px); }
-
-  .lp-hero { position: relative; display: flex; align-items: center; overflow: hidden; min-height: clamp(44rem,100svh,58rem); padding: 7.5rem 0 4rem; background: var(--navy-deep); }
-  .lp-hero-media,.lp-hero-veil { position: absolute; inset: 0; }
-  .lp-hero-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 48%; }
-  .lp-hero-veil { background: linear-gradient(90deg,rgba(5,18,29,.96) 0%,rgba(5,18,29,.84) 37%,rgba(7,24,38,.42) 68%,rgba(7,24,38,.2) 100%),linear-gradient(0deg,rgba(4,16,26,.72) 0%,rgba(4,16,26,0) 48%); }
-  :global([dir='rtl']) .lp-hero-veil { background: linear-gradient(270deg,rgba(5,18,29,.96) 0%,rgba(5,18,29,.84) 37%,rgba(7,24,38,.42) 68%,rgba(7,24,38,.2) 100%),linear-gradient(0deg,rgba(4,16,26,.72) 0%,rgba(4,16,26,0) 48%); }
-  .lp-hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: clamp(3rem,8vw,8rem); }
-  .lp-hero-copy { max-width: 47rem; }
-  .lp-hero .lp-kicker { color: var(--brand-300); }
-  .lp-hero h1 { max-width: 13ch; color: #fff; font-size: clamp(3rem,6vw,5.8rem); line-height: 1.02; }
-  .lp-hero h1 span { display: block; color: #fff; }
-  .lp-hero-lede { max-width: 39rem; margin: 1.5rem 0 0; color: rgba(255,255,255,.82); font-size: clamp(16px,1.4vw,19px); line-height: 1.7; }
-  .lp-hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-block-start: 1.75rem; }
-  .lp-hero .lp-button-primary { color: var(--lp-primary-strong); background: #fff; box-shadow: 0 14px 32px -18px rgba(0,0,0,.7); }
-  .lp-hero .lp-button-primary:hover { color: var(--lp-primary-strong); background: var(--brand-50); }
-  .lp-hero .lp-button-secondary { border-color: rgba(255,255,255,.55); color: #fff; background: rgba(6,20,32,.24); box-shadow: none; backdrop-filter: blur(8px); }
-  .lp-hero .lp-button-secondary:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,.12); }
-  .lp-hero-stats { display: flex; flex-wrap: wrap; gap: .8rem 1.3rem; margin: 1.8rem 0 0; padding: 0; list-style: none; }
-  .lp-hero-stats li { min-width: 0; }
-  .lp-hero-stats strong { display: inline; color: #fff; font-family: var(--font-data); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
-  .lp-hero-stats span { margin-inline-start: .35rem; color: rgba(255,255,255,.68); font-size: var(--text-sm); }
-  .lp-rent-status { align-self: end; min-width: 16rem; margin-block-end: 4.5rem; padding: 1.2rem; border: 1px solid rgba(169,205,255,.22); border-radius: 1rem; color: #fff; background: rgba(8,31,48,.72); box-shadow: 0 20px 48px -28px rgba(0,0,0,.8); backdrop-filter: blur(12px); }
-  .lp-rent-copy { display: flex; flex-direction: column; }
-  .lp-rent-copy strong { font-size: var(--text-base); }
-  .lp-rent-copy span { margin-block-start: .25rem; color: rgba(255,255,255,.68); font-size: var(--text-sm); }
-  .lp-rent-tiles { display: grid; grid-template-columns: repeat(6,1fr); gap: .35rem; margin-block-start: .9rem; }
-  .lp-rent-tiles i { display: block; height: .55rem; border-radius: .22rem; background: var(--brand-300); }
-  .lp-rent-tiles i.due { background: var(--warning-border); }
-  .lp-rent-tiles i.empty { background: rgba(255,255,255,.28); }
-
-  .lp-section { scroll-margin-top: 5rem; padding: clamp(4.5rem,8vw,7rem) 0; }
-  .lp-section-heading { max-width: 42rem; margin-block-end: 2.25rem; }
-  .lp-section-heading h2,.lp-cta h2 { font-size: clamp(1.9rem,3.5vw,3rem); }
-  .lp-section-heading > p:last-child,.lp-cta div > p:last-child { margin: 1rem 0 0; color: var(--lp-muted); font-size: 16px; line-height: 1.7; }
-  .lp-feature-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border-block: 1px solid var(--lp-border); }
-  .lp-feature { min-width: 0; padding: 2rem; border-inline-start: 1px solid var(--lp-border); }
-  .lp-feature:first-child { border-inline-start: 0; }
-  .lp-feature-icon { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-block-end: 1.35rem; border-radius: .8rem; color: var(--lp-primary-readable); background: var(--lp-soft); font-size: 1.15rem; }
-  .lp-feature h3 { font-size: 1.1rem; }
-  .lp-feature p { margin: .7rem 0 0; color: var(--lp-muted); font-size: 15px; line-height: 1.65; }
-
-  .lp-process-section { background: var(--canvas); }
-  .lp-process-grid { display: grid; grid-template-columns: minmax(0,.8fr) minmax(24rem,1.2fr); gap: clamp(3rem,8vw,7rem); }
-  .lp-process-heading { margin: 0; }
-  .lp-text-link { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; margin-block-start: 1.1rem; padding: 0; border: 0; color: var(--lp-primary-readable); background: transparent; font-size: var(--text-sm); font-weight: var(--weight-bold); cursor: pointer; }
-  .lp-steps { margin: 0; padding: 0; border-block-start: 1px solid var(--border-strong); list-style: none; }
-  .lp-steps li { display: grid; grid-template-columns: auto 1fr; gap: 1rem; padding: 1.35rem 0; border-block-end: 1px solid var(--border-strong); }
-  .lp-step-number { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border: 1px solid var(--lp-soft-border); border-radius: 50%; color: var(--lp-primary-readable); background: var(--surface); font-family: var(--font-data); font-size: var(--text-xs); font-weight: var(--weight-bold); }
-  .lp-steps h3 { font-size: 1rem; }
-  .lp-steps p { margin: .45rem 0 0; color: var(--lp-muted); font-size: 15px; line-height: 1.55; }
-
-  .lp-cta-section { padding: clamp(3.5rem,7vw,6rem) 0; }
-  .lp-cta { display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding: clamp(2rem,5vw,3.5rem); border-radius: 1.25rem; color: #fff; background: var(--lp-primary-readable); box-shadow: 0 24px 55px -34px rgba(28,88,184,.8); }
-  .lp-cta .lp-kicker { color: var(--brand-200); }
-  .lp-cta h2 { max-width: 18ch; color: #fff; }
-  .lp-cta div > p:last-child { color: rgba(255,255,255,.8); }
-  .lp-cta .lp-button { flex: 0 0 auto; }
-
-  /* The footer is the page's one dark surface, taken from `--navy-deep` — the
-     token reserved for exactly this — so it closes the page the way the hero
-     opens it. Two very soft accent glows bleed off the corners; they are the
-     only decoration, and both are pinned with logical insets so the RTL flip
-     moves them with the text instead of leaving them stranded. */
-  .lp-footer { position: relative; overflow: hidden; color: rgba(255,255,255,.72); background: var(--navy-deep); }
-  .lp-footer::before,.lp-footer::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
-  .lp-footer::before { inset-block-start: -34%; inset-inline-start: -8%; width: 36rem; height: 36rem; background: radial-gradient(circle,rgba(53,134,255,.3) 0%,rgba(53,134,255,0) 68%); }
-  .lp-footer::after { inset-block-end: -46%; inset-inline-end: -6%; width: 30rem; height: 30rem; background: radial-gradient(circle,rgba(119,174,255,.18) 0%,rgba(119,174,255,0) 68%); }
-  .lp-footer .lp-wrap { position: relative; z-index: 1; }
-  .lp-footer-grid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(9rem,.75fr) minmax(15rem,1fr); gap: clamp(2rem,4.5vw,4rem); padding-block: clamp(2.75rem,5vw,4rem) 0; }
-  .lp-footer-brand { display: inline-flex; align-items: center; gap: .65rem; min-height: 44px; padding: 0; border: 0; color: #fff; background: transparent; font-size: 1.05rem; font-weight: var(--weight-bold); cursor: pointer; }
-  .lp-footer-copy { max-width: 32rem; margin: .9rem 0 0; color: rgba(255,255,255,.66); font-size: var(--text-sm); line-height: var(--leading-relaxed); }
-  .lp-footer-tags { display: flex; flex-wrap: wrap; gap: .45rem 1rem; margin: 1.1rem 0 0; padding: 0; list-style: none; }
-  .lp-footer-tags li { display: inline-flex; align-items: center; gap: .45rem; color: rgba(255,255,255,.84); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
-  .lp-footer-tags li::before { content: ''; width: .3rem; height: .3rem; border-radius: 50%; background: var(--brand-400); }
-  /* The developer's channels, on the About column: one square per network, so a
-     glyph alone carries the meaning and nothing needs a label. */
-  .lp-footer-socials { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.35rem 0 0; padding: 0; list-style: none; }
-  .lp-social { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 1px solid rgba(255,255,255,.14); border-radius: .65rem; color: rgba(255,255,255,.78); background: rgba(255,255,255,.07); font-size: 1rem; text-decoration: none; transition: color var(--transition),background var(--transition),border-color var(--transition),transform var(--transition); }
-  .lp-social:hover { border-color: rgba(169,205,255,.45); color: #fff; background: rgba(53,134,255,.28); transform: translateY(-2px); }
-  /* Two classes deep: the page's own heading rule (`.lp-page :is(h1,h2,h3)`) sets
-     the ink colour and outranks a lone class. */
-  .lp-footer .lp-footer-title { margin: 0 0 1rem; color: #fff; font-size: var(--text-sm); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); }
-  .lp-footer-links,.lp-footer-contact { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
-  .lp-footer-links button { display: inline-flex; align-items: center; min-height: 30px; padding: 0; border: 0; color: rgba(255,255,255,.72); background: transparent; text-align: start; font-size: var(--text-sm); font-weight: var(--weight-medium); cursor: pointer; transition: color var(--transition); }
-  .lp-footer-links button:hover { color: #fff; }
-  .lp-footer-contact li { display: flex; align-items: center; gap: .6rem; color: rgba(255,255,255,.72); font-size: var(--text-sm); }
-  .lp-footer-contact i { flex-shrink: 0; color: var(--brand-400); font-size: 1rem; }
-  .lp-footer-contact a { display: inline-flex; align-items: center; min-height: 30px; color: inherit; text-decoration: none; transition: color var(--transition); }
-  .lp-footer-contact a:hover { color: #fff; }
-  .lp-footer-rule { margin: clamp(2rem,4vw,3rem) 0 0; border: 0; border-block-start: 1px solid rgba(255,255,255,.14); opacity: 1; }
-  .lp-footer-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1.5rem; padding-block: 1.1rem 1.35rem; }
-  .lp-footer-bottom p { margin: 0; color: rgba(255,255,255,.6); font-size: var(--text-xs); }
-
-  @media (max-width: 920px) {
-    .lp-links,.lp-signin,.lp-desktop-cta { display: none; }
-    .lp-toggle { display: grid; }
-    .lp-mobile-menu:not([hidden]) { display: grid; gap: .3rem; padding-block: .75rem 1rem; border-block-start: 1px solid rgba(255,255,255,.22); background: rgba(5,18,29,.94); box-shadow: 0 14px 30px -22px rgba(0,0,0,.9); backdrop-filter: blur(14px); }
-    .lp-mobile-menu button:not(.lp-button) { min-height: 48px; padding: 0 .75rem; border: 0; border-radius: .55rem; color: rgba(255,255,255,.88); background: transparent; text-align: start; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
-    .lp-mobile-menu button:not(.lp-button):hover { color: #fff; background: rgba(255,255,255,.1); }
-    .lp-mobile-language { padding: .5rem .75rem 0; }
-    .lp-mobile-language :global(.language-switcher) { width: 100%; justify-content: center; border-color: rgba(255,255,255,.25); color: #fff; background: rgba(255,255,255,.08); }
-    .lp-mobile-language :global(.language-switcher select) { color: #fff; }
-    .lp-mobile-language :global(.language-switcher option) { color: var(--text-strong); }
-    .lp-hero-grid { grid-template-columns: 1fr; }
-    .lp-hero-copy { max-width: 44rem; }
-    .lp-hero h1 { max-width: 13ch; }
-    .lp-rent-status { justify-self: end; width: min(100%,18rem); margin-block: 1.5rem 0; }
-    .lp-process-grid { grid-template-columns: 1fr; }
-    .lp-process-heading { max-width: 44rem; }
-    .lp-footer-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
-    .lp-footer-brand-col { grid-column: 1 / -1; }
+  @media (max-width:800px) {
+    .footer-main { grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px 40px; }
+    .nav-links,.signin { display:none; }
+    .nav-actions { margin-inline-start:auto; }
+    .menu-toggle { display:grid; place-items:center; }
+    .hero { height:465px; }
+    .hero-copy { margin-top:20px; }
+    .quick-bar { width:calc(100% - 36px); }
+    .quick-copy > span,.quick-chevron { display:none; }
+    .quick-item { justify-content:center; }
+    .quick-copy strong { font-size:11px; }
+    .steps { gap:26px; }
+    .step-connector { width:calc(100% - 44px); }
   }
-
-  @media (max-width: 660px) {
-    .lp-nav { min-height: 4.25rem; }
-    .lp-actions :global(.language-switcher) { display: none; }
-    .lp-hero { min-height: 48rem; padding: 7rem 0 3rem; }
-    .lp-hero-veil,:global([dir='rtl']) .lp-hero-veil { background: linear-gradient(180deg,rgba(5,18,29,.84) 0%,rgba(5,18,29,.72) 45%,rgba(5,18,29,.94) 100%); }
-    .lp-hero h1 { font-size: clamp(2.35rem,13vw,3.4rem); }
-    .lp-hero-actions { align-items: stretch; flex-direction: column; }
-    .lp-hero-actions .lp-button { width: 100%; }
-    .lp-hero-stats { gap: .65rem; }
-    .lp-hero-stats strong { font-size: 1rem; }
-    .lp-rent-status { justify-self: stretch; width: 100%; margin-block-start: 1rem; }
-    .lp-feature-grid { grid-template-columns: 1fr; border-block-end: 0; }
-    .lp-feature,.lp-feature:first-child { padding: 1.5rem 0; border-inline-start: 0; border-block-end: 1px solid var(--lp-border); }
-    .lp-cta { align-items: flex-start; flex-direction: column; }
-    .lp-cta .lp-button { width: 100%; }
-    .lp-footer-grid { grid-template-columns: 1fr; padding-block: 2.5rem 0; }
-    .lp-footer-bottom { flex-direction: column; align-items: flex-start; padding-block: 1rem 1.25rem; }
+  @media (max-width:580px) {
+    .home-wrap { padding-inline:22px; }
+    .hero { height:435px; }
+    .hero-photo { object-position:center 58%; }
+    .home-header { padding-inline:16px; }
+    .home-nav { min-height:72px; gap:10px; }
+    .home-brand { font-size:16px; gap:6px; }
+    .home-brand > i { font-size:20px; }
+    .nav-actions { gap:9px; }
+    .nav-actions :global(.language-switcher) { font-size:11px; }
+    .nav-actions :global(.language-switcher select) { font-size:11px; max-width:65px; }
+    .hero-copy { margin-top:12px; padding-inline:16px; }
+    .hero-copy h1 { font-size:33px; line-height:1.3; letter-spacing:-.7px; }
+    :global([dir='rtl']) .hero-copy h1 { font-size:30px; }
+    .hero-description { font-size:11px; max-width:290px; line-height:1.9; margin-top:10px !important; }
+    .quick-bar { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; width:calc(100% - 20px); padding:9px; margin-top:-22px; }
+    .quick-item { padding:8px 4px; gap:6px; min-height:44px; }
+    .quick-icon { font-size:14px; }
+    .quick-copy strong { font-size:10px; }
+    .hero-cta { grid-column:1 / -1; min-height:44px; }
+    .how-section { padding-block:28px 20px; }
+    .section-heading h2 { font-size:22px; }
+    .steps { gap:12px; margin-top:21px; }
+    .step-connector { inset-inline-start:calc(50% + 27px); width:calc(100% - 42px); inset-block-start:20px; }
+    .step-icon { width:40px; height:40px; font-size:19px; }
+    .step h3 { font-size:11px; line-height:1.7; }
+    .step p { font-size:10px; line-height:1.8; }
+    .footer-main { gap:22px 20px; padding-block:22px 18px; }
+    .footer-brand,.footer-contact { grid-column:1 / -1; }
+    .footer-brand > p { max-width:42ch; }
+    .footer-column h2 { margin-bottom:7px; font-size:15px; }
+    .footer-links :is(a,button),.footer-contact a { min-height:44px; }
   }
-
-  @media (prefers-reduced-motion: reduce) {
-    .lp-page :is(button,a,i) { transition: none; }
+  @media (max-width:360px) {
+    .home-header { padding-inline:12px; }
+    .home-brand { font-size:14px; }
+    .nav-actions :global(.language-switcher > i) { display:none; }
+    .hero-copy h1 { font-size:30px; }
+    :global([dir='rtl']) .hero-copy h1 { font-size:27px; }
+    .steps { gap:9px; }
+    .step h3 { font-size:10px; }
   }
+  @media (prefers-reduced-motion:reduce) { .home-page :is(button,a) { transition:none; } }
 </style>
