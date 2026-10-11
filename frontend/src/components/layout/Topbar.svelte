@@ -7,7 +7,7 @@
   import { replace } from 'svelte-spa-router';
   import { locale } from '../../i18n';
   import { moduleKeyForLocation } from '../../navigation';
-  import { accountTabs, accountTabIcons, accountTabFromSearch } from '../../utils/accountTabs';
+  import { accountTabs, accountTabFromSearch } from '../../utils/accountTabs';
 
   export let navigationOpen = false;
 
@@ -183,7 +183,10 @@
     {/if}
     {#if isAccountProfile}
       <nav class="app-topbar-subnav account-subnav" aria-label={$locale.accountProfile.sections}>
-        {#each accountTabs as key (key)}
+        {#each accountTabs as key, index (key)}
+          {#if index > 0}
+            <span class="subnav-separator" aria-hidden="true">|</span>
+          {/if}
           <button
             class="subnav-item account-subnav-item"
             class:is-active={accountTab === key}
@@ -191,9 +194,6 @@
             type="button"
             on:click={() => navigateSub(`${currentPath}${key === 'overview' ? '' : `?tab=${key}`}`)}
           >
-            {#if key !== 'overview'}
-              <i class={`bi ${accountTabIcons[key]}`} aria-hidden="true"></i>
-            {/if}
             <span>{$locale.accountProfile[key]}</span>
           </button>
         {/each}

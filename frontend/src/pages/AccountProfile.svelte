@@ -205,42 +205,45 @@
   {/if}
 
   {#if account}
-    <section class="identity-hero" aria-labelledby="account-name">
-      <span class="hero-icon" aria-hidden="true"><i class="bi bi-bank"></i></span>
+    {#if tab === 'overview'}
+      <section class="identity-hero" aria-labelledby="account-name">
+        <span class="hero-icon" aria-hidden="true"><i class="bi bi-bank"></i></span>
 
-      <div class="identity-copy">
-        <p class="profile-kicker">{$locale.accountProfile.title}</p>
-        <div class="name-row">
-          <h2 id="account-name">{name}</h2>
-          <StatusBadge label={typeLabel} tone={TYPE_TONES[account.type] || 'neutral'} />
-          <StatusBadge
-            label={account.isActive ? $locale.accountProfile.active : $locale.accountProfile.inactive}
-            tone={account.isActive ? 'success' : 'neutral'}
-          />
-        </div>
-      </div>
-
-      <aside class="hero-balance" aria-label={$locale.accounts.balance}>
-        <span class="summary-label">{$locale.accounts.balance}</span>
-        <strong>{formatMoney(account.balance, base)}</strong>
-      </aside>
-    </section>
-
-    <section class="account-strip" aria-label={$locale.accountProfile.details}>
-      {#each [
-        { key: 'debit', value: account.debit, icon: 'bi-arrow-down-left-circle', emphasis: false },
-        { key: 'credit', value: account.credit, icon: 'bi-arrow-up-right-circle', emphasis: false },
-        { key: 'balance', value: account.balance, icon: 'bi-wallet2', emphasis: true },
-      ] as metric}
-        <article class:is-emphasis={metric.emphasis} class="metric">
-          <span class="metric-icon" aria-hidden="true"><i class={`bi ${metric.icon}`}></i></span>
-          <div>
-            <span class="metric-label">{$locale.accounts[metric.key]}</span>
-            <strong>{formatMoney(metric.value, base)}</strong>
+        <div class="identity-copy">
+          <p class="profile-kicker">{$locale.accountProfile.title}</p>
+          <div class="name-row">
+            <h2 id="account-name">{name}</h2>
+            <StatusBadge label={typeLabel} tone={TYPE_TONES[account.type] || 'neutral'} />
+            <StatusBadge
+              label={account.isActive ? $locale.accountProfile.active : $locale.accountProfile.inactive}
+              tone={account.isActive ? 'success' : 'neutral'}
+            />
           </div>
-        </article>
-      {/each}
-    </section>
+        </div>
+
+        <aside class="hero-balance" aria-label={$locale.accounts.balance}>
+          <span class="summary-label">{$locale.accounts.balance}</span>
+          <strong>{formatMoney(account.balance, base)}</strong>
+        </aside>
+      </section>
+
+      <section class="account-strip" aria-label={$locale.accountProfile.details}>
+        {#each [
+          { key: 'debit', value: account.debit, icon: 'bi-arrow-down-left-circle', emphasis: false },
+          { key: 'credit', value: account.credit, icon: 'bi-arrow-up-right-circle', emphasis: false },
+          { key: 'balance', value: account.balance, icon: 'bi-wallet2', emphasis: true },
+        ] as metric}
+          <article class:is-emphasis={metric.emphasis} class="metric">
+            <span class="metric-icon" aria-hidden="true"><i class={`bi ${metric.icon}`}></i></span>
+            <div>
+              <span class="metric-label">{$locale.accounts[metric.key]}</span>
+              <strong>{formatMoney(metric.value, base)}</strong>
+            </div>
+          </article>
+        {/each}
+      </section>
+
+    {/if}
 
     {#if tab === 'ledger'}
       <section class="section-card record-card" aria-labelledby="account-ledger">
