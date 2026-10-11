@@ -28,6 +28,7 @@
   import AccountProfile from '../pages/AccountProfile.svelte';
   import Journals from '../pages/Journals.svelte';
   import TenantAccounts from '../pages/TenantAccounts.svelte';
+  import TenantAccountProfile from '../pages/TenantAccountProfile.svelte';
   import Settings from '../pages/Settings.svelte';
   import NotFound from '../pages/NotFound.svelte';
 
@@ -58,6 +59,7 @@
     '/accounts/:id': AccountProfile,
     '/journals': Journals,
     '/tenant-accounts': TenantAccounts,
+    '/tenant-accounts/:id': TenantAccountProfile,
     // Settings is one module with its pages under it. The page segment is a
     // route param rather than component state, so `/settings/currencies` is a
     // deep link that survives a bookmark, a reload and the back button — the

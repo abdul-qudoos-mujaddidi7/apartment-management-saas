@@ -1,0 +1,137 @@
+Environment variables loaded from .env
+Unhandled API error: PrismaClientValidationError: 
+Invalid `prisma.lease.findFirst()` invocation in
+C:\Users\deel\apartment-management-saas\backend\src\modules\lease-contracts\lease-contract.service.js:460:36
+
+  457 
+  458 /** The lease, with everything a contract prints, or a 404. */
+  459 async function loadLeaseForContract(organizationId, leaseId) {
+→ 460   const lease = await prisma.lease.findFirst({
+          where: {
+            id: "cmuy13r0r000nv5y8mlo6qa99",
+            organizationId: "cmucinbd6000bv5ug4b5v24oq",
+            deletedAt: null,
+            tenant: {
+              deletedAt: null
+            },
+            apartment: {
+              deletedAt: null,
+              floor: {
+                deletedAt: null,
+                building: {
+                  organizationId: "cmucinbd6000bv5ug4b5v24oq",
+                  deletedAt: null
+                }
+              }
+            }
+          },
+          select: {
+            id: true,
+            contractNumber: true,
+            startDate: true,
+            endDate: true,
+            monthlyRent: true,
+            securityDeposit: true,
+            currency: true,
+            securityDepositCurrency: true,
+            serviceFee: true,
+            serviceFeeCurrency: true,
+            paymentDueDay: true,
+            status: true,
+            notes: true,
+            guarantor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                nationalId: true,
+                address: true
+              }
+            },
+            tenant: {
+              select: {
+                id: true,
+                firstName: true,
+                phone: true,
+                email: true,
+                ~~~~~
+                nationalId: true,
+                fatherName: true,
+                address: true,
+                primaryResidence: true,
+                emergencyContactName: true,
+                emergencyContactPhone: true,
+                photoUrl: true,
+                idCardFrontUrl: true,
+                status: true,
+        ?       organizationId?: true,
+        ?       idCardBackUrl?: true,
+        ?       notes?: true,
+        ?       createdAt?: true,
+        ?       updatedAt?: true,
+        ?       deletedAt?: true,
+        ?       documentAttachments?: true,
+        ?       organization?: true,
+        ?       leases?: true,
+        ?       journalLines?: true,
+        ?       payments?: true,
+        ?       tenantAccounts?: true,
+        ?       _count?: true
+              }
+            },
+            apartment: {
+              select: {
+                id: true,
+                apartmentNumber: true,
+                name: true,
+                type: true,
+                area: true,
+                bedrooms: true,
+                bathrooms: true,
+                meters: {
+                  where: {
+                    deletedAt: null,
+                    status: "ACTIVE"
+                  },
+                  select: {
+                    utilityType: true,
+                    unit: true,
+                    defaultUnitPrice: true
+                  },
+                  orderBy: {
+                    utilityType: "asc"
+                  }
+                },
+                floor: {
+                  select: {
+                    id: true,
+                    name: true,
+                    floorNumber: true,
+                    building: {
+                      select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                        address: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        })
+
+Unknown field `email` for select statement on model `Tenant`. Available options are marked with ?.
+    at Nn (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at ei.handleRequestError (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:121:6911)
+    at ei.handleAndLogRequestError (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:121:6593)
+    at ei.request (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:121:6300)
+    at async a (C:\Users\deel\apartment-management-saas\backend\node_modules\@prisma\client\runtime\library.js:130:9551)
+    at async loadLeaseForContract (C:\Users\deel\apartment-management-saas\backend\src\modules\lease-contracts\lease-contract.service.js:460:17)
+    at async Promise.all (index 1)
+    at async Object.getContract (C:\Users\deel\apartment-management-saas\backend\src\modules\lease-contracts\lease-contract.service.js:720:33)
+    at async getContract (C:\Users\deel\apartment-management-saas\backend\src\modules\lease-contracts\lease-contract.controller.js:70:20) {
+  clientVersion: '6.19.3'
+}

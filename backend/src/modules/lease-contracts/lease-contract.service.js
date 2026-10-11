@@ -490,7 +490,6 @@ async function loadLeaseForContract(organizationId, leaseId) {
           id: true,
           firstName: true,
           phone: true,
-          email: true,
           nationalId: true,
           fatherName: true,
           address: true,

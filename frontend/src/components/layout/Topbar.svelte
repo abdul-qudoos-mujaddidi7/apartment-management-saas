@@ -80,12 +80,12 @@
 
   // Sub-navigation for the buildings module
   $: isAccountsModule = moduleKey === 'accounts';
-  $: isAccountProfile = /^\/accounts\/[^/]+$/.test(currentPath);
+  $: isAccountProfile = /^\/(accounts|tenant-accounts)\/[^/]+$/.test(currentPath);
   $: accountTab = accountTabFromSearch(currentSearch);
   // An account's own page belongs to the Accounts module too, so the bar keeps
   // naming it while the profile (with its own tabs) is open.
   $: accountsActive = currentPath === '/accounts' || currentPath.startsWith('/accounts/');
-  $: tenantAccountsActive = currentPath === '/tenant-accounts';
+  $: tenantAccountsActive = currentPath === '/tenant-accounts' || currentPath.startsWith('/tenant-accounts/');
   $: isBuildingsModule = moduleKey === 'buildings';
   $: buildingsActive = currentPath === '/buildings';
   $: floorsActive = currentPath === '/floors' || currentPath.startsWith('/buildings/');

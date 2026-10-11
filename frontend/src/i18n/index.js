@@ -3,8 +3,9 @@ import rtlBootstrapUrl from 'bootstrap/dist/css/bootstrap.rtl.min.css?url';
 import en from './en';
 import fa from './fa';
 import ps from './ps';
+import tenantAccountProfile from './tenantAccountProfile';
 
-const dictionaries = { en, fa, ps };
+const dictionaries = { en: { ...en, tenantAccountProfile: tenantAccountProfile.en }, fa: { ...fa, tenantAccountProfile: tenantAccountProfile.fa }, ps: { ...ps, tenantAccountProfile: tenantAccountProfile.ps } };
 const directionByLanguage = { en: 'ltr', fa: 'rtl', ps: 'rtl' };
 const browserLanguage = typeof window !== 'undefined' ? localStorage.getItem('apartmentpro.language') : null;
 const initialLanguage = dictionaries[browserLanguage] ? browserLanguage : 'fa';

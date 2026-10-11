@@ -137,7 +137,7 @@ async function reverseTenantLedgerEntry(client, organizationId, referenceType, r
 }
 
 function tenantSelect() {
-  return { id: true, firstName: true, phone: true, leases: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1, select: { contractNumber: true, apartment: { select: { apartmentNumber: true, floor: { select: { name: true, floorNumber: true, building: { select: { name: true } } } } } } } } };
+  return { id: true, firstName: true, phone: true, status: true, nationalId: true, address: true, leases: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1, select: { id: true, contractNumber: true, status: true, apartment: { select: { apartmentNumber: true, floor: { select: { name: true, floorNumber: true, building: { select: { name: true } } } } } } } } };
 }
 
 async function listTenantAccounts(organizationId, query) {
@@ -163,17 +163,53 @@ function formatAccount(account) {
 async function getTenantAccount(organizationId, tenantId) {
   const account = await getOrCreateTenantAccount(prisma, organizationId, tenantId);
   const full = await prisma.tenantAccount.findFirst({ where: { id: account.id, organizationId }, include: { tenant: { select: tenantSelect() } } });
-  return formatAccount(full);
+  const [totals, organization, recentEntries] = await Promise.all([
+    prisma.tenantLedgerEntry.aggregate({ where: { organizationId, tenantAccountId: account.id }, _sum: { debit: true, credit: true }, _count: { _all: true } }),
+    prisma.organization.findFirst({ where: { id: organizationId, deletedAt: null }, select: { baseCurrency: true } }),
+    prisma.tenantLedgerEntry.findMany({ where: { organizationId, tenantAccountId: account.id }, orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }], take: 5 }),
+  ]);
+  return { ...formatAccount(full), debit: Number(totals._sum.debit || 0), credit: Number(totals._sum.credit || 0), entries: totals._count._all, baseCurrency: organization?.baseCurrency || 'AFN', recentEntries: recentEntries.map(entry => ({ id: entry.id, referenceType: entry.referenceType, transactionDate: entry.transactionDate, description: entry.description, debit: Number(entry.debit), credit: Number(entry.credit) })) };
 }
 
 async function getTenantLedger(organizationId, tenantId, query) {
-  const account = await getOrCreateTenantAccount(prisma, organizationId, tenantId);
-  if (account.organizationId !== organizationId) throw tenantAccountError('TENANT_NOT_FOUND', 'Tenant not found.');
-  const [items, total] = await prisma.$transaction([
-    prisma.tenantLedgerEntry.findMany({ where: { organizationId, tenantAccountId: account.id }, orderBy: [{ transactionDate: 'asc' }, { createdAt: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
-    prisma.tenantLedgerEntry.count({ where: { organizationId, tenantAccountId: account.id } }),
-  ]);
-  return { items: items.map((entry) => ({ ...entry, exchangeRate: Number(entry.exchangeRate), debit: Number(entry.debit), credit: Number(entry.credit), balanceAfter: Number(entry.balanceAfter) })), pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) } };
+  return prisma.$transaction(async tx => {
+    const account = await getOrCreateTenantAccount(tx, organizationId, tenantId);
+    if (account.organizationId !== organizationId) throw tenantAccountError('TENANT_NOT_FOUND', 'Tenant not found.');
+    const scope = { organizationId, tenantAccountId: account.id };
+    const from = query.from ? new Date(`${query.from}T00:00:00Z`) : null;
+    const until = query.to ? new Date(`${query.to}T00:00:00Z`) : null;
+    if (until) until.setUTCDate(until.getUTCDate() + 1);
+    const where = { ...scope, ...(from || until ? { transactionDate: { ...(from ? { gte: from } : {}), ...(until ? { lt: until } : {}) } } : {}) };
+    const [items, total, sums, opening] = await Promise.all([
+      tx.tenantLedgerEntry.findMany({ where, orderBy: [{ transactionDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+      tx.tenantLedgerEntry.count({ where }),
+      tx.tenantLedgerEntry.aggregate({ where, _sum: { debit: true, credit: true } }),
+      from ? tx.tenantLedgerEntry.aggregate({ where: { ...scope, transactionDate: { lt: from } }, _sum: { debit: true, credit: true } }) : Promise.resolve({ _sum: { debit: 0, credit: 0 } }),
+    ]);
+    const openingBalance = asMoney(opening._sum.debit).minus(asMoney(opening._sum.credit));
+    let balance = openingBalance;
+    if (items.length) {
+      const first = items[0];
+      const preceding = await tx.tenantLedgerEntry.aggregate({ where: { ...scope, OR: [
+        { transactionDate: { lt: first.transactionDate } },
+        { transactionDate: first.transactionDate, createdAt: { lt: first.createdAt } },
+        { transactionDate: first.transactionDate, createdAt: first.createdAt, id: { lt: first.id } },
+      ] }, _sum: { debit: true, credit: true } });
+      balance = asMoney(preceding._sum.debit).minus(asMoney(preceding._sum.credit));
+    }
+    const invoiceIds = items.filter(e => ['INVOICE','INVOICE_VOID'].includes(e.referenceType)).map(e => e.referenceId);
+    const paymentIds = items.filter(e => ['PAYMENT','PAYMENT_VOID'].includes(e.referenceType)).map(e => e.referenceId);
+    const [invoices, payments] = await Promise.all([
+      invoiceIds.length ? tx.invoice.findMany({ where: { organizationId, id: { in: invoiceIds } }, select: { id: true, invoiceNumber: true } }) : [],
+      paymentIds.length ? tx.payment.findMany({ where: { organizationId, id: { in: paymentIds } }, select: { id: true, paymentNumber: true } }) : [],
+    ]);
+    const references = new Map([...invoices.map(i => [`INVOICE:${i.id}`, i.invoiceNumber]), ...payments.map(p => [`PAYMENT:${p.id}`, p.paymentNumber])]);
+    const rows = items.map(entry => {
+      balance = balance.plus(asMoney(entry.debit)).minus(asMoney(entry.credit));
+      return { ...entry, referenceNumber: references.get(`${entry.referenceType.replace('_VOID','')}:${entry.referenceId}`) || null, exchangeRate: Number(entry.exchangeRate), debit: Number(entry.debit), credit: Number(entry.credit), balanceAfter: Number(balance) };
+    });
+    return { items: rows, totals: { debit: Number(sums._sum.debit || 0), credit: Number(sums._sum.credit || 0), openingBalance: Number(openingBalance), closingBalance: Number(openingBalance.plus(asMoney(sums._sum.debit)).minus(asMoney(sums._sum.credit))) }, pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) } };
+  });
 }
 
 async function reconcileReceivables(client, organizationId) {
