@@ -14,6 +14,7 @@ export const listInvoices = (filters = {}) => {
     'tenantId',
     'leaseId',
     'status',
+    'itemType',
     'dateFrom',
     'dateTo',
   ].forEach((key) => {

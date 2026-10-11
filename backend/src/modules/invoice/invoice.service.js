@@ -522,6 +522,7 @@ async function listInvoices(organizationId, filters) {
     organizationId,
     deletedAt: null,
     lease,
+    ...(filters.itemType ? { items: { some: { type: filters.itemType } } } : {}),
     ...(filters.currency ? { currency: String(filters.currency).toUpperCase() } : {}),
     ...overdueWhere,
     ...(dateFrom || dateTo ? {

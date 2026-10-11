@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { createInvoiceSchema, itemTypes } = require('./invoice.validation');
+const { createInvoiceSchema, listInvoicesSchema, itemTypes } = require('./invoice.validation');
 const { incomeAccountRoles } = require('./invoice-income');
 const { DEFAULT_ACCOUNTS } = require('../financials/financial-account.service');
 
@@ -10,6 +10,16 @@ const baseInvoice = {
   invoiceDate: '2026-09-24',
   items: [{ type: 'RENT', description: 'Monthly rent', quantity: 1, unitPrice: 15000 }],
 };
+
+test('invoice list accepts each supported charge type and rejects invalid filters', () => {
+  for (const itemType of itemTypes) {
+    const result = listInvoicesSchema.safeParse({ itemType });
+    assert.equal(result.success, true);
+    assert.equal(result.data.itemType, itemType);
+  }
+  assert.equal(listInvoicesSchema.safeParse({ itemType: 'UNKNOWN' }).success, false);
+  assert.equal(listInvoicesSchema.parse({ itemType: '' }).itemType, undefined);
+});
 
 test('accepts a service fee billed as its own line', () => {
   const result = createInvoiceSchema.safeParse({

@@ -47,12 +47,12 @@
   let sort = { key: null, dir: 'asc' };
   $: view = sortRows(invoices, sort.key, sort.dir);
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
-  let filters = { search: '', buildingId: '', status: '', dateFrom: '', dateTo: '' };
+  let filters = { search: '', buildingId: '', status: '', itemType: '', dateFrom: '', dateTo: '' };
   let selectedIds = createSelection();
 
   // Status is a chip row in the toolbar; the panel holds what chips cannot say.
   $: statusTabs = [{ key: '', label: $locale.common.all }, ...STATUSES.map((status) => ({ key: status, label: statusLabel(status) }))];
-  $: activeFilterCount = [filters.status, filters.buildingId, filters.dateFrom, filters.dateTo].filter(Boolean).length;
+  $: activeFilterCount = [filters.status, filters.buildingId, filters.itemType, filters.dateFrom, filters.dateTo].filter(Boolean).length;
 
   $: rowIds = invoices.map((invoice) => invoice.id);
   $: allRowsSelected = isAllSelected(selectedIds, rowIds);
@@ -137,7 +137,7 @@
   }
 
   function handleStatusChange(event) { filters = { ...filters, status: event.detail }; loadInvoices(1); }
-  function clearFilters() { filters = { ...filters, status: '', buildingId: '', dateFrom: '', dateTo: '' }; loadInvoices(1); }
+  function clearFilters() { filters = { ...filters, status: '', buildingId: '', itemType: '', dateFrom: '', dateTo: '' }; loadInvoices(1); }
   function toggleRow(id) { selectedIds = toggleSelected(selectedIds, id); }
   function toggleAllRows() { selectedIds = toggleAllSelected(selectedIds, rowIds); }
 
@@ -459,6 +459,13 @@
       </svelte:fragment>
 
       <svelte:fragment slot="filters">
+        <div class="filters-field">
+          <label class="filters-field-label" for="invoice-filter-type">{$locale.invoices.type}</label>
+          <select class="form-select" id="invoice-filter-type" bind:value={filters.itemType} on:change={() => loadInvoices(1)}>
+            <option value="">{$locale.common.all}</option>
+            {#each ITEM_TYPES as type}<option value={type}>{$locale.invoices[TYPE_LABELS[type]]}</option>{/each}
+          </select>
+        </div>
         <div class="filters-field">
           <label class="filters-field-label" for="invoice-filter-building">{$locale.invoices.building}</label>
           <select class="form-select" id="invoice-filter-building" bind:value={filters.buildingId} on:change={() => loadInvoices(1)}>

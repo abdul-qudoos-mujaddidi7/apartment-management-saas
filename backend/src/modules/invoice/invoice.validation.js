@@ -78,6 +78,7 @@ const listInvoicesSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   search: z.string().trim().max(100).default(''),
   buildingId: optionalFilter(z.string().trim().min(1)),
+  itemType: optionalFilter(z.enum(itemTypes)),
   floorId: optionalFilter(z.string().trim().min(1)),
   apartmentId: optionalFilter(z.string().trim().min(1)),
   tenantId: optionalFilter(z.string().trim().min(1)),

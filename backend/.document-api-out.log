@@ -105,3 +105,13 @@ Apartment Management API listening on port 3002
 [32m[nodemon] starting `node src/server.js`[39m
 ◇ injected env (3) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
 Apartment Management API listening on port 3002
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+◇ injected env (3) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+◇ injected env (3) from .env // tip: ⌘ suppress logs { quiet: true }
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+◇ injected env (3) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+Apartment Management API listening on port 3002
