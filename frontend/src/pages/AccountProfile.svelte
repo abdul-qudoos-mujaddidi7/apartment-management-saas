@@ -25,7 +25,9 @@
   import { baseCurrency } from '../stores/currency';
   import { accountNameLabel, accountTypeLabel } from '../utils/accountLabels';
   import { formatMoney, formatShortDate } from '../utils/formatters';
-  import { reportCsv } from '../utils/reportCsv';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
 
   export let params = {};
 
@@ -151,33 +153,63 @@
   }
 
 
-  let exporting = false;
-  async function exportStatement() {
-    if (exporting) return;
-    exporting = true;
+  /**
+   * The statement as a file, Excel or PDF.
+   *
+   * The page in front of the reader is not the report: whoever opens the
+   * spreadsheet wants the whole period, so this walks the ledger's pages the
+   * way the statement itself does and hands the result to the shared writers as
+   * one description. Both formats then state the same figures in the same
+   * columns, and neither can drift from the other.
+   */
+  async function statementReport() {
     const id = accountId, from = statementFrom, to = statementTo;
-    try {
     const items = []; let page = 1, pages = 1;
-    do { const response = await getAccountLedger(id, { page, pageSize: 100, from, to }); if (id !== accountId || from !== statementFrom || to !== statementTo) return; items.push(...response.items); pages = response.pagination.totalPages; page++; } while (page <= pages);
-    const headers = [$locale.accounts.date, $locale.accounts.journal, $locale.accounts.descriptionColumn, $locale.accountProfile.source, $locale.accounts.debit, $locale.accounts.credit, $locale.accounts.balance];
-    const rows = items.map((line) => [
-      line.journal.transactionDate.slice(0, 10),
-      line.journal.journalNumber,
-      line.description || line.journal.description || '',
-      sourceLabel(line.journal.referenceType),
-      line.baseDebit || '',
-      line.baseCredit || '',
-      line.balanceAfter,
-    ]);
-    const url = URL.createObjectURL(new Blob([reportCsv(headers, rows)], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `account-statement-${accountId}.csv`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) { errorMessage = error.message || $locale.accountProfile.loadError; } finally { exporting = false; }
+    do {
+      const response = await getAccountLedger(id, { page, pageSize: 100, from, to });
+      // The reader can change the account or the dates while this is in flight;
+      // a report of the *other* account must never be saved under this name.
+      if (id !== accountId || from !== statementFrom || to !== statementTo) return null;
+      items.push(...response.items);
+      pages = response.pagination.totalPages;
+      page++;
+    } while (page <= pages);
+
+    const totals = statement.totals || emptyTotals();
+    const period = from || to ? `${from || '…'} → ${to || '…'}` : $locale.accountProfile.statement;
+
+    return createReport({
+      ...reportIdentity(),
+      title: `${$locale.accountProfile.statement} · ${name || $locale.accountProfile.title}`,
+      subtitle: [$locale.common.apartmentPro, period].filter(Boolean).join(' · '),
+      metrics: [
+        { label: $locale.accountProfile.openingBalance, value: formatMoney(totals.openingBalance, base) },
+        { label: $locale.accounts.debit, value: formatMoney(totals.debit, base) },
+        { label: $locale.accounts.credit, value: formatMoney(totals.credit, base) },
+        { label: $locale.accountProfile.closingBalance, value: formatMoney(totals.closingBalance, base) }
+      ],
+      columns: [
+        { label: $locale.accounts.date, kind: 'date' },
+        { label: $locale.accounts.journal },
+        { label: $locale.accounts.descriptionColumn },
+        { label: $locale.accountProfile.source },
+        { label: $locale.accounts.debit, kind: 'money' },
+        { label: $locale.accounts.credit, kind: 'money' },
+        { label: $locale.accounts.balance, kind: 'money' }
+      ],
+      rows: items.map((line) => [
+        line.journal.transactionDate.slice(0, 10),
+        line.journal.journalNumber,
+        line.description || line.journal.description || '',
+        sourceLabel(line.journal.referenceType),
+        line.baseDebit ?? 0,
+        line.baseCredit ?? 0,
+        line.balanceAfter ?? 0
+      ]),
+      totals: [$locale.accounts.totals, '', '', '', totals.debit, totals.credit, totals.closingBalance],
+      fileName: `account-statement-${account?.code || accountId}`,
+      sheetName: $locale.accountProfile.statement
+    });
   }
 
   /** A label from a source map, falling back to the raw value rather than a blank. */
@@ -272,17 +304,14 @@
         <div class="statement-filters">
           <div class="filters-field">
             <label class="filters-field-label" for="statement-from">{$locale.accountProfile.dateFrom}</label>
-            <ShamsiDatePicker id="statement-from" bind:value={statementFrom} disabled={exporting} on:change={() => loadStatement(1)} />
+            <ShamsiDatePicker id="statement-from" bind:value={statementFrom} on:change={() => loadStatement(1)} />
           </div>
           <div class="filters-field">
             <label class="filters-field-label" for="statement-to">{$locale.accountProfile.dateTo}</label>
-            <ShamsiDatePicker id="statement-to" bind:value={statementTo} disabled={exporting} on:change={() => loadStatement(1)} />
+            <ShamsiDatePicker id="statement-to" bind:value={statementTo} on:change={() => loadStatement(1)} />
           </div>
           <button class="btn btn-light btn-sm" type="button" on:click={clearDates}>{$locale.accountProfile.clearDates}</button>
-          <button class="btn btn-outline-primary btn-sm" type="button" on:click={exportStatement} disabled={exporting || statementLoading || statement.items.length === 0}>
-            <i class="bi bi-download" aria-hidden="true"></i>
-            {$locale.accountProfile.exportCsv}
-          </button>
+          <ExportMenu report={statementReport} disabled={statementLoading || statement.items.length === 0} />
         </div>
         {#if !statementLoading}<div class="statement-summary">{#each ['openingBalance','debit','credit','closingBalance'] as key}<div><span>{['debit','credit'].includes(key) ? $locale.accounts[key] : $locale.accountProfile[key]}</span><strong>{formatMoney((statement.totals || emptyTotals())[key],base)}</strong></div>{/each}</div>{/if}
         <AccountLedger result={statementResult} loading={statementLoading} {base} statement={true} onPage={loadStatement} />

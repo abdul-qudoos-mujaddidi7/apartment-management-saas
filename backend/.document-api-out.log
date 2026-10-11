@@ -93,3 +93,15 @@ Apartment Management API listening on port 3002
 [32m[nodemon] starting `node src/server.js`[39m
 ◇ injected env (3) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
 Apartment Management API listening on port 3002
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+◇ injected env (3) from .env // tip: ⌘ enable debugging { debug: true }
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+◇ injected env (3) from .env // tip: ⌘ suppress logs { quiet: true }
+Apartment Management API listening on port 3002
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+◇ injected env (3) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+Apartment Management API listening on port 3002

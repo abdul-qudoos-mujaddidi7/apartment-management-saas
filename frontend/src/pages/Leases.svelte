@@ -13,7 +13,7 @@
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { sortRows } from '../utils/sortRows';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
   let openedDetailId = '';
   onMount(() => {
@@ -94,6 +94,10 @@
   let quickApartmentError = '';
   let quickApartment = { apartmentNumber: '', name: '', type: '' };
   let search = '';
+  let filters = { status: '', buildingId: '', tenantId: '' };
+  $: filtersCount = Object.values(filters).filter(Boolean).length;
+  let listVersion = 0;
+  onDestroy(() => { listVersion++; });
   let pagination = { page: 1, pageSize: 10, total: 0, totalPages: 0 };
   let form = blankForm();
 
@@ -111,15 +115,24 @@
   $: formServiceFeeCurrency = form.serviceFeeCurrency || $baseCurrency;
 
   async function loadLeases(page = pagination.page) {
+    const version = ++listVersion;
     loading = true;
     errorMessage = '';
     try {
-      const response = await listLeases({ page, pageSize: pagination.pageSize, search: search.trim() });
+      const activeFilters = Object.fromEntries(Object.entries(filters).filter(([, value]) => value));
+      const response = await listLeases({ page, pageSize: pagination.pageSize, search: search.trim(), ...activeFilters });
+      if (version !== listVersion) return;
       leases = response.items;
       pagination = response.pagination;
+      selectedIds = createSelection();
       window.dispatchEvent(new Event('apartmentpro:leases-changed'));
-    } catch (error) { errorMessage = error?.message || 'Unable to load leases.'; }
-    finally { loading = false; }
+    } catch (error) { if (version === listVersion) errorMessage = error?.message || 'Unable to load leases.'; }
+    finally { if (version === listVersion) loading = false; }
+  }
+
+  function clearFilters() {
+    filters = { status: '', buildingId: '', tenantId: '' };
+    loadLeases(1);
   }
 
   async function loadOptions() {
@@ -384,7 +397,8 @@
     switch (status) {
       case 'ACTIVE': return $locale.leases.active;
       case 'DRAFT': return $locale.leases.draft;
-      case 'TERMINATED': return $locale.leases.terminate;
+      case 'EXPIRED': return $locale.leaseFilters.expired;
+      case 'TERMINATED': return $locale.leaseFilters.terminated;
       default: return status;
     }
   }
@@ -417,7 +431,34 @@
       onSearch={() => loadLeases(1)}
       addLabel={$locale.leases.new}
       onAdd={openNew}
-    />
+      {filtersCount}
+      filtersClearLabel={$locale.common.clearFilters}
+      onClearFilters={clearFilters}
+    >
+      <svelte:fragment slot="filters">
+        <div class="filters-field">
+          <label class="filters-field-label" for="lease-filter-status">{$locale.leases.status}</label>
+          <select class="form-select" id="lease-filter-status" bind:value={filters.status} on:change={() => loadLeases(1)}>
+            <option value="">{$locale.common.all}</option>
+            {#each ['DRAFT','ACTIVE','EXPIRED','TERMINATED'] as status}<option value={status}>{statusLabel(status)}</option>{/each}
+          </select>
+        </div>
+        <div class="filters-field">
+          <label class="filters-field-label" for="lease-filter-building">{$locale.leases.building}</label>
+          <select class="form-select" id="lease-filter-building" bind:value={filters.buildingId} disabled={optionsLoading} on:change={() => loadLeases(1)}>
+            <option value="">{$locale.common.all}</option>
+            {#each buildings as building}<option value={building.id}>{building.name}</option>{/each}
+          </select>
+        </div>
+        <div class="filters-field">
+          <label class="filters-field-label" for="lease-filter-tenant">{$locale.leases.tenant}</label>
+          <select class="form-select" id="lease-filter-tenant" bind:value={filters.tenantId} disabled={optionsLoading} on:change={() => loadLeases(1)}>
+            <option value="">{$locale.common.all}</option>
+            {#each tenants as tenant}<option value={tenant.id}>{tenant.firstName}{tenant.phone ? ` · ${tenant.phone}` : ''}</option>{/each}
+          </select>
+        </div>
+      </svelte:fragment>
+    </PageToolbar>
   </svelte:fragment>
 
   <svelte:fragment slot="alerts">

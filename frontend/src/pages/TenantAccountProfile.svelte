@@ -6,13 +6,15 @@
   import { getTenantAccount, getTenantLedger } from '../services/tenantAccounts';
   import { accountTabFromSearch, tenantAccountTabs } from '../utils/accountTabs';
   import { formatMoney, formatShortDate } from '../utils/formatters';
-  import { reportCsv } from '../utils/reportCsv';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import TenantAccountLedger from '../components/accounts/TenantAccountLedger.svelte';
   import TenantAccountJournals from '../components/accounts/TenantAccountJournals.svelte';
   export let params = {};
-  let tenantId = '', account = null, loading = false, error = '', ledgerLoading = false, statementLoading = false, exporting = false;
+  let tenantId = '', account = null, loading = false, error = '', ledgerLoading = false, statementLoading = false;
   let ledgerVersion = 0, statementVersion = 0, profileVersion = 0;
   const empty = () => ({ items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 }, totals: { debit: 0, credit: 0, openingBalance: 0, closingBalance: 0 } });
   let ledger = empty(), statement = empty(), statementLoaded = false, from = '', to = '';
@@ -46,16 +48,80 @@
     finally { if (id === tenantId && version === statementVersion) statementLoading = false; }
   }
   function clearDates() { from = ''; to = ''; loadStatement(1); }
-  async function exportStatement() {
-    if (exporting) return;
-    const id = tenantId, selectedFrom = from, selectedTo = to; exporting = true; error = '';
-    try {
-      const rows = []; let page = 1, pages = 1;
-      do { const response = await getTenantLedger(id,{ page, pageSize: 100, from: selectedFrom, to: selectedTo }); if (id !== tenantId || selectedFrom !== from || selectedTo !== to) return; rows.push(...response.items); pages = response.pagination.totalPages; page++; } while (page <= pages);
-      const t = $locale.tenantAccounts;
-      const csv = reportCsv([t.date,t.reference,t.descriptionColumn,t.debit,t.credit,t.balanceAfter],rows.map(entry => [formatShortDate(entry.transactionDate),`${$locale.accountProfile.sources[entry.referenceType] || entry.referenceType}${entry.referenceNumber ? ' · ' + entry.referenceNumber : ''}`,entry.description || '',entry.debit,entry.credit,entry.balanceAfter]));
-      const url = URL.createObjectURL(new Blob([csv],{ type: 'text/csv;charset=utf-8;' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `tenant-statement-${base}.csv`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
-    } catch (e) { error = $locale.accountProfile.loadError; } finally { exporting = false; }
+  /**
+   * Every entry in a period, not the page in view.
+   *
+   * A spreadsheet of the first twenty rows is not a report, so the ledger is
+   * walked page by page.
+   */
+  async function collectLedger(periodFrom, periodTo) {
+    const id = tenantId;
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await getTenantLedger(id, { page, pageSize: 100, from: periodFrom, to: periodTo });
+      // Navigating to another tenant mid-walk abandons the file: it would be
+      // headed with one tenant's name and filled with another's entries.
+      if (id !== tenantId) return null;
+      items.push(...response.items);
+      pages = response.pagination.totalPages;
+      page++;
+    } while (page <= pages);
+    return items;
+  }
+
+  /** The subledger, as a file. */
+  async function ledgerReport() {
+    const items = await collectLedger('', '');
+    if (!items) return null;
+    return buildReport(items, ledger.totals, $locale.accountProfile['financial-report'], `tenant-ledger-${name}`);
+  }
+
+  /** The same subledger narrowed to the chosen dates, with the period on it. */
+  async function statementReport() {
+    const periodFrom = from, periodTo = to;
+    const items = await collectLedger(periodFrom, periodTo);
+    // The dates can change while the pages are being collected; a statement of
+    // the period that is no longer selected must not be saved.
+    if (!items || periodFrom !== from || periodTo !== to) return null;
+    return buildReport(items, statement.totals, $locale.accountProfile.statement, `tenant-statement-${name}`, periodFrom || periodTo ? `${periodFrom || '…'} → ${periodTo || '…'}` : '');
+  }
+
+  /** One description, read by both writers. */
+  function buildReport(items, summary, kind, fileName, period = '') {
+    const t = $locale.tenantAccounts;
+    const totals = summary || empty().totals;
+    const leaseLabel = lease ? [`${$locale.tenantAccounts.building}: ${lease.apartment.floor.building.name}`, `${$locale.tenantAccounts.apartment}: ${lease.apartment.apartmentNumber}`].join(' · ') : '';
+
+    return createReport({
+      ...reportIdentity(),
+      title: `${t.title} · ${name}`,
+      subtitle: [leaseLabel, period].filter(Boolean).join(' · '),
+      metrics: [
+        { label: $locale.accountProfile.openingBalance, value: formatMoney(totals.openingBalance, base) },
+        { label: t.debit, value: formatMoney(totals.debit, base) },
+        { label: t.credit, value: formatMoney(totals.credit, base) },
+        { label: $locale.accountProfile.closingBalance, value: formatMoney(totals.closingBalance, base) }
+      ],
+      columns: [
+        { label: t.date, kind: 'date' },
+        { label: t.reference },
+        { label: t.descriptionColumn },
+        { label: t.debit, kind: 'money' },
+        { label: t.credit, kind: 'money' },
+        { label: t.balanceAfter, kind: 'money' }
+      ],
+      rows: items.map((entry) => [
+        entry.transactionDate.slice(0, 10),
+        `${$locale.accountProfile.sources[entry.referenceType] || entry.referenceType}${entry.referenceNumber ? ' · ' + entry.referenceNumber : ''}`,
+        entry.description || '',
+        entry.debit ?? 0,
+        entry.credit ?? 0,
+        entry.balanceAfter ?? 0
+      ]),
+      totals: [$locale.accounts.totals, '', '', totals.debit, totals.credit, totals.closingBalance],
+      fileName: fileName || `tenant-statement-${name || tenantId}`,
+      sheetName: kind
+    });
   }
 </script>
 <svelte:head><title>{name || $locale.tenantAccountProfile.title} | {$locale.common.apartmentPro}</title></svelte:head>
@@ -75,10 +141,10 @@
         <dl class="tenant-facts">{#each [{ label: $locale.tenantAccounts.building, value: lease?.apartment.floor.building.name },{ label: $locale.tenantAccounts.floor, value: lease?.apartment.floor.name || lease?.apartment.floor.floorNumber },{ label: $locale.tenantAccounts.apartment, value: lease?.apartment.apartmentNumber },{ label: $locale.leases.contractNumber, value: lease?.contractNumber },{ label: $locale.tenantProfile.nationalId, value: account.tenant.nationalId },{ label: $locale.accountProfile.entries, value: account.entries },{ label: $locale.tenantProfile.address, value: account.tenant.address }] as fact}<div><dt>{fact.label}</dt><dd>{fact.value ?? '—'}</dd></div>{/each}</dl>
       </section>
     {:else if tab === 'financial-report'}
-      <section class="section-card record-card"><header class="section-heading record-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-journal-text"></i></span><h3>{name} · {$locale.accountProfile['financial-report']}</h3></header><TenantAccountLedger result={ledger} loading={ledgerLoading} {base} onPage={loadLedger} /></section>
+      <section class="section-card record-card"><header class="section-heading record-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-journal-text"></i></span><h3>{name} · {$locale.accountProfile['financial-report']}</h3><ExportMenu report={ledgerReport} disabled={ledgerLoading || !ledger.items.length} align="start" /></header><TenantAccountLedger result={ledger} loading={ledgerLoading} {base} onPage={loadLedger} /></section>
     {:else if tab === 'statement'}
       <section class="section-card record-card"><header class="section-heading record-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-file-earmark-spreadsheet"></i></span><h3>{name} · {$locale.accountProfile.statement}</h3></header>
-        <div class="statement-filters"><div class="filters-field"><label class="filters-field-label" for="tenant-statement-from">{$locale.accountProfile.dateFrom}</label><ShamsiDatePicker id="tenant-statement-from" bind:value={from} disabled={exporting} on:change={() => loadStatement(1)} /></div><div class="filters-field"><label class="filters-field-label" for="tenant-statement-to">{$locale.accountProfile.dateTo}</label><ShamsiDatePicker id="tenant-statement-to" bind:value={to} disabled={exporting} on:change={() => loadStatement(1)} /></div><button class="btn btn-light btn-sm" disabled={exporting} on:click={clearDates}>{$locale.accountProfile.clearDates}</button><button class="btn btn-outline-primary btn-sm" disabled={exporting || statementLoading || !statement.items.length} on:click={exportStatement}><i class="bi bi-download" aria-hidden="true"></i> {$locale.accountProfile.exportCsv}</button></div>
+        <div class="statement-filters"><div class="filters-field"><label class="filters-field-label" for="tenant-statement-from">{$locale.accountProfile.dateFrom}</label><ShamsiDatePicker id="tenant-statement-from" bind:value={from} on:change={() => loadStatement(1)} /></div><div class="filters-field"><label class="filters-field-label" for="tenant-statement-to">{$locale.accountProfile.dateTo}</label><ShamsiDatePicker id="tenant-statement-to" bind:value={to} on:change={() => loadStatement(1)} /></div><button class="btn btn-light btn-sm" on:click={clearDates}>{$locale.accountProfile.clearDates}</button><ExportMenu report={statementReport} disabled={statementLoading || !statement.items.length} /></div>
         {#if !statementLoading}<div class="statement-summary">{#each ['openingBalance','debit','credit','closingBalance'] as key}<div><span>{['debit','credit'].includes(key) ? $locale.tenantAccounts[key] : $locale.accountProfile[key]}</span><strong>{formatMoney(statement.totals[key],base)}</strong></div>{/each}</div>{/if}
         <TenantAccountLedger result={statement} loading={statementLoading} {base} statement={true} onPage={loadStatement} />
       </section>

@@ -520,6 +520,7 @@ const translations = {
   },
   accounts: { title: 'Accounts', eyebrow: 'General ledger', description: 'Review account balances and the posted journal history behind them.', code: 'Code', name: 'Account', type: 'Type', debit: 'Debit', credit: 'Credit', balance: 'Balance', date: 'Date', journal: 'Journal', descriptionColumn: 'Description', viewLedger: 'View ledger', loading: 'Loading accounts...', empty: 'No accounts found.', showing: 'Showing {from}–{to} of {total} accounts', tenant: 'Tenant', open: 'View account', types: { ASSET: 'Asset', LIABILITY: 'Liability', EQUITY: 'Equity', INCOME: 'Income', EXPENSE: 'Expense' }, names: { CASH: 'Cash', ACCOUNTS_RECEIVABLE: 'Accounts Receivable', SECURITY_DEPOSIT_LIABILITY: 'Security Deposit Liability', RENT_INCOME: 'Rent Income', SECURITY_DEPOSIT_FORFEITED: 'Security Deposit Forfeited', FOREIGN_EXCHANGE_DIFFERENCE: 'Foreign Exchange Difference', ELECTRICITY_INCOME: 'Electricity Income', WATER_INCOME: 'Water Income', GAS_INCOME: 'Gas Income', SERVICE_FEE_INCOME: 'Service Fee Income', OTHER_INCOME: 'Other Income', BUILDING_EXPENSES: 'Building Expenses' } },
   // One account's file: what it is, and every way of reading its history.
+  leaseFilters: { expired: 'Expired', terminated: 'Terminated' },
   accountProfile: {
     title: 'Account',
     sections: 'Account sections',

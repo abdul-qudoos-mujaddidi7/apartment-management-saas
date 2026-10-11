@@ -129,15 +129,22 @@ try {
   // The page's own drawing commands: a mirrored layout starts on the right.
   const streams = pageCommands(pdf.bytes);
   const placements = positions(streams);
-  assert.ok(placements.length > 20, `the table drew its cells (${placements.length} placements)`);
-  assert.ok(placements[0] > 480, `the Dari title starts at the right edge (x=${placements[0]})`);
-  assert.ok(/(\n| )[\d.]+ [\d.]+ [\d.]+ [\d.]+ re(\n| )/.test(streams), 'the blue bands and chips are filled shapes');
+  // Ten entries of six columns, the header row and the totals band: the
+  // document holds every cell, not just the first page's worth.
+  assert.ok(placements.length >= 66, `the table drew its cells (${placements.length} placements)`);
+  assert.ok(placements[0] > 300, `the Dari title starts at the right edge (x=${placements[0]})`);
+  assert.ok(/0.08 0.25 0.52 rg/.test(streams), 'the deep-blue identity band is filled');
+  // #1c58b8, the primary blue the console's own header row uses.
+  assert.ok(/0.11 0.35 0.72 rg/.test(streams), 'the header row is filled in the primary blue');
+  assert.ok(/ re\n/.test(streams) && /\nf\n/.test(streams), 'the bands and chips are filled shapes');
 
   // The same report in English is not mirrored, and differs where it should.
+  await click('.harness-actions button:nth-of-type(1)');
+  await pause(200);
   const english = await evaluate("window.__reportExport.bytes('pdf')");
   const englishBytes = Buffer.from(english, 'base64');
   const englishPlacements = positions(pageCommands(englishBytes));
-  assert.ok(englishPlacements.length > 20, 'the English table drew its cells');
+  assert.ok(englishPlacements.length >= 66, `the English table drew its cells (${englishPlacements.length} placements)`);
   assert.ok(englishPlacements[0] < 100, `the English title starts at the left edge (x=${englishPlacements[0]})`);
   assert.notEqual(englishBytes.length, pdf.bytes.length, 'the two directions are not the same document');
 
@@ -177,7 +184,7 @@ function pageCommands(bytes) {
 
 /** The x of every text placement, in the order the document draws them. */
 function positions(commands) {
-  return [...commands.matchAll(/(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) Tm/g)].map((match) => Number(match[5]));
+  return [...commands.matchAll(/(-?[\d.]+) (-?[\d.]+) Td/g)].map((match) => Number(match[1]));
 }
 
 /** A reader for the stored-entry zips this writer makes. */
