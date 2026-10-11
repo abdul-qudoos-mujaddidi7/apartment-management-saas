@@ -525,9 +525,11 @@ const translations = {
     sections: 'Account sections',
     overview: 'Overview',
     ledger: 'Ledger',
+    'financial-report': 'Financial Report',
     statement: 'Statement',
     annual: 'Annual summary',
     documents: 'Related documents',
+    journals: 'Journals',
     loading: 'Loading account...',
     loadError: 'This account could not be loaded.',
     details: 'Account details',
@@ -549,6 +551,8 @@ const translations = {
     closingBalance: 'Closing balance',
     exportCsv: 'Export CSV',
     noEntriesInPeriod: 'No entries fall in this period.',
+    noJournals: 'No journal entries have moved this account yet.',
+    openInvoice: 'Open invoice',
     showingEntries: 'Showing {from}–{to} of {total} entries',
     year: 'Year',
     totals: 'Total',
@@ -811,4 +815,16 @@ Object.assign(translations.leases, {
 });
 
 translations.meterReport = meterReportCopy.en;
+
+/* The export control. `excel` and `pdf` are the menu's two rows and name the
+   file a reader is about to get, extension included, because that is what a
+   reader chooses between. */
+translations.reportExport = {
+  label: 'Export',
+  excel: 'Excel (.xlsx)',
+  pdf: 'PDF (.pdf)',
+  preparing: 'Preparing…',
+  failed: 'The report could not be exported. Please try again.',
+};
+
 export default translations;

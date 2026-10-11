@@ -329,9 +329,11 @@ const translations = {
     sections: 'بخش‌های حساب',
     overview: 'نمای کلی',
     ledger: 'روز نامچه',
+    'financial-report': 'گزارش مالی',
     statement: 'صورت‌حساب',
     annual: 'خلاصه سالانه',
     documents: 'اسناد مرتبط',
+    journals: 'روز نامچه',
     loading: 'در حال بارگیری حساب...',
     loadError: 'بارگیری این حساب ممکن نشد.',
     details: 'جزئیات حساب',
@@ -353,6 +355,8 @@ const translations = {
     closingBalance: 'بیلانس پایانی',
     exportCsv: 'خروجی CSV',
     noEntriesInPeriod: 'در این دوره ثبتی وجود ندارد.',
+    noJournals: 'هنوز سندی این حساب را جابه‌جا نکرده است.',
+    openInvoice: 'مشاهده صورت‌حساب',
     showingEntries: 'نمایش {from} تا {to} از {total} ثبت',
     year: 'سال',
     totals: 'مجموع',
@@ -590,4 +594,13 @@ Object.assign(translations.leases, {
 });
 
 translations.meterReport = meterReportCopy.fa;
+
+translations.reportExport = {
+  label: 'خروجی',
+  excel: 'اکسل (xlsx.)',
+  pdf: 'پی‌دی‌اف (pdf.)',
+  preparing: 'در حال آماده‌سازی…',
+  failed: 'خروجی گرفتن از این گزارش انجام نشد. دوباره تلاش کنید.',
+};
+
 export default translations;

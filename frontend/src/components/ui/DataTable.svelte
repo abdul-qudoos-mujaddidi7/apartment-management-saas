@@ -302,8 +302,8 @@
     margin: 0;
     border-collapse: separate;
     border-spacing: 0;
-    color: var(--table-muted);
-    font-size: var(--table-font-size, 0.8125rem);
+    color: var(--table-color, var(--table-muted));
+    font-size: var(--table-font-size, 0.78rem);
     /* The sort carets, drawn rather than typed: two chevrons stacked for a
        column that can be sorted both ways, one when it is sorted. Masks so the
        mark takes the header's own colour and weight. */
@@ -322,9 +322,11 @@
     border-block-start: 0;
     border-block-end: 1px solid var(--table-head-line, var(--card-border));
     background: var(--table-head-bg);
-    color: var(--text-muted);
-    font-size: var(--table-head-font-size, 0.75rem);
-    font-weight: var(--weight-semibold);
+    color: var(--table-head-color, var(--text-muted));
+    font-size: var(--table-head-font-size, 0.72rem);
+    /* The reference sets its label strip in 800 — a hairline of weight that
+       keeps a 10px header legible next to the rows below it. */
+    font-weight: 800;
     letter-spacing: 0.01em;
     line-height: 1.25;
     text-align: start;
@@ -386,8 +388,8 @@
     padding: var(--table-cell-pad-block) var(--table-cell-pad-inline);
     border-block-end: 1px solid var(--table-row-line, var(--card-border));
     background: inherit;
-    color: var(--table-muted);
-    font-size: var(--table-font-size, 0.8125rem);
+    color: var(--table-color, var(--table-muted));
+    font-size: var(--table-font-size, 0.78rem);
     line-height: 1.5;
     text-align: start;
     vertical-align: middle;

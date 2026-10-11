@@ -1,4 +1,4 @@
-import { PERSIAN_DIGITS, formatShamsiDate } from './shamsiDate';
+import { PERSIAN_DIGITS, formatShamsiDate } from './shamsiDate.js';
 
 export function formatMoney(value, currency = 'AFN') {
   const num = Number(value) || 0;

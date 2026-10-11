@@ -109,15 +109,16 @@ async function getAccount(organizationId, id) {
   return account;
 }
 
-async function getAccountLedger(organizationId, id, query) {
-  const prisma = require('../../lib/prisma');
-  const account = await getAccount(organizationId, id);
+async function getAccountLedger(organizationId, id, query, client) {
+  const prisma = client || require('../../lib/prisma');
+  const account = await prisma.financialAccount.findFirst({ where: { id, organizationId, deletedAt: null } });
+  if (!account) throw Object.assign(new Error('Account not found.'), { code: 'ACCOUNT_NOT_FOUND' });
   const range = {};
   if (query.from) range.gte = new Date(`${query.from}T00:00:00.000Z`);
   if (query.to) range.lte = new Date(`${query.to}T23:59:59.999Z`);
-  const journalWhere = { organizationId, ...(Object.keys(range).length ? { transactionDate: range } : {}) };
+  const journalWhere = { organizationId, status: 'POSTED', ...(Object.keys(range).length ? { transactionDate: range } : {}) };
   const where = { accountId: id, journal: journalWhere };
-  const orderBy = [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }];
+  const orderBy = [{ journal: { transactionDate: 'asc' } }, { createdAt: 'asc' }, { id: 'asc' }];
   const [items, total, movements] = await prisma.$transaction([
     prisma.journalLine.findMany({ where, include: { journal: { select: { journalNumber: true, transactionDate: true, currency: true, exchangeRate: true, description: true, status: true, referenceType: true, referenceId: true } }, tenant: { select: { firstName: true } } }, orderBy, skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
     prisma.journalLine.count({ where }),
@@ -125,16 +126,23 @@ async function getAccountLedger(organizationId, id, query) {
     // and for a date-filtered statement — so the cumulative sum is walked from
     // the account's very first line, ignoring the range filter. Only the two
     // mirrored figures travel here, not the whole rows.
-    prisma.journalLine.findMany({ where: { accountId: id, journal: { organizationId } }, select: { id: true, baseDebit: true, baseCredit: true }, orderBy }),
+    prisma.journalLine.findMany({ where: { accountId: id, journal: { organizationId, status: 'POSTED' } }, select: { id: true, baseDebit: true, baseCredit: true, journal: { select: { transactionDate: true } } }, orderBy }),
   ]);
   const positive = ['ASSET', 'EXPENSE'].includes(account.type);
   const balances = new Map();
   let running = new Decimal(0);
+  let opening = new Decimal(0), periodDebit = new Decimal(0), periodCredit = new Decimal(0);
   for (const line of movements) {
     const debit = new Decimal(line.baseDebit || 0);
     const credit = new Decimal(line.baseCredit || 0);
     running = running.plus(positive ? debit.minus(credit) : credit.minus(debit));
     balances.set(line.id, Number(running));
+    const date = new Date(line.journal.transactionDate);
+    if (range.gte && date < range.gte) opening = running;
+    else if (!range.lte || date <= range.lte) {
+      periodDebit = periodDebit.plus(debit);
+      periodCredit = periodCredit.plus(credit);
+    }
   }
   return {
     items: items.map((line) => ({
@@ -146,6 +154,7 @@ async function getAccountLedger(organizationId, id, query) {
       balanceAfter: balances.get(line.id) ?? 0,
     })),
     pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) },
+    totals: { openingBalance: Number(opening), debit: Number(periodDebit), credit: Number(periodCredit), closingBalance: Number(opening.plus(positive ? periodDebit.minus(periodCredit) : periodCredit.minus(periodDebit))) },
   };
 }
 

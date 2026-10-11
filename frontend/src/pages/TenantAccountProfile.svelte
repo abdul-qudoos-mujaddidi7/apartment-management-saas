@@ -4,19 +4,20 @@
   import { locale } from '../i18n';
   import { baseCurrency } from '../stores/currency';
   import { getTenantAccount, getTenantLedger } from '../services/tenantAccounts';
-  import { accountTabFromSearch } from '../utils/accountTabs';
+  import { accountTabFromSearch, tenantAccountTabs } from '../utils/accountTabs';
   import { formatMoney, formatShortDate } from '../utils/formatters';
   import { reportCsv } from '../utils/reportCsv';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import TenantAccountLedger from '../components/accounts/TenantAccountLedger.svelte';
+  import TenantAccountJournals from '../components/accounts/TenantAccountJournals.svelte';
   export let params = {};
   let tenantId = '', account = null, loading = false, error = '', ledgerLoading = false, statementLoading = false, exporting = false;
   let ledgerVersion = 0, statementVersion = 0, profileVersion = 0;
   const empty = () => ({ items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 }, totals: { debit: 0, credit: 0, openingBalance: 0, closingBalance: 0 } });
   let ledger = empty(), statement = empty(), statementLoaded = false, from = '', to = '';
   let search = window.location.hash.split('?')[1] || '';
-  $: tab = accountTabFromSearch(search);
+  $: tab = accountTabFromSearch(search, tenantAccountTabs);
   $: base = account?.baseCurrency || $baseCurrency;
   $: lease = account?.tenant.leases?.[0];
   $: name = account?.tenant.firstName || '';
@@ -73,14 +74,16 @@
       <section class="section-card"><header class="section-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-person-lines-fill"></i></span><h3>{$locale.accountProfile.details}</h3><button class="btn btn-outline-primary btn-sm" on:click={() => push(`/tenants/${tenantId}`)}>{$locale.tenantAccountProfile.viewTenant}</button></header>
         <dl class="tenant-facts">{#each [{ label: $locale.tenantAccounts.building, value: lease?.apartment.floor.building.name },{ label: $locale.tenantAccounts.floor, value: lease?.apartment.floor.name || lease?.apartment.floor.floorNumber },{ label: $locale.tenantAccounts.apartment, value: lease?.apartment.apartmentNumber },{ label: $locale.leases.contractNumber, value: lease?.contractNumber },{ label: $locale.tenantProfile.nationalId, value: account.tenant.nationalId },{ label: $locale.accountProfile.entries, value: account.entries },{ label: $locale.tenantProfile.address, value: account.tenant.address }] as fact}<div><dt>{fact.label}</dt><dd>{fact.value ?? '—'}</dd></div>{/each}</dl>
       </section>
-    {:else if tab === 'ledger'}
-      <section class="section-card record-card"><header class="section-heading record-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-journal-text"></i></span><h3>{name} · {$locale.accountProfile.ledger}</h3></header><TenantAccountLedger result={ledger} loading={ledgerLoading} {base} onPage={loadLedger} /></section>
+    {:else if tab === 'financial-report'}
+      <section class="section-card record-card"><header class="section-heading record-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-journal-text"></i></span><h3>{name} · {$locale.accountProfile['financial-report']}</h3></header><TenantAccountLedger result={ledger} loading={ledgerLoading} {base} onPage={loadLedger} /></section>
     {:else if tab === 'statement'}
       <section class="section-card record-card"><header class="section-heading record-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-file-earmark-spreadsheet"></i></span><h3>{name} · {$locale.accountProfile.statement}</h3></header>
         <div class="statement-filters"><div class="filters-field"><label class="filters-field-label" for="tenant-statement-from">{$locale.accountProfile.dateFrom}</label><ShamsiDatePicker id="tenant-statement-from" bind:value={from} disabled={exporting} on:change={() => loadStatement(1)} /></div><div class="filters-field"><label class="filters-field-label" for="tenant-statement-to">{$locale.accountProfile.dateTo}</label><ShamsiDatePicker id="tenant-statement-to" bind:value={to} disabled={exporting} on:change={() => loadStatement(1)} /></div><button class="btn btn-light btn-sm" disabled={exporting} on:click={clearDates}>{$locale.accountProfile.clearDates}</button><button class="btn btn-outline-primary btn-sm" disabled={exporting || statementLoading || !statement.items.length} on:click={exportStatement}><i class="bi bi-download" aria-hidden="true"></i> {$locale.accountProfile.exportCsv}</button></div>
         {#if !statementLoading}<div class="statement-summary">{#each ['openingBalance','debit','credit','closingBalance'] as key}<div><span>{['debit','credit'].includes(key) ? $locale.tenantAccounts[key] : $locale.accountProfile[key]}</span><strong>{formatMoney(statement.totals[key],base)}</strong></div>{/each}</div>{/if}
         <TenantAccountLedger result={statement} loading={statementLoading} {base} statement={true} onPage={loadStatement} />
       </section>
+    {:else if tab === 'journals'}
+      <TenantAccountJournals {tenantId} tenantLabel={name} />
     {/if}
   {/if}
 </div>

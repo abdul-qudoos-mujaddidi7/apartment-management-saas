@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { DEFAULT_ACCOUNTS, ensureDefaultAccounts, getAccountSummary } = require('./financial-account.service');
+const { DEFAULT_ACCOUNTS, ensureDefaultAccounts, getAccountSummary, getAccountLedger } = require('./financial-account.service');
 
 test('initializing migrated accounts reuses existing IDs and never creates numeric codes', async () => {
   const existing = DEFAULT_ACCOUNTS.map(([systemKey, name, type], index) => ({ id: `existing-${index}`, organizationId: 'organization-1', systemKey, name, type, deletedAt: null }));
@@ -93,4 +93,35 @@ test('account summary net follows the account direction and missing accounts are
 
   const missing = { financialAccount: { async findFirst() { return null; } }, async $queryRaw() { throw new Error('should not run'); } };
   await assert.rejects(getAccountSummary('organization-1', 'account-1', missing), (error) => error.code === 'ACCOUNT_NOT_FOUND');
+});
+
+test('account statements use posted base amounts, all period rows and the account balance direction', async () => {
+  for (const type of ['ASSET', 'LIABILITY']) {
+    const movements = [
+      { id: 'before', baseDebit: 50, baseCredit: 0, journal: { transactionDate: new Date('2026-01-01') } },
+      { id: 'first', baseDebit: 100, baseCredit: 0, journal: { transactionDate: new Date('2026-02-01') } },
+      { id: 'second', baseDebit: 0, baseCredit: 30, journal: { transactionDate: new Date('2026-02-02') } },
+      { id: 'after', baseDebit: 900, baseCredit: 0, journal: { transactionDate: new Date('2026-03-01') } },
+    ];
+    const client = {
+      financialAccount: { async findFirst({ where }) { assert.deepEqual(where, { id: 'account', organizationId: 'org', deletedAt: null }); return { type }; } },
+      journalLine: {
+        async findMany(query) {
+          assert.equal(query.where.accountId, 'account');
+          assert.equal(query.where.journal.organizationId, 'org');
+          assert.equal(query.where.journal.status, 'POSTED');
+          assert.deepEqual(query.orderBy.at(-1), { id: 'asc' });
+          return query.select ? movements : [{ ...movements[2], debit: 0, credit: 30 }];
+        },
+        async count() { return 2; },
+      },
+      $transaction: promises => Promise.all(promises),
+    };
+    const result = await getAccountLedger('org', 'account', { page: 2, pageSize: 1, from: '2026-02-01', to: '2026-02-28' }, client);
+    const sign = type === 'ASSET' ? 1 : -1;
+    assert.deepEqual(result.totals, { openingBalance: 50 * sign, debit: 100, credit: 30, closingBalance: 120 * sign });
+    assert.equal(result.items[0].balanceAfter, 120 * sign);
+    assert.equal(result.pagination.totalPages, 2);
+  }
+  await assert.rejects(getAccountLedger('other', 'account', {}, { financialAccount: { async findFirst() { return null; } } }), error => error.code === 'ACCOUNT_NOT_FOUND');
 });

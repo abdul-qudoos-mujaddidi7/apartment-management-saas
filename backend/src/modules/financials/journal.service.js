@@ -279,12 +279,19 @@ function buildLineData(lines, exchangeRate, fallbackDescription = null) {
 }
 
 async function listJournals(organizationId, query) {
+  /* Both line filters narrow the same relation, so they have to be one `some`
+     clause — two would leave only the last one standing. */
+  const lineFilters = {
+    ...(query.accountId ? { accountId: query.accountId } : {}),
+    ...(query.tenantId ? { tenantId: query.tenantId } : {}),
+  };
+
   const where = {
     organizationId,
     ...(query.status ? { status: query.status } : {}),
     ...(query.referenceType ? { referenceType: query.referenceType } : {}),
     ...(query.currency ? { currency: query.currency } : {}),
-    ...(query.accountId ? { lines: { some: { accountId: query.accountId } } } : {}),
+    ...(Object.keys(lineFilters).length ? { lines: { some: lineFilters } } : {}),
     ...(query.dateFrom || query.dateTo ? {
       transactionDate: {
         ...(query.dateFrom ? { gte: query.dateFrom } : {}),

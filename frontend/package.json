@@ -11,6 +11,7 @@
     "test:workflow-ui": "node tests/workflow/browser.mjs",
     "test:account-deposits-ui": "node tests/account-deposits/browser.mjs",
     "test:tenant-account-profile-ui": "node tests/tenant-account-profile/browser.mjs",
+    "test:journals-ui": "node tests/journals/browser.mjs",
     "test:meter-report-ui": "node tests/meter-report/browser.mjs",
     "test:invoice-reading-ui": "node tests/invoice-reading/browser.mjs"
   },
@@ -22,6 +23,8 @@
   "dependencies": {
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "svelte-spa-router": "^5.1.1"
   }
 }

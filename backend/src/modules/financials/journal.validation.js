@@ -69,6 +69,10 @@ const listJournalsSchema = z.object({
   referenceType: optionalFilter(z.string().trim().max(50)),
   currency: optionalFilter(z.string().trim().length(3).regex(/^[A-Za-z]{3}$/)),
   accountId: optionalFilter(z.string().trim().min(1)),
+  /* A tenant's account is the sub-ledger side of the same ledger: the line
+     still names the receivable control account and the tenant identifies whose
+     account it moved, so one filter is enough to scope a tenant's journals. */
+  tenantId: optionalFilter(z.string().trim().min(1)),
   dateFrom: optionalFilter(requiredDate),
   dateTo: optionalFilter(requiredDate),
 });

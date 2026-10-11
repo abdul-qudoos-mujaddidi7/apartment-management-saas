@@ -13,10 +13,12 @@
    * the Accounts list.
    */
   import { onMount } from 'svelte';
+  import { push } from 'svelte-spa-router';
+  import AccountLedger from '../components/accounts/TenantAccountLedger.svelte';
   import SecurityDeposits from './SecurityDeposits.svelte';
+  import AccountJournals from '../components/accounts/TenantAccountJournals.svelte';
   import { accountTabFromSearch } from '../utils/accountTabs';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
-  import Pagination from '../components/ui/Pagination.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { getAccount, getAccountLedger, getAccountSummary } from '../services/accounts';
   import { locale } from '../i18n';
@@ -80,12 +82,13 @@
   $: base = account?.baseCurrency || $baseCurrency;
   $: name = account ? accountNameLabel(account, $locale) : '';
   $: typeLabel = account ? accountTypeLabel(account.type, $locale) : '';
-  $: sources = summary?.bySource || [];
-  $: years = summary?.byYear || [];
-  $: yearTotals = years.reduce(
-    (sum, row) => ({ entries: sum.entries + row.entries, debit: sum.debit + row.debit, credit: sum.credit + row.credit, net: sum.net + row.net }),
-    { entries: 0, debit: 0, credit: 0, net: 0 },
-  );
+
+  const emptyTotals = () => ({ openingBalance: 0, debit: 0, credit: 0, closingBalance: 0 });
+  function ledgerView(result) {
+    return { ...result, items: result.items.map(line => ({ id: line.id, transactionDate: line.journal.transactionDate, referenceType: line.journal.referenceType, referenceNumber: line.journal.journalNumber, description: line.description || line.journal.description, debit: line.baseDebit, credit: line.baseCredit, balanceAfter: line.balanceAfter })), pagination: { page: result.page, totalPages: result.totalPages } };
+  }
+  $: ledgerResult = ledgerView(ledger);
+  $: statementResult = ledgerView(statement);
 
   async function load() {
     const requestedId = accountId;
@@ -113,7 +116,7 @@
     try {
       const response = await getAccountLedger(requestedId, { page, pageSize: ledger.pageSize });
       if (requestedId !== accountId) return;
-      ledger = { items: response.items || [], page: response.pagination.page, pageSize: response.pagination.pageSize, total: response.pagination.total, totalPages: response.pagination.totalPages };
+      ledger = { items: response.items || [], page: response.pagination.page, pageSize: response.pagination.pageSize, total: response.pagination.total, totalPages: response.pagination.totalPages, totals: response.totals || emptyTotals() };
     } catch (error) {
       if (requestedId === accountId) errorMessage = error.message;
     } finally {
@@ -121,17 +124,22 @@
     }
   }
 
+  let statementVersion = 0;
   async function loadStatement(page) {
+    const version = ++statementVersion;
     const requestedId = accountId;
+    errorMessage = '';
+    statement = { ...statement, items: [], totals: emptyTotals() };
+    if (statementFrom && statementTo && statementFrom > statementTo) { errorMessage = $locale.tenantAccountProfile.invalidDates; statementLoading = false; return; }
     statementLoading = true;
     try {
       const response = await getAccountLedger(requestedId, { page, pageSize: statement.pageSize, from: statementFrom, to: statementTo });
-      if (requestedId !== accountId) return;
-      statement = { items: response.items || [], page: response.pagination.page, pageSize: response.pagination.pageSize, total: response.pagination.total, totalPages: response.pagination.totalPages };
+      if (requestedId !== accountId || version !== statementVersion) return;
+      statement = { items: response.items || [], page: response.pagination.page, pageSize: response.pagination.pageSize, total: response.pagination.total, totalPages: response.pagination.totalPages, totals: response.totals || emptyTotals() };
     } catch (error) {
-      if (requestedId === accountId) errorMessage = error.message;
+      if (requestedId === accountId && version === statementVersion) errorMessage = error.message;
     } finally {
-      if (requestedId === accountId) statementLoading = false;
+      if (requestedId === accountId && version === statementVersion) statementLoading = false;
     }
   }
 
@@ -142,14 +150,17 @@
     void loadStatement(1);
   }
 
-  function entrySub(line) {
-    if (!line.journal.currency || line.journal.currency === base) return '';
-    return `${formatMoney(line.debit, line.journal.currency)} @ ${line.journal.exchangeRate}`;
-  }
 
-  function exportStatement() {
+  let exporting = false;
+  async function exportStatement() {
+    if (exporting) return;
+    exporting = true;
+    const id = accountId, from = statementFrom, to = statementTo;
+    try {
+    const items = []; let page = 1, pages = 1;
+    do { const response = await getAccountLedger(id, { page, pageSize: 100, from, to }); if (id !== accountId || from !== statementFrom || to !== statementTo) return; items.push(...response.items); pages = response.pagination.totalPages; page++; } while (page <= pages);
     const headers = [$locale.accounts.date, $locale.accounts.journal, $locale.accounts.descriptionColumn, $locale.accountProfile.source, $locale.accounts.debit, $locale.accounts.credit, $locale.accounts.balance];
-    const rows = statement.items.map((line) => [
+    const rows = items.map((line) => [
       line.journal.transactionDate.slice(0, 10),
       line.journal.journalNumber,
       line.description || line.journal.description || '',
@@ -166,6 +177,7 @@
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) { errorMessage = error.message || $locale.accountProfile.loadError; } finally { exporting = false; }
   }
 
   /** A label from a source map, falling back to the raw value rather than a blank. */
@@ -174,16 +186,6 @@
     return $locale.accountProfile.sources[referenceType] || referenceType;
   }
 
-  function paginationLabel(page, totalPages) {
-    return $locale.common.page.replace('{page}', page).replace('{totalPages}', totalPages);
-  }
-
-  function summaryLabel(set) {
-    return $locale.accountProfile.showingEntries
-      .replace('{from}', (set.page - 1) * set.pageSize + 1)
-      .replace('{to}', Math.min(set.page * set.pageSize, set.total))
-      .replace('{total}', set.total);
-  }
 </script>
 
 <svelte:head>
@@ -191,6 +193,7 @@
 </svelte:head>
 
 <div class="account-profile-page">
+  <div class="profile-breadcrumb"><button type="button" on:click={() => push('/accounts')}><i class="bi bi-arrow-return-left" aria-hidden="true"></i> {$locale.accounts.title}</button><span>/</span><span>{name || $locale.accountProfile.title}</span></div>
 
   <h1 class="visually-hidden">{$locale.accountProfile.title}</h1>
 
@@ -230,8 +233,8 @@
 
       <section class="account-strip" aria-label={$locale.accountProfile.details}>
         {#each [
-          { key: 'debit', value: account.debit, icon: 'bi-arrow-down-left-circle', emphasis: false },
-          { key: 'credit', value: account.credit, icon: 'bi-arrow-up-right-circle', emphasis: false },
+          { key: 'debit', value: account.baseDebit ?? account.debit, icon: 'bi-arrow-down-left-circle', emphasis: false },
+          { key: 'credit', value: account.baseCredit ?? account.credit, icon: 'bi-arrow-up-right-circle', emphasis: false },
           { key: 'balance', value: account.balance, icon: 'bi-wallet2', emphasis: true },
         ] as metric}
           <article class:is-emphasis={metric.emphasis} class="metric">
@@ -244,63 +247,19 @@
         {/each}
       </section>
 
+      <section class="section-card"><header class="section-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-card-list"></i></span><h3>{$locale.accountProfile.details}</h3></header>
+        <dl class="account-facts">{#each [{ label: $locale.accounts.name, value: name }, { label: $locale.accounts.type, value: typeLabel }, { label: $locale.accountProfile.kind, value: account.systemKey ? $locale.accountProfile.builtIn : $locale.accountProfile.custom }, { label: $locale.accountProfile.statusLabel, value: account.isActive ? $locale.accountProfile.active : $locale.accountProfile.inactive }, { label: $locale.accountProfile.entries, value: summary?.totals?.entries ?? ledger.total }, { label: $locale.leases.currency, value: base }] as fact}<div><dt>{fact.label}</dt><dd>{fact.value ?? '—'}</dd></div>{/each}</dl>
+      </section>
       {#if account.systemKey === 'SECURITY_DEPOSIT_LIABILITY'}
         <SecurityDeposits embedded on:change={load} />
       {/if}
 
     {/if}
 
-    {#if tab === 'ledger'}
+    {#if tab === 'financial-report'}
       <section class="section-card record-card" aria-labelledby="account-ledger">
-        <header class="section-heading record-heading">
-          <span class="section-icon" aria-hidden="true"><i class="bi bi-journal-text"></i></span>
-          <h3 id="account-ledger">{$locale.accountProfile.ledger}</h3>
-        </header>
-        {#if ledgerLoading && ledger.items.length === 0}
-          <p class="empty record-empty" role="status">{$locale.accounts.loading}</p>
-        {:else if ledger.items.length === 0}
-          <p class="empty record-empty">{$locale.accountProfile.noEntries}</p>
-        {:else}
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>{$locale.accounts.date}</th>
-                  <th>{$locale.accounts.journal}</th>
-                  <th>{$locale.accounts.descriptionColumn}</th>
-                  <th>{$locale.accounts.tenant}</th>
-                  <th class="amount-cell">{$locale.accounts.debit}</th>
-                  <th class="amount-cell">{$locale.accounts.credit}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each ledger.items as line (line.id)}
-                  <tr>
-                    <td>{formatShortDate(line.journal.transactionDate)}</td>
-                    <td class="data-value">{line.journal.journalNumber}</td>
-                    <td>{line.description || line.journal.description || '—'}{#if entrySub(line)}<small class="cell-sub">{entrySub(line)}</small>{/if}</td>
-                    <td>{line.tenant?.firstName || '—'}</td>
-                    <td class="amount-cell">{formatMoney(line.baseDebit, base)}</td>
-                    <td class="amount-cell">{formatMoney(line.baseCredit, base)}</td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-          {#if ledger.totalPages > 1}
-            <footer class="record-footer">
-              <Pagination
-                page={ledger.page}
-                totalPages={ledger.totalPages}
-                previousLabel={$locale.common.previous}
-                nextLabel={$locale.common.next}
-                label={paginationLabel(ledger.page, ledger.totalPages)}
-                summary={summaryLabel(ledger)}
-                onPage={(page) => loadLedger(page)}
-              />
-            </footer>
-          {/if}
-        {/if}
+        <header class="section-heading record-heading"><span class="section-icon" aria-hidden="true"><i class="bi bi-journal-text"></i></span><h3 id="account-ledger">{name} · {$locale.accountProfile['financial-report']}</h3></header>
+        <AccountLedger result={ledgerResult} loading={ledgerLoading} {base} onPage={loadLedger} />
       </section>
     {/if}
 
@@ -308,157 +267,49 @@
       <section class="section-card record-card" aria-labelledby="account-statement">
         <header class="section-heading record-heading">
           <span class="section-icon" aria-hidden="true"><i class="bi bi-file-earmark-spreadsheet"></i></span>
-          <h3 id="account-statement">{$locale.accountProfile.statement}</h3>
+          <h3 id="account-statement">{name} · {$locale.accountProfile.statement}</h3>
         </header>
         <div class="statement-filters">
           <div class="filters-field">
             <label class="filters-field-label" for="statement-from">{$locale.accountProfile.dateFrom}</label>
-            <ShamsiDatePicker id="statement-from" bind:value={statementFrom} on:change={() => loadStatement(1)} />
+            <ShamsiDatePicker id="statement-from" bind:value={statementFrom} disabled={exporting} on:change={() => loadStatement(1)} />
           </div>
           <div class="filters-field">
             <label class="filters-field-label" for="statement-to">{$locale.accountProfile.dateTo}</label>
-            <ShamsiDatePicker id="statement-to" bind:value={statementTo} on:change={() => loadStatement(1)} />
+            <ShamsiDatePicker id="statement-to" bind:value={statementTo} disabled={exporting} on:change={() => loadStatement(1)} />
           </div>
           <button class="btn btn-light btn-sm" type="button" on:click={clearDates}>{$locale.accountProfile.clearDates}</button>
-          <button class="btn btn-outline-primary btn-sm" type="button" on:click={exportStatement} disabled={statement.items.length === 0}>
+          <button class="btn btn-outline-primary btn-sm" type="button" on:click={exportStatement} disabled={exporting || statementLoading || statement.items.length === 0}>
             <i class="bi bi-download" aria-hidden="true"></i>
             {$locale.accountProfile.exportCsv}
           </button>
         </div>
-        {#if statementLoading && statement.items.length === 0}
-          <p class="empty record-empty" role="status">{$locale.accounts.loading}</p>
-        {:else if statement.items.length === 0}
-          <p class="empty record-empty">{$locale.accountProfile.noEntriesInPeriod}</p>
-        {:else}
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>{$locale.accounts.date}</th>
-                  <th>{$locale.accounts.journal}</th>
-                  <th>{$locale.accountProfile.source}</th>
-                  <th>{$locale.accounts.descriptionColumn}</th>
-                  <th class="amount-cell">{$locale.accounts.debit}</th>
-                  <th class="amount-cell">{$locale.accounts.credit}</th>
-                  <th class="amount-cell">{$locale.accounts.balance}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each statement.items as line (line.id)}
-                  <tr>
-                    <td>{formatShortDate(line.journal.transactionDate)}</td>
-                    <td class="data-value">{line.journal.journalNumber}</td>
-                    <td>{sourceLabel(line.journal.referenceType)}</td>
-                    <td>{line.description || line.journal.description || '—'}</td>
-                    <td class="amount-cell">{line.baseDebit ? formatMoney(line.baseDebit, base) : '—'}</td>
-                    <td class="amount-cell">{line.baseCredit ? formatMoney(line.baseCredit, base) : '—'}</td>
-                    <td class="amount-cell money-value">{formatMoney(line.balanceAfter, base)}</td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-          <footer class="record-footer">
-            <Pagination
-              page={statement.page}
-              totalPages={statement.totalPages}
-              previousLabel={$locale.common.previous}
-              nextLabel={$locale.common.next}
-              label={paginationLabel(statement.page, statement.totalPages)}
-              summary={summaryLabel(statement)}
-              onPage={(page) => loadStatement(page)}
-            />
-          </footer>
-        {/if}
+        {#if !statementLoading}<div class="statement-summary">{#each ['openingBalance','debit','credit','closingBalance'] as key}<div><span>{['debit','credit'].includes(key) ? $locale.accounts[key] : $locale.accountProfile[key]}</span><strong>{formatMoney((statement.totals || emptyTotals())[key],base)}</strong></div>{/each}</div>{/if}
+        <AccountLedger result={statementResult} loading={statementLoading} {base} statement={true} onPage={loadStatement} />
       </section>
     {/if}
 
-    {#if tab === 'annual'}
-      <section class="section-card record-card" aria-labelledby="account-annual">
-        <header class="section-heading record-heading">
-          <span class="section-icon" aria-hidden="true"><i class="bi bi-calendar3"></i></span>
-          <h3 id="account-annual">{$locale.accountProfile.annual}</h3>
-        </header>
-        {#if years.length === 0}
-          <p class="empty record-empty">{$locale.accountProfile.noEntries}</p>
-        {:else}
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>{$locale.accountProfile.year}</th>
-                  <th class="amount-cell">{$locale.accountProfile.entries}</th>
-                  <th class="amount-cell">{$locale.accounts.debit}</th>
-                  <th class="amount-cell">{$locale.accounts.credit}</th>
-                  <th class="amount-cell">{$locale.accountProfile.netMovement}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each years as row (row.year)}
-                  <tr>
-                    <td class="data-value">{row.year}</td>
-                    <td class="amount-cell">{row.entries}</td>
-                    <td class="amount-cell">{formatMoney(row.debit, base)}</td>
-                    <td class="amount-cell">{formatMoney(row.credit, base)}</td>
-                    <td class="amount-cell money-value">{formatMoney(row.net, base)}</td>
-                  </tr>
-                {/each}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td>{$locale.accountProfile.totals}</td>
-                  <td class="amount-cell">{yearTotals.entries}</td>
-                  <td class="amount-cell">{formatMoney(yearTotals.debit, base)}</td>
-                  <td class="amount-cell">{formatMoney(yearTotals.credit, base)}</td>
-                  <td class="amount-cell money-value">{formatMoney(yearTotals.net, base)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        {/if}
-      </section>
+    {#if tab === 'journals'}
+      {#key accountId}
+        <AccountJournals {accountId} accountLabel={name} />
+      {/key}
     {/if}
 
-    {#if tab === 'documents'}
-      <section class="section-card record-card" aria-labelledby="account-documents">
-        <header class="section-heading record-heading">
-          <span class="section-icon" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
-          <h3 id="account-documents">{$locale.accountProfile.documents}</h3>
-        </header>
-        {#if sources.length === 0}
-          <p class="empty record-empty">{$locale.accountProfile.noEntries}</p>
-        {:else}
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>{$locale.accountProfile.source}</th>
-                  <th class="amount-cell">{$locale.accountProfile.entries}</th>
-                  <th class="amount-cell">{$locale.accounts.debit}</th>
-                  <th class="amount-cell">{$locale.accounts.credit}</th>
-                  <th class="amount-cell">{$locale.accountProfile.netMovement}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each sources as row (row.referenceType)}
-                  <tr>
-                    <td>{sourceLabel(row.referenceType)}</td>
-                    <td class="amount-cell">{row.entries}</td>
-                    <td class="amount-cell">{formatMoney(row.debit, base)}</td>
-                    <td class="amount-cell">{formatMoney(row.credit, base)}</td>
-                    <td class="amount-cell money-value">{formatMoney(row.net, base)}</td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      </section>
-    {/if}
   {/if}
 </div>
 
 <style>
+  .profile-breadcrumb { display:flex; align-items:center; gap:.6rem; color:var(--text-muted); font-size:var(--text-xs); flex-shrink:0; }
+  .profile-breadcrumb button { border:0; background:none; color:var(--accent-text); font:inherit; padding:.25rem 0; }
+  .account-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.2rem; margin:0; }
+  .account-facts dt { color:var(--text-muted); font-size:var(--text-xs); font-weight:400; margin-bottom:.3rem; }
+  .account-facts dd { margin:0; color:var(--text-strong); font-size:var(--text-sm); font-weight:600; overflow-wrap:anywhere; }
+  .statement-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; padding:var(--space-3) var(--space-4); background:var(--surface-muted); border-block:1px solid var(--border); flex-shrink:0; }
+  .statement-summary span { display:block; color:var(--text-muted); font-size:var(--text-xs); }
+  .statement-summary strong { display:block; margin-top:.3rem; font-size:var(--text-sm); overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+  @media(max-width:700px) { .account-facts,.statement-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media(max-width:480px) { .account-facts { grid-template-columns:1fr; } }
+
   .account-profile-page { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; gap: var(--space-4); }
   .identity-hero, .account-strip { flex-shrink: 0; }
 
@@ -492,22 +343,15 @@
   .data-value,.money-value { color: var(--text-strong); font-family: var(--font-data); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
 
   .record-card { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; padding: 0; }
-  .record-card .table-responsive { flex: 1 1 auto; min-height: 0; overflow: auto; }
   .record-heading { flex-shrink: 0; margin: 0; padding: var(--space-4); }
   .record-card :global(.table) { --bs-table-bg: transparent; }
   .record-card :global(.table > :not(caption) > * > *) { padding-inline: var(--space-4); }
   .record-card :global(.table thead th) { background: var(--surface-hover); }
   .record-card :global(.table tbody tr:last-child > *) { border-block-end: 0; }
   .record-card :global(.table tfoot td) { border-block-start: 2px solid var(--border-strong); color: var(--text-strong); font-weight: var(--weight-bold); background: var(--surface-hover); }
-  .record-card small { margin-inline-start: .3rem; color: var(--text-muted); font-family: var(--font-ui); font-size: var(--text-xs); font-weight: var(--weight-regular); }
-  .cell-sub { display: block; color: var(--text-muted); font-family: var(--font-ui); font-size: var(--text-xs); font-weight: var(--weight-regular); }
-  .record-empty { display: grid; flex: 1 1 auto; place-items: center; padding: var(--space-4); }
-  .record-footer { flex-shrink: 0; border-block-start: 1px solid var(--border); padding: var(--space-2) var(--space-4); }
   .statement-filters { display: flex; flex-shrink: 0; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap; padding: 0 var(--space-4) var(--space-4); }
   .filters-field { display: flex; flex-direction: column; gap: .3rem; min-width: 11rem; }
   .filters-field-label { color: var(--text-muted); font-size: .69rem; font-weight: var(--weight-bold); letter-spacing: .045em; text-transform: uppercase; }
-  .empty { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
-  .amount-cell { text-align: end; font-variant-numeric: tabular-nums; }
 
   @media (max-width: 1120px) {
     .identity-hero { grid-template-columns: auto 1fr; }
@@ -533,3 +377,4 @@
     .filters-field { min-width: 0; flex: 1 1 100%; }
   }
 </style>
+

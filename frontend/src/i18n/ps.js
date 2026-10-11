@@ -326,9 +326,11 @@ const translations = {
     sections: 'د حساب برخې',
     overview: 'عمومي کتنه',
     ledger: 'روز نامچه',
+    'financial-report': 'مالي راپور',
     statement: 'بیان',
     annual: 'کلنی لنډیز',
     documents: 'اړوند اسناد',
+    journals: 'اسناد',
     loading: 'حساب لوډېږي...',
     loadError: 'دا حساب لوډ نه شو.',
     details: 'د حساب جزئیات',
@@ -350,6 +352,8 @@ const translations = {
     closingBalance: 'پای بیلانس',
     exportCsv: 'CSV صادرول',
     noEntriesInPeriod: 'په دې موده کې هېڅ ثبت نشته.',
+    noJournals: 'لا هېڅ سند دا حساب نه دی نقل کړی.',
+    openInvoice: 'بل وګورئ',
     showingEntries: 'له {from} تر {to} د {total} ثبتونو ښودل',
     year: 'کال',
     totals: 'ټول',
@@ -586,4 +590,13 @@ Object.assign(translations.leases, {
 });
 
 translations.meterReport = meterReportCopy.ps;
+
+translations.reportExport = {
+  label: 'ډاونلوډ',
+  excel: 'اکسل (xlsx.)',
+  pdf: 'پی‌ډی‌اف (pdf.)',
+  preparing: 'چمتو کېږي…',
+  failed: 'دا راپور ډاونلوډ نه شو. بیا هڅه وکړئ.',
+};
+
 export default translations;

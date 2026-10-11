@@ -18,8 +18,11 @@
     let result;
     if (url.pathname === '/api/accounts/deposit-account' || url.pathname === '/api/accounts/cash-account') {
       result = { account: { id: params.id, name: 'Security Deposit Liability', systemKey: params.id === 'deposit-account' ? 'SECURITY_DEPOSIT_LIABILITY' : 'CASH', type: 'LIABILITY', isActive: true, balance: received, debit: 0, credit: received, baseCurrency: 'AFN' } };
-    } else if (url.pathname.endsWith('/summary')) result = { byYear: [], bySource: [] };
-    else if (url.pathname.endsWith('/ledger')) result = { items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } };
+    } else if (url.pathname === '/api/journals') result = { items: [], pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } };
+    else if (url.pathname === '/api/accounts') result = { items: [{ id: 'deposit-account', name: 'Security Deposit Liability' }, { id: 'cash-account', name: 'Cash' }] };
+    else if (url.pathname === '/api/tenant-accounts') result = { items: [] };
+    else if (url.pathname.endsWith('/summary')) result = { byYear: [], bySource: [], totals: { entries: 1 } };
+    else if (url.pathname.endsWith('/ledger')) result = { items: [{ id: 'line-1', baseDebit: 100, baseCredit: 0, balanceAfter: -100, journal: { transactionDate: '2026-10-01', journalNumber: 'JRN-000123', referenceType: 'MANUAL', description: 'Account movement' } }], pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 }, totals: { openingBalance: 0, debit: 100, credit: 0, closingBalance: -100 } };
     else if (url.pathname === '/api/security-deposits') result = { items: url.searchParams.get('search') === 'missing' ? [] : [{ lease, summary: summary() }], pagination: { page: Number(url.searchParams.get('page')), pageSize: 10, total: 11, totalPages: 2 } };
     else if (url.pathname === '/api/security-deposits/lease-1/transactions') { received += JSON.parse(options.body).amount; result = {}; }
     else if (url.pathname === '/api/security-deposits/lease-1') result = { lease, summary: summary(), transactions: [] };

@@ -67,6 +67,7 @@ try {
   }
   await evaluate("window.setTestLanguage('en')");
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await pause(150);
   await click('.row-actions-trigger');
   assert.equal(await evaluate("document.querySelectorAll('.row-menu-item').length"), 2);
   assert.equal(await evaluate("document.querySelector('a.row-menu-item').getAttribute('href')"), '#/tenants/tenant-1');
@@ -82,11 +83,30 @@ try {
   await waitFor("location.hash === '#/tenants/tenant-1'");
   await evaluate("location.hash = '#/accounts/deposit-account?tab=ledger'");
   await waitFor("Boolean(document.querySelector('#account-ledger')) && !document.querySelector('.identity-hero') && !document.querySelector('.index-page')");
-  for (const tab of ['ledger', 'statement', 'annual', 'documents']) {
+  for (const tab of ['financial-report', 'statement']) {
     await evaluate(`location.hash = '#/accounts/deposit-account?tab=${tab}'`);
-    await waitFor(`Boolean(document.querySelector('#account-${tab}'))`);
+    await waitFor(`Boolean(document.querySelector('#account-${tab === 'financial-report' ? 'ledger' : tab}'))`);
+    await waitFor("document.querySelector('tbody')?.textContent.includes('JRN-000123')");
+    assert.equal(await evaluate("document.querySelectorAll('thead th').length"), 6, 'Financial report and statement match the tenant table columns');
+    if (tab === 'statement') assert.equal(await evaluate("document.querySelectorAll('.statement-summary strong').length"), 4, 'Statement shows opening, debit, credit and closing totals');
     assert.ok(await evaluate("(() => { const page = document.querySelector('.app-page'); const card = document.querySelector('.record-card'); return Math.abs(card.getBoundingClientRect().bottom - (page.getBoundingClientRect().bottom - parseFloat(getComputedStyle(page).paddingBottom))) <= 2; })()"), `${tab} card fills the remaining page height`);
   }
+  for (const language of ['en', 'fa', 'ps']) {
+    await evaluate(`window.setTestLanguage(${JSON.stringify(language)})`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });
+    assert.ok(await evaluate('document.documentElement.scrollWidth <= 375'), 'Account statement fits mobile in each language');
+  }
+  await evaluate("window.setTestLanguage('en')");
+  await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await evaluate("location.hash = '#/accounts/deposit-account'");
+  await evaluate("location.hash = '#/accounts/deposit-account?tab=journals'");
+  await waitFor("Boolean(document.querySelector('#account-journals')) && window.requests.some(u => u.startsWith('/api/journals?') && u.includes('accountId=deposit-account'))");
+  assert.ok(await evaluate("window.requests.filter(u => u.startsWith('/api/journals?')).every(u => u.includes('accountId=deposit-account') && !u.includes('tenantId='))"), 'General account journals are scoped to the account');
+  await click('.record-heading button');
+  await waitFor("Boolean(document.querySelector('[role=dialog] select[aria-label]'))");
+  assert.equal(await evaluate("document.querySelector('[role=dialog] select[aria-label]').value"), 'account:deposit-account', 'New journal preselects the current general account');
+  await click('.btn-close');
+  await waitFor("!document.querySelector('[role=dialog]')");
   await evaluate("location.hash = '#/accounts/deposit-account'");
   await waitFor("document.querySelector('tbody')?.textContent.includes('LEASE-001')");
   await evaluate("location.hash = '#/accounts/cash-account'; window.showCashAccount()");

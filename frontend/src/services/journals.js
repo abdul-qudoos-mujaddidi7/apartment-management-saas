@@ -7,7 +7,7 @@ export const listJournals = (filters = {}) => {
     search: filters.search || '',
   });
 
-  ['status', 'referenceType', 'accountId', 'dateFrom', 'dateTo'].forEach((key) => {
+  ['status', 'referenceType', 'accountId', 'tenantId', 'dateFrom', 'dateTo'].forEach((key) => {
     if (filters[key]) query.set(key, filters[key]);
   });
 

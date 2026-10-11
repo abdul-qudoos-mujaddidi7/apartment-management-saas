@@ -369,8 +369,13 @@
      be scanned by its first column alone. */
   --table-cell-pad-block: 8px;
   --table-cell-pad-inline: 18px;
-  --table-font-size: 0.93rem;
-  --table-head-font-size: 0.79rem;
+  /* Type sizes come from the reference ERP's index tables: 0.78rem for the rows
+     and 0.72rem for the label strip. Its own root is scaled to 82%, so on a
+     16px baseline these read ~10.2px and ~9.5px there; here they land at
+     10.9px and 10.1px on the 14px root, which is the same density, one step
+     softer. */
+  --table-font-size: 0.78rem;
+  --table-head-font-size: 0.72rem;
   --table-head-height: 36px;
   --table-head-bg: #ffffff;
   /* One hairline colour for the head rule and the row rules: #f5f5f5, the
@@ -383,6 +388,11 @@
   --table-head-line: #f5f5f5;
   --table-row-line: #f5f5f5;
   --table-muted: var(--ink-500); /* #64748b — 4.8:1; #8a98ab was 2.9:1 */
+  /* Ink the reference draws its tables in: ordinary cells at #46536a (this is
+     --ink-600 exactly), the label strip at #66758a. `--table-muted` stays for
+     what is genuinely secondary — the sub-line under a value, the row kebab. */
+  --table-color: var(--ink-600);
+  --table-head-color: #66758a;
 
   /* --- Motion ----------------------------------------------------------- */
   --transition: 150ms ease;
@@ -537,6 +547,10 @@
   --table-head-line: #232c3b;
   --table-row-line: #1d2534;
   --table-muted: #97a3b7; /* 6.1:1 */
+  /* Dark keeps the ink it already had: the reference's light-theme inks are
+     unreadable on a dark surface, and these two clear 5:1 there. */
+  --table-color: var(--table-muted);
+  --table-head-color: var(--text-muted);
 
   /* --- Dialogs ----------------------------------------------------------- */
   --modal-backdrop: rgba(3, 7, 15, 0.72);

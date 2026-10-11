@@ -7,7 +7,7 @@
   import { replace } from 'svelte-spa-router';
   import { locale } from '../../i18n';
   import { moduleKeyForLocation } from '../../navigation';
-  import { accountTabs, accountTabFromSearch } from '../../utils/accountTabs';
+  import { accountTabFromSearch, accountTabsFor } from '../../utils/accountTabs';
 
   export let navigationOpen = false;
 
@@ -81,7 +81,10 @@
   // Sub-navigation for the buildings module
   $: isAccountsModule = moduleKey === 'accounts';
   $: isAccountProfile = /^\/(accounts|tenant-accounts)\/[^/]+$/.test(currentPath);
-  $: accountTab = accountTabFromSearch(currentSearch);
+  // The ledger account and the tenant account keep different tabs, so the strip
+  // is read from the route rather than from one shared list.
+  $: accountTabs = accountTabsFor(currentPath);
+  $: accountTab = accountTabFromSearch(currentSearch, accountTabs);
   // An account's own page belongs to the Accounts module too, so the bar keeps
   // naming it while the profile (with its own tabs) is open.
   $: accountsActive = currentPath === '/accounts' || currentPath.startsWith('/accounts/');
