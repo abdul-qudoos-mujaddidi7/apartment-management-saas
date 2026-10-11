@@ -25,6 +25,9 @@
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
 
   const utilities = ['ELECTRICITY', 'WATER', 'GAS'];
   const emptyForm = () => ({ meterId: '', readingDate: new Date().toISOString().slice(0, 10), currentReading: '', periodStart: '', leaseId: '', unitPrice: '', currency: $baseCurrency, readingKind: 'BILLING', resetBaseline: '', notes: '' });
@@ -261,6 +264,81 @@
   // The filters live in the toolbar's panel, so the button carries the count.
   $: activeFilterCount = [filters.buildingId, filters.utilityType, filters.dateFrom, filters.dateTo].filter(Boolean).length;
   function clearFilters() { filters = { ...filters, buildingId: '', utilityType: '', dateFrom: '', dateTo: '' }; loadReadings(1); }
+
+  /*
+   * The register as a file: every reading the current filters match. Amounts
+   * keep their own currencies with the code in the column beside them, so the
+   * PDF and the spreadsheet state the register exactly as the table draws it.
+   */
+  async function readingsReport() {
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listMeterReadings({
+        page,
+        pageSize: 100,
+        search: filters.search.trim(),
+        buildingId: filters.buildingId || undefined,
+        utilityType: filters.utilityType || undefined,
+        dateFrom: filters.dateFrom || undefined,
+        dateTo: filters.dateTo || undefined
+      });
+      items.push(...(response.items || []));
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((reading) => {
+      const apartment = reading.meter.apartment;
+      return [
+        reading.readingDate.slice(0, 10),
+        reading.meter.meterNumber,
+        utilityLabel(reading.meter.utilityType),
+        apartment.floor.building.name,
+        apartment.floor.name || apartment.floor.floorNumber,
+        `${apartment.apartmentNumber}${apartment.name ? ' — ' + apartment.name : ''}`,
+        reading.previousReading,
+        reading.currentReading,
+        reading.consumption,
+        reading.meter.unit,
+        reading.unitPrice,
+        reading.currency || $baseCurrency,
+        reading.amount,
+        billingLabel(reading.billingStatus)
+      ];
+    });
+    const building = buildings.find((entry) => entry.id === filters.buildingId);
+    const scope = [
+      building?.name,
+      filters.utilityType ? utilityLabel(filters.utilityType) : '',
+      filters.dateFrom || filters.dateTo ? `${filters.dateFrom || '…'} → ${filters.dateTo || '…'}` : '',
+      filters.search.trim()
+    ].filter(Boolean).join(' · ');
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.meterReadings.title,
+      subtitle: scope,
+      columns: [
+        { label: $locale.meterReadings.date, kind: 'date' },
+        { label: $locale.meterReadings.meterNumber },
+        { label: $locale.meterReadings.utilityType },
+        { label: $locale.meterReadings.building },
+        { label: $locale.meterReadings.floor },
+        { label: $locale.meterReadings.apartment },
+        { label: $locale.meterReadings.previousReading, kind: 'number', decimals: 3 },
+        { label: $locale.meterReadings.currentReading, kind: 'number', decimals: 3 },
+        { label: $locale.meterReadings.consumption, kind: 'number', decimals: 3 },
+        { label: $locale.meters.unit },
+        { label: $locale.meterReadings.unitPrice, kind: 'number', decimals: 4 },
+        { label: $locale.meterReport.currency },
+        { label: $locale.meterReadings.amount, kind: 'number', decimals: 2 },
+        { label: $locale.meterReadings.billingStatus }
+      ],
+      rows,
+      fileName: 'meter-readings',
+      sheetName: $locale.meterReadings.title
+    });
+  }
 </script>
 
 <DocumentPreview record={printReading} kind="reading" on:close={() => printReading = null} />
@@ -280,6 +358,9 @@
       filtersClearLabel={$locale.common.clearFilters}
       onClearFilters={clearFilters}
     >
+      <svelte:fragment slot="actions">
+        <ExportMenu report={readingsReport} disabled={loading || !readings.length} />
+      </svelte:fragment>
       <svelte:fragment slot="filters">
         <div class="filters-field">
           <label class="filters-field-label" for="reading-filter-building">{$locale.meterReadings.building}</label>

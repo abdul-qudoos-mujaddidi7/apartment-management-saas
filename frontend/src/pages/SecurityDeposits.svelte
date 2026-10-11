@@ -28,6 +28,9 @@
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { accountNameLabel } from '../utils/accountLabels';
   import { formatMoney } from '../utils/formatters';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
 
   const blankTransaction = () => ({
     type: 'RECEIVED', currency: '', amount: '',
@@ -173,6 +176,59 @@
 
   function toggleRow(id) { selectedIds = toggleSelected(selectedIds, id); }
   function toggleAllRows() { selectedIds = toggleAllSelected(selectedIds, rowIds); }
+
+  /*
+   * The register as a file: every deposit the current search matches. The
+   * summary figures are already reporting-currency amounts, so the totals row
+   * under them states the same money the page does.
+   */
+  async function depositsReport() {
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listSecurityDeposits({ page, pageSize: 100, search: search.trim() });
+      items.push(...(response.items || []));
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((row) => [
+      row.lease.tenant.firstName,
+      row.lease.apartment.floor.building.name,
+      row.lease.apartment.floor.name,
+      row.lease.apartment.apartmentNumber,
+      row.lease.contractNumber,
+      row.summary.requiredDeposit,
+      row.summary.received,
+      row.summary.deductions,
+      row.summary.refunded,
+      row.summary.balance,
+      statusLabel(row.summary.status)
+    ]);
+    const sum = (index) => rows.reduce((total, row) => total + (Number(row[index]) || 0), 0);
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.securityDeposits.title,
+      subtitle: search.trim(),
+      columns: [
+        { label: $locale.securityDeposits.tenant },
+        { label: $locale.securityDeposits.building },
+        { label: $locale.securityDeposits.floor },
+        { label: $locale.securityDeposits.apartment },
+        { label: $locale.securityDeposits.contractNumber },
+        { label: $locale.securityDeposits.required, kind: 'money' },
+        { label: $locale.securityDeposits.received, kind: 'money' },
+        { label: $locale.securityDeposits.deductions, kind: 'money' },
+        { label: $locale.securityDeposits.refunded, kind: 'money' },
+        { label: $locale.securityDeposits.balance, kind: 'money' },
+        { label: $locale.securityDeposits.status }
+      ],
+      rows,
+      totals: [$locale.accounts.totals, '', '', '', '', sum(5), sum(6), sum(7), sum(8), sum(9), ''],
+      fileName: 'security-deposits',
+      sheetName: $locale.securityDeposits.title
+    });
+  }
 </script>
 
 <svelte:head>
@@ -183,7 +239,11 @@
 
 <PageLayout ariaLabel={$locale.securityDeposits.title}>
   <svelte:fragment slot="toolbar">
-    <PageToolbar bind:search searchPlaceholder={$locale.securityDeposits.search} onSearch={() => loadDeposits(1)} showAdd={false} />
+    <PageToolbar bind:search searchPlaceholder={$locale.securityDeposits.search} onSearch={() => loadDeposits(1)} showAdd={false}>
+      <svelte:fragment slot="actions">
+        <ExportMenu report={depositsReport} disabled={loading || !rows.length} />
+      </svelte:fragment>
+    </PageToolbar>
   </svelte:fragment>
 
   <svelte:fragment slot="alerts">

@@ -9,6 +9,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
   import DocumentPreview from '../components/printing/DocumentPreview.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { locale } from '../i18n';
@@ -17,6 +18,9 @@
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney, formatShortDate } from '../utils/formatters';
+  import { activeCurrencies, baseCurrency, toBase } from '../stores/currency';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
 
   const tenantName = (payment) => payment.tenant?.firstName?.trim() || '—';
   let payments = [];
@@ -48,6 +52,67 @@
     try { const response = await listPayments({ page, pageSize: pagination.pageSize, ...filters }); payments = response.items || []; pagination = response.pagination; }
     catch (error) { await handleRequestError(error); }
     finally { loading = false; }
+  }
+
+  /*
+   * The register as a file: every payment the current filters match, each one
+   * restated in the reporting currency so one totals row can stand under them
+   * all. One description is handed to both writers, so the PDF and the
+   * spreadsheet can never state different figures.
+   */
+  async function paymentsReport() {
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listPayments({ page, pageSize: 100, ...filters });
+      items.push(...(response.items || []));
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((payment) => [
+      payment.paymentNumber,
+      payment.paymentDate.slice(0, 10),
+      tenantName(payment),
+      payment.lease?.apartment?.floor?.building?.name || '',
+      payment.lease?.apartment?.apartmentNumber || '',
+      payment.receiveAccount.name,
+      toBase(payment.amount, payment.currency, $activeCurrencies, $baseCurrency),
+      toBase(payment.allocatedAmount, payment.currency, $activeCurrencies, $baseCurrency),
+      toBase(payment.unallocatedAmount, payment.currency, $activeCurrencies, $baseCurrency),
+      paymentLabel(payment.status)
+    ]);
+    const sum = (index) => rows.reduce((total, row) => total + (Number(row[index]) || 0), 0);
+    const scope = [
+      filters.status ? paymentLabel(filters.status) : '',
+      filters.dateFrom || filters.dateTo ? `${filters.dateFrom || '…'} → ${filters.dateTo || '…'}` : ''
+    ].filter(Boolean).join(' · ');
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.payments.title,
+      subtitle: scope,
+      metrics: [
+        { label: $locale.payments.amount, value: formatMoney(sum(6), $baseCurrency) },
+        { label: $locale.payments.allocated, value: formatMoney(sum(7), $baseCurrency) },
+        { label: $locale.payments.unallocated, value: formatMoney(sum(8), $baseCurrency) }
+      ],
+      columns: [
+        { label: $locale.payments.paymentNumber },
+        { label: $locale.payments.paymentDate, kind: 'date' },
+        { label: $locale.payments.tenant },
+        { label: $locale.payments.building },
+        { label: $locale.payments.apartment },
+        { label: $locale.payments.receiveInto },
+        { label: $locale.payments.amount, kind: 'money' },
+        { label: $locale.payments.allocated, kind: 'money' },
+        { label: $locale.payments.unallocated, kind: 'money' },
+        { label: $locale.payments.status }
+      ],
+      rows,
+      totals: [$locale.accounts.totals, '', '', '', '', '', sum(6), sum(7), sum(8), ''],
+      fileName: 'payments',
+      sheetName: $locale.payments.title
+    });
   }
 
   async function openDetails(payment) { try { detailsPayment = (await getPayment(payment.id)).payment; detailsOpen = true; } catch (error) { await handleRequestError(error); } }
@@ -98,6 +163,9 @@
       filtersClearLabel={$locale.common.clearFilters}
       onClearFilters={clearFilters}
     >
+      <svelte:fragment slot="actions">
+        <ExportMenu report={paymentsReport} disabled={loading || !payments.length} />
+      </svelte:fragment>
       <svelte:fragment slot="filters">
         <div class="filters-field">
           <label class="filters-field-label" for="payment-filter-status">{$locale.payments.status}</label>

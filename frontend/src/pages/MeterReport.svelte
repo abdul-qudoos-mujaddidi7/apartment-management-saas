@@ -10,8 +10,10 @@
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import DocumentPreview from '../components/printing/DocumentPreview.svelte';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
   import { formatMoney, formatNumber, formatShortDate } from '../utils/formatters';
-  import { reportCsv } from '../utils/reportCsv';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
   import { debounce } from '../utils/debounce';
 
   export let params = {};
@@ -24,7 +26,6 @@
   let meter = null;
   let report = null;
   let loading = true;
-  let exporting = false;
   let error = '';
   let printReading = null;
   let expandedReading = null;
@@ -72,30 +73,88 @@
   const statusKey = { UNBILLED: 'unbilledStatus', BILLED: 'billedStatus', PARTIALLY_PAID: 'partialStatus', PAID: 'paidStatus', BASELINE: 'baseline' };
   const statusTone = { UNBILLED: 'neutral', BILLED: 'warning', PARTIALLY_PAID: 'warning', PAID: 'success', BASELINE: 'neutral' };
   const reportUrl = id => `/meters/${encodeURIComponent(id)}/report`;
-  async function exportCsv() {
-    if (exporting || loading) return;
-    exporting = true; error = '';
+  /**
+   * The report both writers read — every reading the current filters match,
+   * with the per-currency summary the page itself states. Amounts keep their
+   * own currencies, so the currency column beside them stays honest and the
+   * metrics still add up to the rows.
+   */
+  async function exportReport() {
     const captured = requestFilters();
-    try {
-      const result = await getMeterReport({ ...captured, export: true });
-      const headers = [$locale.meters.meterNumber, $locale.meters.utilityType, $locale.meters.building, $locale.meters.floor,
-        $locale.meters.apartment, copy.tenant, $locale.leases.contractNumber, copy.from, copy.to, copy.kind,
-        $locale.meterReadings.previousReading, $locale.meterReadings.currentReading, copy.consumption, $locale.meters.unit,
-        $locale.meterReadings.unitPrice, copy.currency, copy.charge, copy.paid, copy.balance, $locale.meters.status, copy.invoice, copy.resetBaseline, copy.notes];
-      const rows = result.items.map(row => {
-        const apartment = row.meter.apartment;
-        return [row.meter.meterNumber, $locale.meters[row.meter.utilityType.toLowerCase()], apartment.floor.building.name,
-          apartment.floor.name || apartment.floor.floorNumber, apartment.apartmentNumber, row.lease?.tenant?.firstName,
-          row.lease?.contractNumber, row.periodStart?.slice(0, 10), row.readingDate.slice(0, 10), copy[kindKey[row.readingKind]],
-          row.previousReading, row.currentReading, row.consumption, row.meter.unit, row.unitPrice, row.currency,
-          row.amount, row.paidAmount, row.outstanding, copy[statusKey[row.billingStatus]],
-          row.billingStatus !== 'UNBILLED' && row.billingStatus !== 'BASELINE' ? row.invoiceItem?.invoice?.invoiceNumber : '', row.resetBaseline, row.notes];
-      });
-      const url = URL.createObjectURL(new Blob([reportCsv(headers, rows)], { type: 'text/csv;charset=utf-8' }));
-      const anchor = document.createElement('a'); anchor.href = url; anchor.download = `meter-report-${captured.meterId || captured.utilityType}.csv`;
-      document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { error = e.message; }
-    finally { exporting = false; }
+    const result = await getMeterReport({ ...captured, export: true });
+    const rows = result.items.map((row) => {
+      const apartment = row.meter.apartment;
+      return [
+        row.meter.meterNumber,
+        $locale.meters[row.meter.utilityType.toLowerCase()],
+        apartment.floor.building.name,
+        apartment.floor.name || apartment.floor.floorNumber,
+        apartment.apartmentNumber,
+        row.lease?.tenant?.firstName || '',
+        row.lease?.contractNumber || '',
+        row.periodStart?.slice(0, 10),
+        row.readingDate.slice(0, 10),
+        copy[kindKey[row.readingKind]] || row.readingKind,
+        row.previousReading,
+        row.currentReading,
+        row.consumption,
+        row.meter.unit,
+        row.unitPrice,
+        row.currency,
+        row.amount,
+        row.paidAmount,
+        row.outstanding,
+        copy[statusKey[row.billingStatus]] || row.billingStatus,
+        row.billingStatus !== 'UNBILLED' && row.billingStatus !== 'BASELINE' ? row.invoiceItem?.invoice?.invoiceNumber : '',
+        row.resetBaseline,
+        row.notes
+      ];
+    });
+
+    return createReport({
+      ...reportIdentity(),
+      title: meter ? `${copy.detail} · ${meter.meterNumber}` : copy.title,
+      subtitle: meter
+        ? `${meter.apartment.floor.building.name} · ${meter.apartment.floor.name || meter.apartment.floor.floorNumber} · ${meter.apartment.apartmentNumber}`
+        : [captured.dateFrom, captured.dateTo].filter(Boolean).join(' → '),
+      metrics: [
+        ...(report?.summary?.consumption || []).map((total) => ({ label: `${copy.consumption} · ${total.unit}`, value: formatNumber(total.consumption, 3) })),
+        ...(report?.summary?.currencies || []).flatMap((total) => [
+          { label: `${copy.charge} · ${total.currency}`, value: formatNumber(total.charge, 2) },
+          { label: `${copy.paid} · ${total.currency}`, value: formatNumber(total.paid, 2) },
+          { label: `${copy.balance} · ${total.currency}`, value: formatNumber(total.outstanding, 2) },
+          { label: `${copy.unbilled} · ${total.currency}`, value: formatNumber(total.unbilled, 2) }
+        ])
+      ],
+      columns: [
+        { label: $locale.meters.meterNumber },
+        { label: $locale.meters.utilityType },
+        { label: $locale.meters.building },
+        { label: $locale.meters.floor },
+        { label: $locale.meters.apartment },
+        { label: copy.tenant },
+        { label: $locale.leases.contractNumber },
+        { label: copy.from, kind: 'date' },
+        { label: copy.to, kind: 'date' },
+        { label: copy.kind },
+        { label: $locale.meterReadings.previousReading, kind: 'number', decimals: 3 },
+        { label: $locale.meterReadings.currentReading, kind: 'number', decimals: 3 },
+        { label: copy.consumption, kind: 'number', decimals: 3 },
+        { label: $locale.meters.unit },
+        { label: $locale.meterReadings.unitPrice, kind: 'number', decimals: 4 },
+        { label: copy.currency },
+        { label: copy.charge, kind: 'number', decimals: 2 },
+        { label: copy.paid, kind: 'number', decimals: 2 },
+        { label: copy.balance, kind: 'number', decimals: 2 },
+        { label: $locale.meters.status },
+        { label: copy.invoice },
+        { label: copy.resetBaseline },
+        { label: copy.notes }
+      ],
+      rows,
+      fileName: meter ? `meter-report-${meter.meterNumber}` : `meter-report-${utilityType.toLowerCase()}`,
+      sheetName: copy.detail
+    });
   }
 </script>
 
@@ -110,7 +169,7 @@
       </div>
       <div class="header-actions">
         <a class="report-button back-button" href="#/meters"><i class="bi bi-arrow-return-left" aria-hidden="true"></i><span>{copy.back}</span></a>
-        <button class="report-button export-button" type="button" disabled={exporting || loading || !report?.pagination.total} on:click={exportCsv}><i class="bi bi-download" aria-hidden="true"></i><span>{exporting ? copy.exporting : copy.export}</span></button>
+        <ExportMenu report={exportReport} disabled={loading || !report?.pagination.total} />
       </div>
     </div>
     {#if meter}

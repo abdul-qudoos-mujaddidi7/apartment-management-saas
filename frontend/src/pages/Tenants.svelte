@@ -12,6 +12,7 @@
   import Modal from '../components/ui/Modal.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
   import ImageUpload from '../components/ui/ImageUpload.svelte';
 
   import {
@@ -26,6 +27,8 @@
   import { sortRows } from '../utils/sortRows';
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
 
   let tenants = [];
   let sort = { key: null, dir: 'asc' };
@@ -286,6 +289,52 @@
     return status === 'ACTIVE' ? $locale.tenants.active : $locale.tenants.inactive;
   }
 
+  /*
+   * Every tenant the current tab and search match, as one file. There is no
+   * money to restate here — names, numbers and a status — so both writers read
+   * the rows exactly as the table draws them.
+   */
+  async function tenantsReport() {
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listTenants({
+        page,
+        pageSize: 100,
+        search: search.trim(),
+        status: statusFilter === 'all' ? undefined : statusFilter
+      });
+      items.push(...response.items);
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((tenant) => [
+      tenant.firstName,
+      tenant.phone,
+      tenant.nationalId || '',
+      statusLabel(tenant.status)
+    ]);
+    const scope = [
+      statusFilter !== 'all' ? statusLabel(statusFilter) : '',
+      search.trim()
+    ].filter(Boolean).join(' · ');
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.tenants.title,
+      subtitle: scope,
+      columns: [
+        { label: $locale.tenants.fullName },
+        { label: $locale.tenants.phone },
+        { label: $locale.tenants.nationalId },
+        { label: $locale.tenants.status }
+      ],
+      rows,
+      fileName: 'tenants',
+      sheetName: $locale.tenants.title
+    });
+  }
+
   $: resultSummary = `${$locale.tenants.totalTenants}: ${pagination.total}`;
   // Leading checkbox column — ids of the rows currently rendered.
   let selectedIds = createSelection();
@@ -315,6 +364,10 @@
     >
       <svelte:fragment slot="tabs">
         <TabFilters label={$locale.tenants.status} tabs={statusTabs} active={statusFilter} on:select={handleTabChange} />
+      </svelte:fragment>
+
+      <svelte:fragment slot="actions">
+        <ExportMenu report={tenantsReport} disabled={loading || !tenants.length} />
       </svelte:fragment>
     </PageToolbar>
   </svelte:fragment>

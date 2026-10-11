@@ -9,6 +9,7 @@
   import Pagination from '../components/ui/Pagination.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import JournalDetailsModal from '../components/journals/JournalDetailsModal.svelte';
   import JournalEntryModal from '../components/journals/JournalEntryModal.svelte';
@@ -19,6 +20,9 @@
   import { debounce } from '../utils/debounce';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { accountNameLabel } from '../utils/accountLabels';
+  import { activeCurrencies, baseCurrency, toBase } from '../stores/currency';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
 
   /* Manual entries carry every line themselves; document postings are owned by
      the invoice or payment that generated them, so they are read-only here. */
@@ -63,6 +67,62 @@
       pagination = response.pagination;
     } catch (error) { await handleRequestError(error); }
     finally { loading = false; }
+  }
+
+  /*
+   * The register as a file: every posting the current filters match, with the
+   * two money columns restated in the reporting currency so the closing band
+   * is one honest pair of totals. Both writers read this one description.
+   */
+  async function journalsReport() {
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listJournals({ page, pageSize: 100, ...filters });
+      items.push(...(response.items || []));
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((entry) => [
+      entry.journalNumber,
+      entry.transactionDate.slice(0, 10),
+      sourceLabel(entry),
+      entry.description || '',
+      toBase(entry.debitTotal, entry.currency, $activeCurrencies, $baseCurrency),
+      toBase(entry.creditTotal, entry.currency, $activeCurrencies, $baseCurrency),
+      statusLabel(entry.status)
+    ]);
+    const sum = (index) => rows.reduce((total, row) => total + (Number(row[index]) || 0), 0);
+    const account = accounts.find((entry) => entry.id === filters.accountId);
+    const scope = [
+      filters.status ? statusLabel(filters.status) : '',
+      filters.referenceType ? sourceLabel({ referenceType: filters.referenceType }) : '',
+      account ? accountNameLabel(account, $locale) : '',
+      filters.dateFrom || filters.dateTo ? `${filters.dateFrom || '…'} → ${filters.dateTo || '…'}` : ''
+    ].filter(Boolean).join(' · ');
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.journals.title,
+      subtitle: scope,
+      metrics: [
+        { label: $locale.journals.debit, value: formatMoney(sum(4), $baseCurrency) },
+        { label: $locale.journals.credit, value: formatMoney(sum(5), $baseCurrency) }
+      ],
+      columns: [
+        { label: $locale.journals.journalNumber },
+        { label: $locale.journals.date, kind: 'date' },
+        { label: $locale.journals.source },
+        { label: $locale.journals.description },
+        { label: $locale.journals.debit, kind: 'money' },
+        { label: $locale.journals.credit, kind: 'money' },
+        { label: $locale.journals.status }
+      ],
+      rows,
+      totals: [$locale.accounts.totals, '', '', '', sum(4), sum(5), ''],
+      fileName: 'journals',
+      sheetName: $locale.journals.title
+    });
   }
 
   function openDetails(entry) { detailsEntry = entry; detailsOpen = true; }
@@ -118,6 +178,9 @@
       filtersClearLabel={$locale.common.clearFilters}
       onClearFilters={clearFilters}
     >
+      <svelte:fragment slot="actions">
+        <ExportMenu report={journalsReport} disabled={loading || !entries.length} />
+      </svelte:fragment>
       <svelte:fragment slot="filters">
         <div class="filters-field">
           <label class="filters-field-label" for="journal-filter-status">{$locale.journals.status}</label>

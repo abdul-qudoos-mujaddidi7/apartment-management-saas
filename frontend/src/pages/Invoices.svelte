@@ -18,6 +18,7 @@
   import { invoiceItemDocument } from '../utils/invoiceItemDocument';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import ReceivePaymentModal from '../components/payments/ReceivePaymentModal.svelte';
   import { locale, translate } from '../i18n';
@@ -27,6 +28,8 @@
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney, formatShortDate } from '../utils/formatters';
   import { sortRows } from '../utils/sortRows';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
 
   const ITEM_TYPES = ['RENT', 'ELECTRICITY', 'WATER', 'GAS', 'SERVICE_FEE', 'OTHER'];
   const UTILITY_TYPES = ['ELECTRICITY', 'WATER', 'GAS'];
@@ -134,6 +137,73 @@
     try { const response = await listInvoices({ page, pageSize: pagination.pageSize, ...filters }); invoices = response.items; pagination = response.pagination; }
     catch (error) { await handleRequestError(error); }
     finally { loading = false; }
+  }
+
+  /*
+   * The register as a file: every invoice the current filters match, each bill
+   * restated in the reporting currency so one totals row can stand under them
+   * all. The page hands this one description to both writers, so the PDF and
+   * the spreadsheet state the same figures in the same columns.
+   */
+  async function invoicesReport() {
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listInvoices({ page, pageSize: 100, ...filters });
+      items.push(...response.items);
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((invoice) => [
+      invoice.invoiceNumber,
+      invoice.invoiceDate.slice(0, 10),
+      invoice.dueDate ? invoice.dueDate.slice(0, 10) : '',
+      invoiceTypes(invoice),
+      tenantName(invoice.lease),
+      invoice.lease.apartment.floor.building.name,
+      `${invoice.lease.apartment.apartmentNumber}${invoice.lease.apartment.name ? ' — ' + invoice.lease.apartment.name : ''}`,
+      invoice.lease.contractNumber,
+      toBase(invoice.total, invoice.currency, $activeCurrencies, $baseCurrency),
+      toBase(invoice.paidAmount, invoice.currency, $activeCurrencies, $baseCurrency),
+      toBase(invoice.total - invoice.paidAmount, invoice.currency, $activeCurrencies, $baseCurrency),
+      statusLabel(invoice.status)
+    ]);
+    const sum = (index) => rows.reduce((total, row) => total + (Number(row[index]) || 0), 0);
+    const scope = [
+      filters.status ? statusLabel(filters.status) : '',
+      filters.itemType ? itemTypeLabel(filters.itemType) : '',
+      filters.buildingId ? buildings.find((building) => building.id === filters.buildingId)?.name : '',
+      filters.dateFrom || filters.dateTo ? `${filters.dateFrom || '…'} → ${filters.dateTo || '…'}` : ''
+    ].filter(Boolean).join(' · ');
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.invoices.title,
+      subtitle: scope,
+      metrics: [
+        { label: $locale.invoices.total, value: formatMoney(sum(8), $baseCurrency) },
+        { label: $locale.invoices.paid, value: formatMoney(sum(9), $baseCurrency) },
+        { label: $locale.invoices.balance, value: formatMoney(sum(10), $baseCurrency) }
+      ],
+      columns: [
+        { label: $locale.invoices.invoiceNumber },
+        { label: $locale.invoices.invoiceDate, kind: 'date' },
+        { label: $locale.invoices.dueDate, kind: 'date' },
+        { label: $locale.invoices.type },
+        { label: $locale.invoices.tenant },
+        { label: $locale.invoices.building },
+        { label: $locale.invoices.apartment },
+        { label: $locale.invoices.contractNumber },
+        { label: $locale.invoices.total, kind: 'money' },
+        { label: $locale.invoices.paid, kind: 'money' },
+        { label: $locale.invoices.balance, kind: 'money' },
+        { label: $locale.invoices.status }
+      ],
+      rows,
+      totals: [$locale.accounts.totals, '', '', '', '', '', '', '', sum(8), sum(9), sum(10), ''],
+      fileName: 'invoices',
+      sheetName: $locale.invoices.title
+    });
   }
 
   function handleStatusChange(event) { filters = { ...filters, status: event.detail }; loadInvoices(1); }
@@ -456,6 +526,10 @@
     >
       <svelte:fragment slot="tabs">
         <TabFilters label={$locale.invoices.status} tabs={statusTabs} active={filters.status} on:select={handleStatusChange} />
+      </svelte:fragment>
+
+      <svelte:fragment slot="actions">
+        <ExportMenu report={invoicesReport} disabled={loading || !invoices.length} />
       </svelte:fragment>
 
       <svelte:fragment slot="filters">

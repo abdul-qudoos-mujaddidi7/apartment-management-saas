@@ -10,6 +10,7 @@
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
   import { sortRows } from '../utils/sortRows';
@@ -33,11 +34,13 @@
   import { listFloors } from '../services/floors';
   import { createApartment, listApartments } from '../services/apartments';
   import { listLeases, createLease, updateLease, deleteLease } from '../services/leases';
-  import { activeCurrencies, baseCurrency, loadCurrencies } from '../stores/currency';
+  import { activeCurrencies, baseCurrency, loadCurrencies, toBase } from '../stores/currency';
   import { locale } from '../i18n';
   import { notifySuccess } from '../stores/toasts';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
 
   // The intervals a lease may bill on, the same six the API accepts.
   const RENT_CYCLES = [1, 2, 3, 4, 6, 12];
@@ -407,6 +410,65 @@
     return $locale.leases.types[leaseType] || leaseType;
   }
 
+  /*
+   * Every lease the current filters match, as one file. Rent is restated in
+   * the reporting currency so one totals row can stand under leases agreed in
+   * different currencies; both writers read this one description.
+   */
+  async function leasesReport() {
+    const activeFilters = Object.fromEntries(Object.entries(filters).filter(([, value]) => value));
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listLeases({ page, pageSize: 100, search: search.trim(), ...activeFilters });
+      items.push(...(response.items || []));
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((lease) => [
+      lease.contractNumber,
+      leaseTypeLabel(lease.leaseType || 'RENT'),
+      lease.tenant.firstName,
+      lease.apartment.floor.building.name,
+      lease.apartment.floor.name,
+      lease.apartment.apartmentNumber,
+      `${lease.startDate ? lease.startDate.slice(0, 10) : ''} – ${lease.endDate ? lease.endDate.slice(0, 10) : ''}`,
+      toBase(lease.monthlyRent, lease.currency, $activeCurrencies, $baseCurrency),
+      statusLabel(lease.status)
+    ]);
+    const totalRent = rows.reduce((total, row) => total + (Number(row[7]) || 0), 0);
+    const building = buildings.find((entry) => entry.id === filters.buildingId);
+    const tenant = tenants.find((entry) => entry.id === filters.tenantId);
+    const scope = [
+      filters.status ? statusLabel(filters.status) : '',
+      building?.name,
+      tenant?.firstName,
+      search.trim()
+    ].filter(Boolean).join(' · ');
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.leases.title,
+      subtitle: scope,
+      metrics: [{ label: $locale.leases.monthlyRent, value: formatMoney(totalRent, $baseCurrency) }],
+      columns: [
+        { label: $locale.leases.contractNumber },
+        { label: $locale.leases.leaseType },
+        { label: $locale.leases.tenant },
+        { label: $locale.leases.building },
+        { label: $locale.leases.floor },
+        { label: $locale.leases.apartment },
+        { label: $locale.leases.period },
+        { label: $locale.leases.monthlyRent, kind: 'money' },
+        { label: $locale.leases.status }
+      ],
+      rows,
+      totals: [$locale.accounts.totals, '', '', '', '', '', '', totalRent, ''],
+      fileName: 'leases',
+      sheetName: $locale.leases.title
+    });
+  }
+
   $: resultSummary = `${$locale.leases.title}: ${pagination.total}`;
   // Leading checkbox column — ids of the rows currently rendered.
   let selectedIds = createSelection();
@@ -435,6 +497,9 @@
       filtersClearLabel={$locale.common.clearFilters}
       onClearFilters={clearFilters}
     >
+      <svelte:fragment slot="actions">
+        <ExportMenu report={leasesReport} disabled={loading || !leases.length} />
+      </svelte:fragment>
       <svelte:fragment slot="filters">
         <div class="filters-field">
           <label class="filters-field-label" for="lease-filter-status">{$locale.leases.status}</label>

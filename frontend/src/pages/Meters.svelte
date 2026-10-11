@@ -19,6 +19,7 @@
   import BuildingSelect from '../components/buildings/BuildingSelect.svelte';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import RowActions from '../components/ui/RowActions.svelte';
+  import ExportMenu from '../components/ui/ExportMenu.svelte';
   import ActionButton from '../components/ui/ActionButton.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
@@ -27,6 +28,8 @@
   import { sortRows } from '../utils/sortRows';
   import { createSelection, isAllSelected, isSomeSelected, toggleAllSelected, toggleSelected } from '../utils/selection';
   import { formatMoney } from '../utils/formatters';
+  import { createReport } from '../utils/report/model.js';
+  import { reportIdentity } from '../utils/report/identity.js';
 
   const UTILITIES = [{ value: 'ELECTRICITY', icon: 'bi-lightning-charge' }, { value: 'WATER', icon: 'bi-droplet' }, { value: 'GAS', icon: 'bi-fire' }];
   const STATUSES = ['ACTIVE', 'INACTIVE', 'REPLACED'];
@@ -270,6 +273,71 @@
   // The filters live in the toolbar's panel, so the button carries the count.
   $: activeFilterCount = [filters.buildingId, filters.utilityType, filters.status].filter(Boolean).length;
   function clearFilters() { filters = { ...filters, buildingId: '', utilityType: '', status: '' }; loadMeters(1); }
+
+  /*
+   * Every meter the current filters match, as one file. Prices and readings
+   * stay numbers with their unit column beside them, so both writers read the
+   * register exactly as the table draws it.
+   */
+  async function metersReport() {
+    const items = []; let page = 1, pages = 1;
+    do {
+      const response = await listMeters({
+        page,
+        pageSize: 100,
+        search: filters.search.trim(),
+        buildingId: filters.buildingId || undefined,
+        utilityType: filters.utilityType || undefined,
+        status: filters.status || undefined
+      });
+      items.push(...(response.items || []));
+      pages = response.pagination?.totalPages || 1;
+      page++;
+    } while (page <= pages);
+
+    const rows = sortRows(items, sort.key, sort.dir).map((meter) => [
+      meter.meterNumber,
+      utilityLabel(meter.utilityType),
+      $locale.meters.meterTypes[meter.meterType] || meter.meterType,
+      meter.apartment.floor.building.name,
+      meter.apartment.floor.name || meter.apartment.floor.floorNumber,
+      `${meter.apartment.apartmentNumber}${meter.apartment.name ? ' — ' + meter.apartment.name : ''}`,
+      meter.unit,
+      Number(meter.defaultUnitPrice) || 0,
+      meter.initialReading === null ? '' : meter.initialReading,
+      meter.installationDate ? meter.installationDate.slice(0, 10) : '',
+      statusLabel(meter.status)
+    ]);
+    const building = buildings.find((entry) => entry.id === filters.buildingId);
+    const scope = [
+      building?.name,
+      filters.utilityType ? utilityLabel(filters.utilityType) : '',
+      filters.status ? statusLabel(filters.status) : '',
+      filters.search.trim()
+    ].filter(Boolean).join(' · ');
+
+    return createReport({
+      ...reportIdentity(),
+      title: $locale.meters.title,
+      subtitle: scope,
+      columns: [
+        { label: $locale.meters.meterNumber },
+        { label: $locale.meters.utilityType },
+        { label: $locale.meters.meterType },
+        { label: $locale.meters.building },
+        { label: $locale.meters.floor },
+        { label: $locale.meters.apartment },
+        { label: $locale.meters.unit },
+        { label: $locale.meters.defaultUnitPrice, kind: 'number', decimals: 4 },
+        { label: $locale.meters.initialReading, kind: 'number', decimals: 3 },
+        { label: $locale.meters.installationDate, kind: 'date' },
+        { label: $locale.meters.status }
+      ],
+      rows,
+      fileName: 'meters',
+      sheetName: $locale.meters.title
+    });
+  }
 </script>
 
 <svelte:head><title>{$locale.meters.title} | {$locale.common.apartmentPro}</title></svelte:head>
@@ -288,6 +356,7 @@
       onClearFilters={clearFilters}
     >
       <svelte:fragment slot="actions">
+        <ExportMenu report={metersReport} disabled={loading || !meters.length} />
         {#if $user?.permissions?.includes('UTILITY_MANAGE')}
           <ActionButton icon="bi-speedometer" label={$locale.meterReadings.add} on:click={() => push('/meter-readings?add=1')} />
         {/if}
