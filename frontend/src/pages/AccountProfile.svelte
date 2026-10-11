@@ -13,6 +13,7 @@
    * the Accounts list.
    */
   import { onMount } from 'svelte';
+  import SecurityDeposits from './SecurityDeposits.svelte';
   import { accountTabFromSearch } from '../utils/accountTabs';
   import StatusBadge from '../components/ui/StatusBadge.svelte';
   import Pagination from '../components/ui/Pagination.svelte';
@@ -243,6 +244,10 @@
         {/each}
       </section>
 
+      {#if account.systemKey === 'SECURITY_DEPOSIT_LIABILITY'}
+        <SecurityDeposits embedded on:change={load} />
+      {/if}
+
     {/if}
 
     {#if tab === 'ledger'}
@@ -454,7 +459,8 @@
 </div>
 
 <style>
-  .account-profile-page { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; gap: var(--space-4); padding-block-end: var(--space-4); }
+  .account-profile-page { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; gap: var(--space-4); }
+  .identity-hero, .account-strip { flex-shrink: 0; }
 
   .page-loader { display: grid; place-items: center; align-content: center; gap: var(--space-3); min-height: 24rem; color: var(--text-muted); font-size: var(--text-sm); }
 
@@ -485,8 +491,9 @@
   .section-icon { display: grid; flex: 0 0 auto; place-items: center; width: 2rem; height: 2rem; border-radius: .6rem; color: var(--accent-text); background: var(--accent-soft); font-size: .9rem; }
   .data-value,.money-value { color: var(--text-strong); font-family: var(--font-data); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
 
-  .record-card { overflow: hidden; padding: 0; }
-  .record-heading { margin: 0; padding: var(--space-4); }
+  .record-card { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; padding: 0; }
+  .record-card .table-responsive { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .record-heading { flex-shrink: 0; margin: 0; padding: var(--space-4); }
   .record-card :global(.table) { --bs-table-bg: transparent; }
   .record-card :global(.table > :not(caption) > * > *) { padding-inline: var(--space-4); }
   .record-card :global(.table thead th) { background: var(--surface-hover); }
@@ -494,9 +501,9 @@
   .record-card :global(.table tfoot td) { border-block-start: 2px solid var(--border-strong); color: var(--text-strong); font-weight: var(--weight-bold); background: var(--surface-hover); }
   .record-card small { margin-inline-start: .3rem; color: var(--text-muted); font-family: var(--font-ui); font-size: var(--text-xs); font-weight: var(--weight-regular); }
   .cell-sub { display: block; color: var(--text-muted); font-family: var(--font-ui); font-size: var(--text-xs); font-weight: var(--weight-regular); }
-  .record-empty { padding: 0 var(--space-4) var(--space-4); }
-  .record-footer { border-block-start: 1px solid var(--border); padding: var(--space-2) var(--space-4); }
-  .statement-filters { display: flex; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap; padding: 0 var(--space-4) var(--space-4); }
+  .record-empty { display: grid; flex: 1 1 auto; place-items: center; padding: var(--space-4); }
+  .record-footer { flex-shrink: 0; border-block-start: 1px solid var(--border); padding: var(--space-2) var(--space-4); }
+  .statement-filters { display: flex; flex-shrink: 0; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap; padding: 0 var(--space-4) var(--space-4); }
   .filters-field { display: flex; flex-direction: column; gap: .3rem; min-width: 11rem; }
   .filters-field-label { color: var(--text-muted); font-size: .69rem; font-weight: var(--weight-bold); letter-spacing: .045em; text-transform: uppercase; }
   .empty { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }

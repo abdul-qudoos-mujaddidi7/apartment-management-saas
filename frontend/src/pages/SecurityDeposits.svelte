@@ -9,7 +9,10 @@
   import RowActions from '../components/ui/RowActions.svelte';
   import ShamsiDatePicker from '../components/ui/ShamsiDatePicker.svelte';
   import { formatShortDate } from '../utils/formatters';
-  import { onMount } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+
+  export let embedded = false;
+  const dispatch = createEventDispatcher();
 
   import {
     createSecurityDepositTransaction,
@@ -126,6 +129,7 @@
       notifySuccess($locale.securityDeposits.transactionSaved);
       await openDetails(detail.lease.id);
       await loadDeposits();
+      dispatch('change');
     } catch (error) { transactionError = error.message; }
     finally { savingTransaction = false; }
   }
@@ -140,6 +144,7 @@
       notifySuccess($locale.securityDeposits.transactionVoided);
       await openDetails(detail.lease.id);
       await loadDeposits();
+      dispatch('change');
     } catch (error) { transactionError = error.message; }
     finally { voidingId = ''; }
   }
@@ -171,10 +176,12 @@
 </script>
 
 <svelte:head>
-  <title>{$locale.securityDeposits.title} | {$locale.common.apartmentPro}</title>
+  {#if !embedded}
+    <title>{$locale.securityDeposits.title} | {$locale.common.apartmentPro}</title>
+  {/if}
 </svelte:head>
 
-<PageLayout>
+<PageLayout ariaLabel={$locale.securityDeposits.title}>
   <svelte:fragment slot="toolbar">
     <PageToolbar bind:search searchPlaceholder={$locale.securityDeposits.search} onSearch={() => loadDeposits(1)} showAdd={false} />
   </svelte:fragment>
@@ -184,7 +191,21 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    <DataTable {loading} isEmpty={rows.length === 0} loadingLabel={$locale.securityDeposits.loading} emptyLabel={$locale.securityDeposits.empty} emptyIcon="bi-shield-check" minTableWidth="82rem" showFooter={!loading && rows.length > 0}>
+    <DataTable
+      {loading}
+      isEmpty={rows.length === 0}
+      loadingLabel={$locale.securityDeposits.loading}
+      emptyLabel={$locale.securityDeposits.empty}
+      emptyIcon="bi-shield-check"
+      ariaLabel={$locale.securityDeposits.title}
+      className="deposit-table"
+      minTableWidth="82rem"
+      layout="auto"
+      clipCells={false}
+      sortKey={sort.key}
+      sortDir={sort.dir}
+      on:sort={(event) => (sort = event.detail)}
+    >
       <thead>
         <tr>
           <th class="select-column"><Checkbox checked={allRowsSelected} indeterminate={someRowsSelected} label={$locale.common.selectAll} on:change={toggleAllRows} /></th>
@@ -193,10 +214,10 @@
           <th data-sort="lease.apartment.floor.name">{$locale.securityDeposits.floor}</th>
           <th data-sort="lease.apartment.apartmentNumber">{$locale.securityDeposits.apartment}</th>
           <th data-sort="lease.contractNumber">{$locale.securityDeposits.contractNumber}</th>
-          <th class="money-cell" data-sort="summary.requiredDeposit">{$locale.securityDeposits.required}</th>
-          <th class="money-cell" data-sort="summary.received">{$locale.securityDeposits.received}</th>
-          <th class="money-cell" data-sort="summary.deductions">{$locale.securityDeposits.deductions}</th>
-          <th class="money-cell" data-sort="summary.refunded">{$locale.securityDeposits.refunded}</th>
+          <th class="amount-cell" data-sort="summary.requiredDeposit">{$locale.securityDeposits.required}</th>
+          <th class="amount-cell" data-sort="summary.received">{$locale.securityDeposits.received}</th>
+          <th class="amount-cell" data-sort="summary.deductions">{$locale.securityDeposits.deductions}</th>
+          <th class="amount-cell" data-sort="summary.refunded">{$locale.securityDeposits.refunded}</th>
           <th class="amount-cell" data-sort="summary.balance">{$locale.securityDeposits.balance}</th>
           <th data-sort="summary.status">{$locale.securityDeposits.status}</th>
           <th class="actions-heading"><span class="visually-hidden">{$locale.securityDeposits.details}</span></th>
@@ -211,10 +232,10 @@
             <td>{row.lease.apartment.floor.name}</td>
             <td class="data-cell">{row.lease.apartment.apartmentNumber}</td>
             <td class="contract-number">{row.lease.contractNumber}</td>
-            <td class="money-cell">{formatMoney(row.summary.requiredDeposit)}</td>
-            <td class="money-cell">{formatMoney(row.summary.received)}</td>
-            <td class="money-cell">{formatMoney(row.summary.deductions)}</td>
-            <td class="money-cell">{formatMoney(row.summary.refunded)}</td>
+            <td class="amount-cell">{formatMoney(row.summary.requiredDeposit)}</td>
+            <td class="amount-cell">{formatMoney(row.summary.received)}</td>
+            <td class="amount-cell">{formatMoney(row.summary.deductions)}</td>
+            <td class="amount-cell">{formatMoney(row.summary.refunded)}</td>
             <td class="amount-cell">{formatMoney(row.summary.balance)}</td>
             <td><StatusBadge label={statusLabel(row.summary.status)} tone={statusTone(row.summary.status)} /></td>
             <td class="actions-cell">
@@ -223,6 +244,10 @@
                   <i class="bi bi-eye" aria-hidden="true"></i>
                   {$locale.securityDeposits.details}
                 </button>
+                <a class="row-menu-item" href={`#/tenants/${row.lease.tenant.id}`}>
+                  <i class="bi bi-person" aria-hidden="true"></i>
+                  {$locale.tenants.profile}
+                </a>
               </RowActions>
             </td>
           </tr>
@@ -416,7 +441,16 @@
 </Modal>
 
 <style>
-  .details-button { min-height: 2.25rem; padding: 0.4rem 0.7rem; font-size: 0.76rem; }
+  :global(.deposit-table .actions-heading),
+  :global(.deposit-table .actions-cell) {
+    position: sticky;
+    inset-inline-end: 0;
+    z-index: 6;
+    background: var(--surface);
+    border-inline-start: 1px solid var(--border);
+  }
+  :global(.deposit-table .actions-heading) { background: var(--table-head-bg, var(--surface)); }
+  :global(.deposit-table tr.is-selected .actions-cell) { background: var(--accent-soft); }
   .lease-context { display: flex; flex-wrap: wrap; gap: 0.8rem 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); color: var(--text-body); font-size: 0.8rem; }
   .lease-context span { display: grid; gap: 0.15rem; }
   .lease-context strong { color: var(--brand-800); font-size: 0.7rem; text-transform: uppercase; }

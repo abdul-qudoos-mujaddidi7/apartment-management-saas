@@ -493,7 +493,8 @@ html hr {
    the same shell: as a column the page hands its leftover height to the list
    card, which is what makes that card reach the bottom instead of stopping
    short after the last row. */
-.app-page:has(> .details-page) {
+.app-page:has(> .details-page),
+.app-page:has(> .account-profile-page) {
   display: flex;
   flex-direction: column;
   min-height: 0;
